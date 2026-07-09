@@ -130,6 +130,19 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
               const SizedBox(height: 8),
               Bouton(titre: "Terminer l'inscription", onPressed: _gererPin, chargement: _chargement),
             ],
+            const SizedBox(height: 24),
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Déjà un compte ? ", style: TextStyle(color: AppCouleurs.texteSecondaire)),
+                  GestureDetector(
+                    onTap: () => context.go('/connexion'),
+                    child: const Text("Connectez-vous", style: TextStyle(color: AppCouleurs.primaire, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

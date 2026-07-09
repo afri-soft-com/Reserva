@@ -6,7 +6,7 @@ import { schemaCreerReservation, schemaAnnulerReservation, schemaModifierReserva
 
 export const routesReservations = Router();
 
-routesReservations.post("/", authentifier, valider(schemaCreerReservation), reservationsController.creer);
+routesReservations.post("/", authentifier, exigerRole("CLIENT", "ADMIN"), valider(schemaCreerReservation), reservationsController.creer);
 routesReservations.post("/modifier", authentifier, valider(schemaModifierReservation), reservationsController.modifier);
 routesReservations.post("/annuler", authentifier, valider(schemaAnnulerReservation), reservationsController.annuler);
 routesReservations.get("/moi", authentifier, reservationsController.mesReservations);

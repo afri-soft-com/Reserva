@@ -130,6 +130,19 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
             child: const Text('Mot de passe oublié ?', style: TextStyle(color: AppCouleurs.primaire, fontWeight: FontWeight.w600)),
           ),
         ),
+        const SizedBox(height: 16),
+        Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("Pas encore de compte ? ", style: TextStyle(color: AppCouleurs.texteSecondaire)),
+              GestureDetector(
+                onTap: () => context.go('/inscription'),
+                child: const Text("Inscrivez-vous", style: TextStyle(color: AppCouleurs.primaire, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../theme.dart';
 import '../../models/models.dart';
 import '../../services/api_services.dart';
 import '../../services/api_reservations.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/bouton.dart';
 import '../../widgets/toast.dart';
@@ -46,6 +48,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       ToastWidget.show(context, 'Veuillez sélectionner un créneau.', type: 'erreur');
       return;
     }
+    final auth = context.read<AuthProvider>();
+    if (auth.estPrestataire) {
+      ToastWidget.show(context, 'Seuls les clients peuvent effectuer une réservation.', type: 'erreur');
+      return;
+    }
     setState(() => _reservationEnCours = true);
     try {
       await ApiReservations.creerReservation(
@@ -54,7 +61,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       );
       if (mounted) {
         ToastWidget.show(context, 'Réservation effectuée !', type: 'succes');
-        context.pop();
+        context.go('/reservations');
       }
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
@@ -101,6 +108,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     final avisList = (_data!['avis'] as List<dynamic>?) ?? [];
     final repartitionNotes = _data!['repartitionNotes'] as Map<String, dynamic>? ?? {};
     final similaires = (_data!['servicesSimilaires'] as List<dynamic>?) ?? [];
+    final auth = context.watch<AuthProvider>();
 
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
@@ -121,8 +129,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
               const SizedBox(height: 16),
               _buildServicesSimilaires(similaires),
             ],
-            const SizedBox(height: 16),
-            Bouton(titre: 'Réserver ce service', onPressed: _reserver, chargement: _reservationEnCours),
+            if (!auth.estPrestataire) ...[
+              const SizedBox(height: 16),
+              Bouton(titre: 'Réserver ce service', onPressed: _reserver, chargement: _reservationEnCours),
+            ],
             const SizedBox(height: 24),
           ],
         ),

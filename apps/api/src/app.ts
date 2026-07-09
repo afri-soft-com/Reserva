@@ -52,7 +52,7 @@ app.use(limiteurGlobal);
 
 const limiteurAuth = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20,
+  limit: env.NODE_ENV === "development" ? 100 : 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { succes: false, erreur: { code: "TROP_DE_TENTATIVES", message: "Trop de tentatives. Veuillez réessayer plus tard." } },

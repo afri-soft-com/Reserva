@@ -65,8 +65,8 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
 
   void _onMessage(Map<String, dynamic> data) {
     if (!mounted) return;
-    setState(() => _messages.insert(0, data));
-    Future.delayed(const Duration(milliseconds: 100), _defilerVersHaut);
+    setState(() => _messages.add(data));
+    Future.delayed(const Duration(milliseconds: 100), _defilerVersBas);
   }
 
   void _onTyping(Map<String, dynamic> data) {
@@ -93,7 +93,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
         if (marquerLu) {
           await ApiChat.marquerLu(widget.conversationId);
         }
-        Future.delayed(const Duration(milliseconds: 100), _defilerVersHaut);
+        Future.delayed(const Duration(milliseconds: 100), _defilerVersBas);
       }
     } catch (_) {
     } finally {
@@ -101,9 +101,9 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     }
   }
 
-  void _defilerVersHaut() {
+  void _defilerVersBas() {
     if (_scrollCtrl.hasClients) {
-      _scrollCtrl.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+      _scrollCtrl.animateTo(_scrollCtrl.position.maxScrollExtent, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
     }
   }
 
@@ -142,6 +142,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   }
 
   void _onChanged(String val) {
+    setState(() {});
     if (val.isNotEmpty) {
       _socket.envoyerTape(widget.conversationId);
     }
