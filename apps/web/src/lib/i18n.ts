@@ -1,0 +1,108 @@
+export const TRADUCTIONS: Record<string, Record<string, string>> = {
+  fr: {
+    appName: "RESERVA",
+    slogan: "Réservez. Sereinement.",
+    recherche: "Rechercher",
+    connexion: "Connexion",
+    inscription: "Inscription",
+    deconnexion: "Déconnexion",
+    profil: "Profil",
+    reservations: "Réservations",
+    prestataire: "Prestataire",
+    accueil: "Accueil",
+    mesReservations: "Mes réservations",
+    aucunService: "Aucun service trouvé.",
+    charger: "Charger",
+    annuler: "Annuler",
+    confirmer: "Confirmer",
+    payer: "Payer",
+    montantTotal: "Montant total",
+    codePin: "Code PIN",
+    telephone: "Numéro de téléphone",
+    motDePasseOublie: "Mot de passe oublié ?",
+    reinitialiserPin: "Réinitialiser le code PIN",
+    nouveauPin: "Nouveau code PIN",
+    confirmerPin: "Confirmer le code PIN",
+    envoyerCode: "Envoyer le code",
+    notes: "Notes",
+    creneau: "Créneau",
+    modifier: "Modifier",
+    anglais: "English",
+    francais: "Français",
+    lingala: "Lingála",
+    swahili: "Kiswahili",
+  },
+  ln: {
+    appName: "RESERVA",
+    slogan: "Bobénga. Na kimia.",
+    recherche: "Koluka",
+    connexion: "Kokota",
+    inscription: "Komisakisa",
+    deconnexion: "Kobima",
+    profil: "Profile",
+    reservations: "Bobéngi",
+    prestataire: "Mokabi",
+    accueil: "Mokolo",
+    mesReservations: "Bobéngi na ngai",
+    aucunService: "Aucun service trouvé.",
+    charger: "Kotya",
+    annuler: "Koboyana",
+    confirmer: "Kondima",
+    payer: "Kofuta",
+    montantTotal: "Ntalo na nsuka",
+    codePin: "Code PIN",
+    telephone: "Nimero ya telefone",
+    motDePasseOublie: "Bobosana code ?",
+    reinitialiserPin: "Kobongola code PIN",
+    nouveauPin: "Code PIN ya sika",
+    confirmerPin: "Kondima code PIN",
+    envoyerCode: "Kotinda code",
+    notes: "Makanisi",
+    creneau: "Temps",
+    modifier: "Kobongola",
+  },
+  sw: {
+    appName: "RESERVA",
+    slogan: "Hifadhi. Kwa amani.",
+    recherche: "Tafuta",
+    connexion: "Ingia",
+    inscription: "Jisajili",
+    deconnexion: "Toka",
+    profil: "Wasifu",
+    reservations: "Uhifadhi",
+    prestataire: "Mtoa huduma",
+    accueil: "Nyumbani",
+    mesReservations: "Uhifadhi wangu",
+    aucunService: "Hakuna huduma iliyopatikana.",
+    charger: "Pakia",
+    annuler: "Ghairi",
+    confirmer: "Thibitisha",
+    payer: "Lipa",
+    montantTotal: "Jumla",
+    codePin: "Nambari ya PIN",
+    telephone: "Nambari ya simu",
+    motDePasseOublie: "Umesahau PIN ?",
+    reinitialiserPin: "Weka PIN mpya",
+    nouveauPin: "PIN mpya",
+    confirmerPin: "Thibitisha PIN",
+    envoyerCode: "Tuma msimbo",
+    notes: "Maelezo",
+    creneau: "Muda",
+    modifier: "Badilisha",
+  },
+};
+
+export type LangueDispo = "fr" | "ln" | "sw";
+let langueCourante: LangueDispo = "fr";
+
+export function definirLangue(langue: LangueDispo) {
+  langueCourante = langue;
+}
+
+export function obtenirLangue(): LangueDispo {
+  return langueCourante;
+}
+
+export function t(cle: string): string {
+  return TRADUCTIONS[langueCourante]?.[cle] ?? TRADUCTIONS["fr"]?.[cle] ?? cle;
+}

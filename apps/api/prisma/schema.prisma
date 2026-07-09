@@ -1,0 +1,374 @@
+// Schéma de base de données RESERVA
+// Voir docs/cahier-des-charges.md pour le détail fonctionnel
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+
+
+// ----------------------------------------------------------------------------
+// MODÈLES
+// ----------------------------------------------------------------------------
+
+model Utilisateur {
+  id               String   @id @default(uuid())
+  telephone        String   @unique
+  email            String?  @unique
+  nom              String
+  pinHash          String?
+  role             String @default("CLIENT")
+  langue           String @default("fr")
+  photoUrl         String?
+  telephoneVerifie Boolean  @default(false)
+  deuxFAActif      Boolean  @default(false)
+  tentativesPin    Int      @default(0)
+  bloqueJusquA     DateTime?
+  creeLe           DateTime @default(now())
+  misAJourLe       DateTime @updatedAt
+
+  otps             Otp[]
+  prestataire      Prestataire?
+  reservations     Reservation[]
+  avis             Avis[]
+  notifications    Notification[]
+  favoris          Favori[]
+  conversations    ConversationParticipant[]
+  messagesEnvoyes  Message[]
+  pointsFidelite   PointTransaction[]
+
+  @@map("utilisateurs")
+}
+
+model Otp {
+  id           String   @id @default(uuid())
+  utilisateurId String
+  utilisateur  Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  code         String
+  expireLe     DateTime
+  utilise      Boolean  @default(false)
+  tentatives   Int      @default(0)
+  creeLe       DateTime @default(now())
+
+  @@index([utilisateurId])
+  @@map("otps")
+}
+
+model Prestataire {
+  id                              String   @id @default(uuid())
+  utilisateurId                   String   @unique
+  utilisateur                     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  nomEntreprise                   String
+  categorie                       String
+  ville                           String
+  quartier                        String
+  adresse                         String?
+  description                     String?
+  documentJustificatifUrl         String?
+  latitude                        Float?
+  longitude                       Float?
+  statut                          String @default("EN_ATTENTE_VALIDATION")
+  motifRejet                      String?
+  noteMoyenne                     Float    @default(0)
+  nombreAvis                      Int      @default(0)
+  delaiAnnulationGratuiteHeures   Int      @default(24)
+  fraisAnnulationTardivePourcent  Int      @default(50)
+  tauxCommissionPourcent          Float    @default(4)
+  creeLe                          DateTime @default(now())
+  misAJourLe                      DateTime @updatedAt
+
+  services      ServiceOffert[]
+  reservations  Reservation[]
+  avis          Avis[]
+  abonnements   AbonnementPrestataire[]
+
+  @@index([categorie, ville])
+  @@map("prestataires")
+}
+
+model ServiceOffert {
+  id              String   @id @default(uuid())
+  prestataireId   String
+  prestataire     Prestataire @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  nom             String
+  description     String?
+  dureeMinutes    Int      @default(30)
+  prix            Float
+  devise          String   @default("CDF")
+  actif           Boolean  @default(true)
+  creeLe          DateTime @default(now())
+
+  creneaux        Creneau[]
+  reservations    Reservation[]
+  favoris         Favori[]
+
+  @@index([prestataireId])
+  @@map("services_offerts")
+}
+
+model Creneau {
+  id               String   @id @default(uuid())
+  serviceId        String
+  service          ServiceOffert @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  debut            DateTime
+  fin              DateTime
+  capaciteTotale   Int      @default(1)
+  capaciteReservee Int      @default(0)
+  creeLe           DateTime @default(now())
+
+  reservations     Reservation[]
+
+  @@index([serviceId, debut])
+  @@map("creneaux")
+}
+
+model Reservation {
+  id                  String   @id @default(uuid())
+  numero              String   @unique
+  clientId            String
+  client              Utilisateur @relation(fields: [clientId], references: [id])
+  prestataireId       String
+  prestataire         Prestataire @relation(fields: [prestataireId], references: [id])
+  serviceId           String
+  service             ServiceOffert @relation(fields: [serviceId], references: [id])
+  creneauId           String
+  creneau             Creneau @relation(fields: [creneauId], references: [id])
+  statut              String @default("EN_ATTENTE")
+  statutPaiement      String @default("EN_ATTENTE")
+  montantTotal        Float
+  montantPaye         Float    @default(0)
+  devise              String   @default("CDF")
+  montantReduction    Float    @default(0)
+  notes               String?
+  reservePourTiers    Boolean  @default(false)
+  nomTiers            String?
+  telephoneTiers      String?
+  motifAnnulation     String?
+  codePromoId         String?
+  codePromo           CodePromo? @relation(fields: [codePromoId], references: [id])
+  creeLe              DateTime @default(now())
+  misAJourLe          DateTime @updatedAt
+
+  transactions        Transaction[]
+  avis                Avis?
+  notifications       Notification[]
+
+  @@index([clientId])
+  @@index([prestataireId])
+  @@index([statut])
+  @@map("reservations")
+}
+
+model CodePromo {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  description String?
+  type        String   @default("PERCENTAGE") // PERCENTAGE | FIXED
+  valeur      Float
+  devise      String   @default("CDF")
+  montantMin  Float?
+  usageMax    Int?
+  usageCount  Int      @default(0)
+  dateDebut   DateTime
+  dateFin     DateTime
+  actif       Boolean  @default(true)
+  creeParId   String?
+  creeLe      DateTime @default(now())
+  misAJourLe  DateTime @updatedAt
+
+  reservations Reservation[]
+
+  @@map("codes_promo")
+}
+
+model Transaction {
+  id               String   @id @default(uuid())
+  reservationId    String
+  reservation      Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  operateur        String
+  montant          Float
+  devise           String
+  statut           String
+  referenceExterne String?
+  telephonePaiement String?
+  creeLe           DateTime @default(now())
+
+  @@index([reservationId])
+  @@map("transactions")
+}
+
+model Avis {
+  id                  String   @id @default(uuid())
+  reservationId       String   @unique
+  reservation         Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  clientId            String
+  client              Utilisateur @relation(fields: [clientId], references: [id])
+  prestataireId       String
+  prestataire         Prestataire @relation(fields: [prestataireId], references: [id])
+  note                Int
+  commentaire         String?
+  reponsePrestataire  String?
+  creeLe              DateTime @default(now())
+
+  @@index([prestataireId])
+  @@map("avis")
+}
+
+model Favori {
+  id              String   @id @default(uuid())
+  utilisateurId   String
+  serviceId       String
+  creeLe          DateTime @default(now())
+
+  utilisateur     Utilisateur   @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  service         ServiceOffert @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([utilisateurId, serviceId])
+  @@map("favoris")
+}
+
+model Notification {
+  id            String   @id @default(uuid())
+  utilisateurId String
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+  titre         String
+  message       String
+  type          String
+  lu            Boolean  @default(false)
+  creeLe        DateTime @default(now())
+
+  @@index([utilisateurId, lu])
+  @@map("notifications")
+}
+
+model PlanAbonnement {
+  id                String   @id @default(uuid())
+  nom               String
+  description       String?
+  prix              Float
+  devise            String   @default("CDF")
+  dureeJours        Int
+  maxServices       Int?
+  commissionReduite Float?
+  fonctionnalites   String   @default("[]")
+  actif             Boolean  @default(true)
+  creeLe            DateTime @default(now())
+  misAJourLe        DateTime @updatedAt
+
+  abonnements       AbonnementPrestataire[]
+
+  @@map("plans_abonnement")
+}
+
+model AbonnementPrestataire {
+  id            String   @id @default(uuid())
+  prestataireId String
+  planId        String
+  dateDebut     DateTime
+  dateFin       DateTime
+  statut        String   @default("ACTIF")
+  creeLe        DateTime @default(now())
+  misAJourLe    DateTime @updatedAt
+
+  prestataire   Prestataire       @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  plan          PlanAbonnement    @relation(fields: [planId], references: [id])
+
+  @@index([prestataireId])
+  @@index([planId])
+  @@index([statut])
+  @@map("abonnements_prestataire")
+}
+
+model ConfigurationTarification {
+  id          String   @id @default(uuid())
+  cle         String   @unique
+  valeur      String
+  description String?
+  type        String   @default("TEXTE")
+  actif       Boolean  @default(true)
+  creeLe      DateTime @default(now())
+  misAJourLe  DateTime @updatedAt
+
+  @@map("configurations_tarification")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  sujet     String?
+  creeLe    DateTime @default(now())
+  misAJourLe DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id              String       @id @default(uuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  utilisateurId   String
+  utilisateur     Utilisateur  @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  derniereLecture DateTime?
+  creeLe          DateTime     @default(now())
+
+  @@unique([conversationId, utilisateurId])
+  @@map("conversations_participants")
+}
+
+model Message {
+  id              String       @id @default(uuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  envoyeurId      String
+  envoyeur        Utilisateur  @relation(fields: [envoyeurId], references: [id])
+  contenu         String
+  imageUrl        String?
+  lu              Boolean      @default(false)
+  luLe            DateTime?
+  creeLe          DateTime     @default(now())
+
+  @@index([conversationId, creeLe])
+  @@map("messages")
+}
+
+model Publicite {
+  id          String   @id @default(uuid())
+  titre       String
+  imageUrl    String?
+  lienUrl     String?
+  description String?
+  actif       Boolean  @default(true)
+  dateDebut   DateTime @default(now())
+  dateFin     DateTime?
+  cible       String   @default("TOUS")
+  impressions Int      @default(0)
+  clics       Int      @default(0)
+  creeLe      DateTime @default(now())
+  misAJourLe  DateTime @updatedAt
+
+  @@map("publicites")
+}
+
+model PointTransaction {
+  id              String   @id @default(uuid())
+  utilisateurId   String
+  utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  type            String      // GAIN | DEPENSE
+  montantPoints   Int
+  soldeApres      Int
+  reservationId   String?
+  description     String?
+  creeLe          DateTime @default(now())
+
+  @@index([utilisateurId])
+  @@map("points_fidelite")
+}

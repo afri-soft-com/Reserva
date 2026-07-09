@@ -1,0 +1,53 @@
+node_modules/
+.next/
+dist/
+build/
+*.log
+.env
+.env.local
+.DS_Store
+*.iml
+.idea/
+.vscode/
+*.class
+*.dart_tool/
+.packages
+.pub/
+build/
+*.g.dart
+*.freezed.dart
+
+# Android
+apps/mobile_flutter/.gradle/
+apps/mobile_flutter/build/
+apps/mobile_flutter/local.properties
+apps/mobile_flutter/android/.gradle/
+apps/mobile_flutter/android/build/
+apps/mobile_flutter/android/app/build/
+apps/mobile_flutter/android/local.properties
+apps/mobile_flutter/*.iml
+apps/mobile_flutter/ios/Pods/
+apps/mobile_flutter/ios/.symlinks/
+
+# API
+apps/api/node_modules/
+apps/api/dist/
+
+# Web
+apps/web/node_modules/
+apps/web/.next/
+
+# Shared
+packages/shared/node_modules/
+packages/shared/dist/
+
+# Flutter
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/flutter_export_environment.sh
+**/service_account.json
+**/google-services.json
+**/GoogleService-Info.plist
+
+# OS
+Thumbs.db

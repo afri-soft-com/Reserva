@@ -1,0 +1,158 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../theme.dart';
+import '../../models/models.dart';
+import '../../services/api_favoris.dart';
+import '../../widgets/carte.dart';
+import '../../widgets/squelette.dart';
+import '../../widgets/toast.dart';
+
+class FavorisScreen extends StatefulWidget {
+  const FavorisScreen({super.key});
+
+  @override
+  State<FavorisScreen> createState() => _FavorisScreenState();
+}
+
+class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveClientMixin {
+  List<ServiceAvecPrestataire> _favoris = [];
+  bool _chargement = true;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _charger();
+  }
+
+  Future<void> _charger() async {
+    setState(() => _chargement = true);
+    try {
+      final favoris = await ApiFavoris.listerFavoris();
+      if (mounted) setState(() => _favoris = favoris);
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, 'Erreur de chargement', type: 'erreur');
+    } finally {
+      if (mounted) setState(() => _chargement = false);
+    }
+  }
+
+  String _formaterMontant(double montant, String devise) {
+    if (devise == 'USD') return '\$${montant.toStringAsFixed(2)}';
+    return '${montant.toStringAsFixed(0)} FC';
+  }
+
+  Future<void> _supprimerFavori(String serviceId) async {
+    try {
+      await ApiFavoris.supprimerFavori(serviceId);
+      if (!mounted) return;
+      setState(() => _favoris.removeWhere((s) => s.id == serviceId));
+      ToastWidget.show(context, 'Retiré des favoris');
+    } catch (e) {
+      if (!mounted) return;
+      ToastWidget.show(context, 'Erreur', type: 'erreur');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Scaffold(
+      backgroundColor: AppCouleurs.fond,
+      appBar: AppBar(title: const Text('Mes favoris')),
+      body: _chargement
+          ? ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: 3,
+              itemBuilder: (_, __) => const CarteSquelette(),
+            )
+          : _favoris.isEmpty
+              ? EcranVide(
+                  icone: Icons.favorite_border,
+                  message: 'Aucun favori',
+                  sousTitre: 'Ajoutez des services à vos favoris pour les retrouver facilement.',
+                  action: ElevatedButton.icon(
+                    onPressed: () => context.go('/services'),
+                    icon: const Icon(Icons.search, size: 18),
+                    label: const Text('Découvrir des services'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppCouleurs.primaire, foregroundColor: AppCouleurs.blanc),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _charger,
+                  color: AppCouleurs.primaire,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _favoris.length,
+                    itemBuilder: (ctx, i) {
+                      final s = _favoris[i];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: GestureDetector(
+                          onTap: () => context.go('/service/${s.id}'),
+                          child: Carte(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 48, height: 48,
+                                      decoration: BoxDecoration(color: AppCouleurs.primaireClair, borderRadius: BorderRadius.circular(12)),
+                                      child: const Icon(Icons.miscellaneous_services, color: AppCouleurs.primaire, size: 24),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(s.nom, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                                          const SizedBox(height: 2),
+                                          Text(s.nomEntreprise, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                          const SizedBox(height: 2),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.location_on, size: 12, color: AppCouleurs.texteSecondaire),
+                                              const SizedBox(width: 2),
+                                              Text(s.ville, style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => _supprimerFavori(s.id),
+                                      child: const Icon(Icons.favorite, color: AppCouleurs.alerte, size: 22),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(_formaterMontant(s.prix, s.devise),
+                                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.star, size: 14, color: AppCouleurs.accent),
+                                        const SizedBox(width: 2),
+                                        Text('${s.noteMoyenne.toStringAsFixed(1)} (${s.nombreAvis})',
+                                          style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+    );
+  }
+}

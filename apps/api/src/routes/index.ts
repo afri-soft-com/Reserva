@@ -1,0 +1,32 @@
+import { Router } from "express";
+import { routesAuth } from "../modules/auth/auth.routes";
+import { routesPrestataires } from "../modules/prestataires/prestataires.routes";
+import { routesServices } from "../modules/services/services.routes";
+import { routesReservations } from "../modules/reservations/reservations.routes";
+import { routesPaiements } from "../modules/paiements/paiements.routes";
+import { routesAvis } from "../modules/avis/avis.routes";
+import { routesNotifications } from "../modules/notifications/notifications.routes";
+import { routesAdmin } from "../modules/admin/admin.routes";
+import { routesFavoris } from "../modules/favoris/favoris.routes";
+import { routesPublicites } from "../modules/publicites/publicites.routes";
+import { routesChat } from "../modules/chat/chat.routes";
+import { routesUpload } from "../modules/upload/upload.routes";
+import { routesCodesPromos } from "../modules/codes-promos/codes-promos.routes";
+import { routesFidelite } from "../modules/fidelite/fidelite.routes";
+
+export const routesApi = Router();
+
+routesApi.use("/auth", routesAuth);
+routesApi.use("/prestataires", routesPrestataires);
+routesApi.use("/services", routesServices);
+routesApi.use("/reservations", routesReservations);
+routesApi.use("/paiements", routesPaiements);
+routesApi.use("/avis", routesAvis);
+routesApi.use("/notifications", routesNotifications);
+routesApi.use("/favoris", routesFavoris);
+routesApi.use("/publicites", routesPublicites);
+routesApi.use("/admin", routesAdmin);
+routesApi.use("/chat", routesChat);
+routesApi.use("/upload", routesUpload);
+routesApi.use("/codes-promos", routesCodesPromos);
+routesApi.use("/fidelite", routesFidelite);

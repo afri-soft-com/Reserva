@@ -1,0 +1,86 @@
+import { clientApi } from "./api-client";
+import { Prestataire, ServiceOffert } from "@reserva/shared";
+
+export interface CreerPrestataireInput {
+  nomEntreprise: string;
+  categorie: string;
+  ville: string;
+  quartier: string;
+  adresse?: string;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export async function creerProfilPrestataire(input: CreerPrestataireInput) {
+  const { data } = await clientApi.post("/prestataires", input);
+  return data.donnees as Prestataire;
+}
+
+export async function obtenirMonProfilPrestataire() {
+  const { data } = await clientApi.get("/prestataires/moi");
+  return data.donnees as Prestataire & { services: ServiceOffert[] };
+}
+
+export interface TableauDeBordReponse {
+  reservationsAujourdhui: any[];
+  statistiques: {
+    totalReservationsSemaine: number;
+    totalReservationsMois: number;
+    revenusMoisEnCours: number;
+    reservationsEnAttenteAction: number;
+    noteMoyenne: number;
+    nombreAvis: number;
+  };
+}
+
+export async function obtenirTableauDeBord() {
+  const { data } = await clientApi.get("/prestataires/moi/tableau-de-bord");
+  return data.donnees as TableauDeBordReponse;
+}
+
+export interface CreerServiceOffertInput {
+  nom: string;
+  description?: string;
+  dureeMinutes: number;
+  prix: number;
+  devise: "CDF" | "USD";
+}
+
+export async function creerServiceOffert(input: CreerServiceOffertInput) {
+  const { data } = await clientApi.post("/prestataires/moi/services", input);
+  return data.donnees as ServiceOffert;
+}
+
+export async function listerMesServices() {
+  const { data } = await clientApi.get("/prestataires/moi/services");
+  return data.donnees as ServiceOffert[];
+}
+
+export async function modifierServiceOffert(serviceId: string, input: Partial<CreerServiceOffertInput & { actif: boolean }>) {
+  const { data } = await clientApi.patch(`/prestataires/moi/services/${serviceId}`, input);
+  return data.donnees as ServiceOffert;
+}
+
+export async function creerCreneauxRecurrents(params: {
+  serviceId: string;
+  dateDebut: string;
+  dateFin: string;
+  heuresCreneaux: string[];
+  dureeMinutes: number;
+  capaciteParCreneau: number;
+  joursExclus?: number[];
+}) {
+  const { data } = await clientApi.post("/services/creneaux/recurrents", params);
+  return data.donnees as { nombreCreneauxCrees: number };
+}
+
+export async function listerCreneauxService(serviceId: string) {
+  const { data } = await clientApi.get(`/services/${serviceId}/creneaux/gestion`);
+  return data.donnees;
+}
+
+export async function supprimerCreneau(creneauId: string) {
+  const { data } = await clientApi.delete(`/services/creneaux/${creneauId}`);
+  return data.donnees as { supprime: boolean };
+}

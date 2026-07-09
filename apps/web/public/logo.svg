@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
+  <circle cx="38" cy="12" r="2.5" fill="#F5A623"/>
+  <path d="M22 44V4h8.5a7 7 0 0 1 5.25 2.1A7.5 7.5 0 0 1 38 12a7.5 7.5 0 0 1-2.25 5.9A7 7 0 0 1 30.5 20H27v24h-5Zm5-12h3a3.5 3.5 0 0 0 2.625-1.05A3.75 3.75 0 0 0 34 12a3.75 3.75 0 0 0-1.375-2.95A3.5 3.5 0 0 0 30 8h-3v24Z" fill="#1A56DB"/>
+  <text x="50" y="24" font-family="'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="700" fill="#1A56DB" letter-spacing="2">RESERVA</text>
+  <text x="50" y="40" font-family="'Helvetica Neue', Arial, sans-serif" font-size="11" fill="#6B7280" letter-spacing="1.5">Réservez. Sereinement.</text>
+</svg>

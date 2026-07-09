@@ -1,0 +1,92 @@
+import { Request, Response } from "express";
+import * as adminService from "./admin.service";
+import { envoyerSucces } from "../../utils/reponse";
+import { asyncHandler } from "../../middlewares/erreurs";
+
+export const statistiques = asyncHandler(async (_req: Request, res: Response) => {
+  const resultat = await adminService.obtenirStatistiquesPlateforme();
+  envoyerSucces(res, resultat);
+});
+
+export const listerPrestataires = asyncHandler(async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const parPage = parseInt(req.query.parPage as string) || 20;
+  const resultat = await adminService.listerTousPrestataires(page, parPage);
+  envoyerSucces(res, resultat);
+});
+
+export const listerUtilisateurs = asyncHandler(async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const parPage = parseInt(req.query.parPage as string) || 20;
+  const resultat = await adminService.listerTousUtilisateurs(page, parPage);
+  envoyerSucces(res, resultat);
+});
+
+export const suspendre = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await adminService.suspendrePrestataire(req.params.prestataireId);
+  envoyerSucces(res, resultat);
+});
+
+// ---- Plans d'abonnement ----
+
+export const listerPlans = asyncHandler(async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const parPage = parseInt(req.query.parPage as string) || 50;
+  const resultat = await adminService.listerPlans(page, parPage);
+  envoyerSucces(res, resultat);
+});
+
+export const creerPlan = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await adminService.creerPlan(req.body);
+  envoyerSucces(res, resultat, 201);
+});
+
+export const modifierPlan = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await adminService.modifierPlan(req.params.id, req.body);
+  envoyerSucces(res, resultat);
+});
+
+export const supprimerPlan = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await adminService.supprimerPlan(req.params.id);
+  envoyerSucces(res, resultat);
+});
+
+// ---- Abonnements prestataire ----
+
+export const listerAbonnements = asyncHandler(async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const parPage = parseInt(req.query.parPage as string) || 20;
+  const resultat = await adminService.listerAbonnements(page, parPage);
+  envoyerSucces(res, resultat);
+});
+
+export const creerAbonnement = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await adminService.creerAbonnement(req.body);
+  envoyerSucces(res, resultat, 201);
+});
+
+// ---- Configuration tarification ----
+
+export const listerConfigurations = asyncHandler(async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const parPage = parseInt(req.query.parPage as string) || 50;
+  const resultat = await adminService.listerConfigurations(page, parPage);
+  envoyerSucces(res, resultat);
+});
+
+export const creerOuModifierConfig = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await adminService.creerOuModifierConfig(req.body);
+  envoyerSucces(res, resultat, 201);
+});
+
+export const supprimerConfig = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await adminService.supprimerConfig(req.params.id);
+  envoyerSucces(res, resultat);
+});
+
+export const exporterCSV = asyncHandler(async (req: Request, res: Response) => {
+  const csv = await adminService.genererExportCSV(req.params.type, req.query);
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="export-${req.params.type}-${Date.now()}.csv"`);
+  res.send("\uFEFF" + csv); // BOM UTF-8 pour Excel
+});

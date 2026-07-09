@@ -1,0 +1,30 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:./dev.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - JWT_EXPIRATION=7d
+      - WEB_URL=http://localhost:3009
+      - CRON_SECRET=${CRON_SECRET:-change-me}
+    volumes:
+      - ./apps/api/prisma/dev.db:/app/apps/api/prisma/dev.db
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3009:3009"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000/api
+      - API_URL=http://api:4000/api
+    depends_on:
+      - api
+    restart: unless-stopped
