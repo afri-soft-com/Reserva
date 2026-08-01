@@ -5,6 +5,7 @@ import '../../theme.dart';
 import '../../models/models.dart';
 import '../../services/api_services.dart';
 import '../../services/api_reservations.dart';
+import '../../services/api_packages.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/bouton.dart';
@@ -24,6 +25,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   bool _chargement = true;
   String? _selectedCreneauId;
   bool _reservationEnCours = false;
+  List<dynamic> _packages = [];
+  bool _chargementPackages = true;
 
   @override
   void initState() {
@@ -35,11 +38,29 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     setState(() => _chargement = true);
     try {
       final data = await ApiServices.obtenirDetailService(widget.serviceId);
-      if (mounted) setState(() => _data = data);
+      if (mounted) {
+        setState(() => _data = data);
+        _chargerPackages((data['prestataire'] as Map<String, dynamic>?)?['id'] as String?);
+      }
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     } finally {
       if (mounted) setState(() => _chargement = false);
+    }
+  }
+
+  Future<void> _chargerPackages(String? prestataireId) async {
+    if (prestataireId == null) {
+      if (mounted) setState(() => _chargementPackages = false);
+      return;
+    }
+    try {
+      final packages = await ApiPackages.listerPublics(prestataireId: prestataireId);
+      if (mounted) setState(() => _packages = packages);
+    } catch (_) {
+      // Section packages silencieuse si l'appel échoue
+    } finally {
+      if (mounted) setState(() => _chargementPackages = false);
     }
   }
 
@@ -120,6 +141,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           children: [
             _buildServiceInfo(service, prestataire),
             const SizedBox(height: 16),
+            _buildPackages(),
+            const SizedBox(height: 16),
             _buildCreneaux(creneaux),
             const SizedBox(height: 16),
             _buildRepartitionNotes(prestataire, repartitionNotes),
@@ -180,6 +203,78 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildPackages() {
+    if (_chargementPackages) return const SizedBox.shrink();
+    if (_packages.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Packages du prestataire', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        ..._packages.map((p) {
+          final pack = p as Map<String, dynamic>;
+          final services = (pack['services'] as List<dynamic>? ?? [])
+              .map((s) => (s as Map<String, dynamic>)['service'] as Map<String, dynamic>? ?? {})
+              .toList();
+          final nom = pack['nom'] as String? ?? 'Package';
+          final prix = (pack['prix'] as num?)?.toDouble() ?? 0;
+          final devise = pack['devise'] as String? ?? 'CDF';
+          final description = pack['description'] as String?;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: InkWell(
+              onTap: () => _showDetailPackage(context, pack),
+              borderRadius: BorderRadius.circular(14),
+              child: Carte(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppCouleurs.primaire, AppCouleurs.primaireClair],
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.inventory_2, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(nom, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          if (description != null && description.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(description, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                          ],
+                          const SizedBox(height: 2),
+                          Text('${services.length} service(s) inclus',
+                            style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(_formaterMontant(prix, devise),
+                          style: const TextStyle(fontWeight: FontWeight.w800, color: AppCouleurs.primaire, fontSize: 15)),
+                        const SizedBox(height: 4),
+                        const Text('Voir', style: TextStyle(fontSize: 12, color: AppCouleurs.primaire)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 
@@ -415,6 +510,79 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       ],
     );
   }
+}
+
+void _showDetailPackage(BuildContext context, Map<String, dynamic> pack) {
+  final services = (pack['services'] as List<dynamic>? ?? [])
+      .map((s) => (s as Map<String, dynamic>)['service'] as Map<String, dynamic>? ?? {})
+      .toList();
+  final nom = pack['nom'] as String? ?? 'Package';
+  final description = pack['description'] as String?;
+  final prix = (pack['prix'] as num?)?.toDouble() ?? 0;
+  final devise = pack['devise'] as String? ?? 'CDF';
+
+  String formater(double montant, String d) {
+    if (d == 'USD') return '\$${montant.toStringAsFixed(2)}';
+    return '${montant.toStringAsFixed(0)} FC';
+  }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(
+              color: AppCouleurs.bordure, borderRadius: BorderRadius.circular(2),
+            ))),
+            const SizedBox(height: 16),
+            Text(nom, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(formater(prix, devise),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
+            if (description != null && description.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(description, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+            ],
+            const SizedBox(height: 16),
+            Text('Services inclus (${services.length})', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            const SizedBox(height: 8),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: services.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, i) {
+                  final s = services[i];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 38, height: 38,
+                      decoration: BoxDecoration(color: AppCouleurs.primaireClair, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.miscellaneous_services, color: AppCouleurs.primaire, size: 18),
+                    ),
+                    title: Text(s['nom'] as String? ?? 'Service', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    trailing: Text(formater((s['prix'] as num?)?.toDouble() ?? 0, s['devise'] as String? ?? 'CDF'),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppCouleurs.primaire)),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('Forfait groupant plusieurs services de ce prestataire. Réservez chaque service individuellement via sa fiche.',
+              style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 void _showAllAvis(BuildContext context, List<dynamic> avisList) {
