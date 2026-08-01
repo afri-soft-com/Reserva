@@ -62,7 +62,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
       await ApiReservations.annulerReservation(widget.reservationId);
       if (mounted) {
         ToastWidget.show(context, 'Réservation annulée.', type: 'succes');
-        context.pop();
+        context.go('/reservations');
       }
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
@@ -153,7 +153,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                 ],
               ),
             ),
-            if (r.reservation.statut == StatutReservation.enAttente) ...[
+            if (r.reservation.statut == StatutReservation.enAttente && estClient) ...[
               const SizedBox(height: 16),
               Bouton(titre: 'Modifier le créneau', onPressed: () async {
                 final modifie = await Navigator.of(context).push<bool>(
@@ -164,7 +164,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
               const SizedBox(height: 8),
               Bouton(titre: 'Annuler la réservation', variante: 'destructif', onPressed: _annuler),
             ],
-            if (r.reservation.statut == StatutReservation.terminee && r.avisNote == null) ...[
+            if (r.reservation.statut == StatutReservation.terminee && r.avisNote == null && estClient) ...[
               const SizedBox(height: 16),
               Bouton(
                 titre: 'Donner mon avis',
@@ -175,7 +175,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                 icone: Icons.star,
               ),
             ],
-            if (r.reservation.statut == StatutReservation.confirmee && r.reservation.statutPaiement != StatutPaiement.paye) ...[
+            if (r.reservation.statut == StatutReservation.confirmee && r.reservation.statutPaiement != StatutPaiement.paye && estClient) ...[
               const SizedBox(height: 16),
               Bouton(
                 titre: 'Payer',

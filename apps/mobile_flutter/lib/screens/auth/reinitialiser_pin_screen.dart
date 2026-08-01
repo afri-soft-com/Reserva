@@ -25,6 +25,12 @@ class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
   final _confirmationPinCtrl = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _codeCtrl.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     _telephoneCtrl.dispose();
     _codeCtrl.dispose();

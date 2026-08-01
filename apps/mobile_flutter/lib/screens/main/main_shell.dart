@@ -19,7 +19,9 @@ class MainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final montreMessages = auth.estConnecte && !auth.estAdmin;
-    final nbTabs = 4
+    final montreReservations = !auth.estPrestataire;
+    final nbTabs = 3
+        + (montreReservations ? 1 : 0)
         + (montreMessages ? 1 : 0)
         + (auth.estPrestataire ? 1 : 0)
         + (auth.estAdmin ? 1 : 0);
@@ -31,7 +33,7 @@ class MainShell extends StatelessWidget {
             children: [
               const AccueilScreen(),
               const ServicesScreen(),
-              const ReservationsScreen(),
+              if (montreReservations) const ReservationsScreen(),
               const ProfilScreen(),
               if (montreMessages) const ConversationsScreen(),
               if (auth.estPrestataire) const PrestataireScreen(),
@@ -46,7 +48,7 @@ class MainShell extends StatelessWidget {
           tabs: [
             Tab(icon: const Icon(Icons.home), text: 'Accueil'),
             Tab(icon: const Icon(Icons.search), text: 'Rechercher'),
-            Tab(icon: const Icon(Icons.calendar_month), text: 'Réservations'),
+            if (montreReservations) Tab(icon: const Icon(Icons.calendar_month), text: 'Réservations'),
             Tab(
               icon: BadgeNotification(child: Icon(Icons.person)),
               text: 'Profil',

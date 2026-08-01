@@ -38,6 +38,8 @@ GoRouter createRouter(AuthProvider auth) {
       if (!estConnecte && !estRoutePublique) return '/connexion';
       if (estConnecte && estRoutePublique) return '/accueil';
 
+      if (path.startsWith('/admin') && !auth.estAdmin) return '/accueil';
+
       return null;
     },
     routes: [

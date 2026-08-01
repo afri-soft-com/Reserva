@@ -129,7 +129,9 @@ void _showDetailDialog(BuildContext context, Map<String, dynamic> p, Color Funct
   showDialog(
     context: context,
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setDialogState) => AlertDialog(
+      builder: (ctx, setDialogState) {
+        motifCtrl.addListener(() => setDialogState(() {}));
+        return AlertDialog(
         title: Text(p['nomEntreprise'] as String? ?? ''),
         content: SingleChildScrollView(
           child: Column(
@@ -211,7 +213,8 @@ void _showDetailDialog(BuildContext context, Map<String, dynamic> p, Color Funct
               ),
             ]
           : [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fermer'))],
-      ),
+        );
+      },
     ),
   );
 }
