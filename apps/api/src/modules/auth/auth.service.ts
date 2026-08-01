@@ -26,6 +26,17 @@ export async function demarrerInscription(input: InscriptionInput) {
     throw new ErreurValidation("Ce numéro de téléphone est déjà associé à un compte RESERVA");
   }
 
+  // Parrainage : rattache le nouveau compte au parrain si le code est valide
+  let parraineParId: string | null = null;
+  if (input.codeParrainage) {
+    const code = input.codeParrainage.trim().toUpperCase();
+    const parrain = await prisma.utilisateur.findUnique({ where: { codeParrainage: code } });
+    if (!parrain) {
+      throw new ErreurValidation("Code de parrainage invalide");
+    }
+    parraineParId = parrain.id;
+  }
+
   const utilisateur = await prisma.utilisateur.create({
     data: {
       telephone,
@@ -33,12 +44,64 @@ export async function demarrerInscription(input: InscriptionInput) {
       email: input.email || null,
       langue: input.langue,
       telephoneVerifie: false,
+      codeParrainage: genererCodeParrainage(input.nom),
+      parraineParId,
     },
   });
 
   await genererEtEnvoyerOtp(utilisateur.id, telephone);
 
   return { utilisateurId: utilisateur.id, telephone };
+}
+
+/** Génère un code de parrainage unique à partir du nom, ex: RESV-AGUY-4821 */
+function genererCodeParrainage(nom: string): string {
+  const prefixe = nom
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 4)
+    .toUpperCase() || "USER";
+  const numero = Math.floor(1000 + Math.random() * 9000);
+  return `RESV-${prefixe}-${numero}`;
+}
+
+/** Crédite le parrain en points de fidélité lorsqu'un filleul active son compte (une seule fois) */
+async function crediterParrainage(parrainId: string, filleulId: string): Promise<void> {
+  const dejaCredite = await prisma.pointTransaction.findFirst({
+    where: { utilisateurId: parrainId, description: `Parrainage de ${filleulId}` },
+  });
+  if (dejaCredite) return;
+
+  const POINTS_PARRAINAGE = 200; // = 10 000 FC de valeur (50 FC / point)
+  const gains = await prisma.pointTransaction.aggregate({
+    where: { utilisateurId: parrainId, type: "GAIN" },
+    _sum: { montantPoints: true },
+  });
+  const depenses = await prisma.pointTransaction.aggregate({
+    where: { utilisateurId: parrainId, type: "DEPENSE" },
+    _sum: { montantPoints: true },
+  });
+  const solde = (gains._sum.montantPoints ?? 0) - (depenses._sum.montantPoints ?? 0);
+
+  await prisma.pointTransaction.create({
+    data: {
+      utilisateurId: parrainId,
+      type: "GAIN",
+      montantPoints: POINTS_PARRAINAGE,
+      soldeApres: solde + POINTS_PARRAINAGE,
+      description: `Parrainage de ${filleulId}`,
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      utilisateurId: parrainId,
+      titre: "Points de parrainage",
+      message: `Vous avez gagné ${POINTS_PARRAINAGE} points ! Une personne s'est inscrite avec votre code de parrainage.`,
+      type: "SYSTEME",
+    },
+  });
 }
 
 /** Génère un nouvel OTP, l'enregistre en base et l'envoie par SMS */
@@ -120,6 +183,15 @@ export async function definirPin(input: DefinirPinInput) {
 
   const pinHash = await bcrypt.hash(input.pin, 10);
   await prisma.utilisateur.update({ where: { id: utilisateur.id }, data: { pinHash } });
+
+  // Parrainage : crédite le parrain (une seule fois) lors de l'activation du compte du filleul
+  const utilisateurComplet = await prisma.utilisateur.findUnique({
+    where: { id: utilisateur.id },
+    include: { parrainePar: { select: { id: true } } },
+  });
+  if (utilisateurComplet?.parrainePar) {
+    await crediterParrainage(utilisateurComplet.parrainePar.id, utilisateur.id);
+  }
 
   const token = genererToken({ utilisateurId: utilisateur.id, role: utilisateur.role as RoleUtilisateur, telephone: utilisateur.telephone });
 
@@ -343,6 +415,38 @@ export async function obtenirProfil(utilisateurId: string) {
     ...formaterUtilisateurPublic(utilisateur),
     prestataire: utilisateur.prestataire,
   };
+}
+
+/** Renvoie le code de parrainage de l'utilisateur (le génère s'il est absent) */
+export async function monCodeParrainage(utilisateurId: string) {
+  const utilisateur = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });
+  if (!utilisateur) {
+    throw new ErreurNonTrouve("Utilisateur non trouvé");
+  }
+
+  let codeParrainage = utilisateur.codeParrainage;
+  if (!codeParrainage) {
+    codeParrainage = genererCodeParrainage(utilisateur.nom);
+    await prisma.utilisateur.update({ where: { id: utilisateurId }, data: { codeParrainage } });
+  }
+
+  const points = await prisma.pointTransaction.aggregate({
+    where: { utilisateurId, description: { startsWith: "Parrainage de" } },
+    _sum: { montantPoints: true },
+  });
+
+  return { codeParrainage, pointsGagnesParrainage: points._sum.montantPoints ?? 0 };
+}
+
+/** Liste les personnes inscrites avec le code de parrainage de l'utilisateur */
+export async function mesParrainages(utilisateurId: string) {
+  const filleuls = await prisma.utilisateur.findMany({
+    where: { parraineParId: utilisateurId },
+    select: { id: true, nom: true, telephone: true, creeLe: true },
+    orderBy: { creeLe: "desc" },
+  });
+
+  return filleuls.map((f) => ({ id: f.id, nom: f.nom, telephone: f.telephone, creeLe: f.creeLe.toISOString() }));
 }
 
 /** Formate l'utilisateur pour exposition publique (jamais le pinHash) */

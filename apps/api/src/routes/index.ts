@@ -13,6 +13,8 @@ import { routesChat } from "../modules/chat/chat.routes";
 import { routesUpload } from "../modules/upload/upload.routes";
 import { routesCodesPromos } from "../modules/codes-promos/codes-promos.routes";
 import { routesFidelite } from "../modules/fidelite/fidelite.routes";
+import { routesCartesCadeaux } from "../modules/cartes-cadeaux/cartes-cadeaux.routes";
+import { routesPackages } from "../modules/packages/packages.routes";
 
 export const routesApi = Router();
 
@@ -30,3 +32,5 @@ routesApi.use("/chat", routesChat);
 routesApi.use("/upload", routesUpload);
 routesApi.use("/codes-promos", routesCodesPromos);
 routesApi.use("/fidelite", routesFidelite);
+routesApi.use("/cartes-cadeaux", routesCartesCadeaux);
+routesApi.use("/packages", routesPackages);

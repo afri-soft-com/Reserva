@@ -346,11 +346,75 @@ export async function marquerStatutFinal(utilisateurId: string, reservationId: s
   if (!reservation || reservation.prestataireId !== prestataire.id) {
     throw new ErreurNonTrouve("Réservation non trouvée");
   }
-  if (reservation.statut !== "CONFIRMEE") {
-    throw new ErreurValidation("Seule une réservation confirmée peut être clôturée");
+  if (!["CONFIRMEE", "EN_COURS"].includes(reservation.statut)) {
+    throw new ErreurValidation("Seule une réservation confirmée (ou en cours) peut être clôturée");
   }
 
   return prisma.reservation.update({ where: { id: reservationId }, data: { statut } });
+}
+
+/**
+ * [PRESTATAIRE] Check-in QR : fait passer une réservation confirmée à EN_COURS (le client est arrivé).
+ * Le QR contient le numéro de réservation (ex: RSV-XXXXXX).
+ */
+export async function entamerReservation(utilisateurId: string, reservationId: string) {
+  const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
+  if (!prestataire) {
+    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+  }
+
+  const reservation = await prisma.reservation.findUnique({
+    where: { id: reservationId },
+    include: { creneau: true },
+  });
+  if (!reservation || reservation.prestataireId !== prestataire.id) {
+    throw new ErreurNonTrouve("Réservation non trouvée");
+  }
+  if (reservation.statut !== "CONFIRMEE") {
+    throw new ErreurValidation("Seule une réservation confirmée peut être démarrée");
+  }
+
+  const demarree = await prisma.reservation.update({
+    where: { id: reservationId },
+    data: { statut: "EN_COURS" },
+  });
+
+  await creerNotification({
+    utilisateurId: reservation.clientId,
+    reservationId: reservation.id,
+    titre: "Prestation en cours",
+    message: `Votre rendez-vous ${reservation.numero} a commencé. Bonne prestation !`,
+    type: "CONFIRMATION",
+  });
+
+  return demarree;
+}
+
+/**
+ * Recherche publique par numéro de réservation (utilisé par le prestataire lors du scan QR).
+ * N'expose que les informations minimales nécessaires au check-in.
+ */
+export async function obtenirReservationParNumero(numero: string) {
+  const reservation = await prisma.reservation.findUnique({
+    where: { numero: numero.toUpperCase().trim() },
+    select: {
+      id: true,
+      numero: true,
+      statut: true,
+      reservePourTiers: true,
+      nomTiers: true,
+      telephoneTiers: true,
+      client: { select: { nom: true, telephone: true } },
+      service: { select: { nom: true } },
+      creneau: { select: { debut: true } },
+    },
+  });
+
+  if (!reservation) {
+    throw new ErreurNonTrouve("Aucune réservation ne correspond à ce numéro");
+  }
+
+  return reservation;
 }
 
 /** Utilitaire interne : crée une notification in-app pour un utilisateur */

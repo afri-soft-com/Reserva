@@ -39,3 +39,7 @@ routesAuth.patch("/photo", authentifier, valider(z.object({ photoUrl: z.string()
 // 2FA optionnelle
 routesAuth.post("/2fa/definir", authentifier, valider(z.object({ actif: z.boolean() })), authController.definir2FA);
 routesAuth.post("/2fa/verifier", valider(z.object({ telephone: z.string(), code: z.string().length(6) })), authController.verifier2FA);
+
+// Parrainage
+routesAuth.get("/moi/code-parrainage", authentifier, authController.codeParrainage);
+routesAuth.get("/moi/parrainages", authentifier, authController.parrainages);

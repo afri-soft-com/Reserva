@@ -33,6 +33,7 @@ export async function creerAvis(clientId: string, input: CreerAvisInput) {
         prestataireId: reservation.prestataireId,
         note: input.note,
         commentaire: input.commentaire,
+        photosUrl: input.photosUrl && input.photosUrl.length > 0 ? JSON.stringify(input.photosUrl) : null,
       },
     });
 
@@ -77,11 +78,12 @@ export async function repondreAvis(utilisateurId: string, input: ReponseAvisInpu
 
 /** Liste les avis laissés par le client connecté */
 export async function listerMesAvis(clientId: string) {
-  return prisma.avis.findMany({
+  const avis = await prisma.avis.findMany({
     where: { clientId },
-    include: { prestataire: { select: { nomEntreprise: true } } },
+    include: { prestataire: { select: { nomEntreprise: true } }, reservation: { select: { statut: true, numero: true } } },
     orderBy: { creeLe: "desc" },
   });
+  return avis.map(formaterAvis);
 }
 
 /** [PRESTATAIRE] Liste les avis reçus par le prestataire connecté, avec répartition des notes */
@@ -93,7 +95,10 @@ export async function listerAvisRecus(utilisateurId: string) {
 
   const avis = await prisma.avis.findMany({
     where: { prestataireId: prestataire.id },
-    include: { client: { select: { nom: true, photoUrl: true } } },
+    include: {
+      client: { select: { nom: true, photoUrl: true } },
+      reservation: { select: { statut: true, numero: true } },
+    },
     orderBy: { creeLe: "desc" },
   });
 
@@ -103,9 +108,24 @@ export async function listerAvisRecus(utilisateurId: string) {
   }
 
   return {
-    avis,
+    avis: avis.map(formaterAvis),
     noteMoyenne: prestataire.noteMoyenne,
     nombreAvis: prestataire.nombreAvis,
     repartition,
   };
+}
+
+/** Formate un avis : décode les photos (stockées en JSON) et expose le statut "vérifié" */
+function formaterAvis(avis: any) {
+  let photosUrl: string[] = [];
+  if (avis.photosUrl) {
+    try {
+      photosUrl = JSON.parse(avis.photosUrl);
+    } catch {
+      photosUrl = [];
+    }
+  }
+  const verifie = avis.reservation?.statut === "TERMINEE";
+  const { reservation, photosUrl: _photos, ...rest } = avis;
+  return { ...rest, photosUrl, verifie };
 }

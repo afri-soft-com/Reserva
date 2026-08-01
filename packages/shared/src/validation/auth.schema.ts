@@ -17,6 +17,7 @@ export const schemaInscription = z.object({
   nom: z.string().trim().min(2, "Le nom doit contenir au moins 2 caractères").max(100),
   email: z.string().email("Adresse email invalide").optional().or(z.literal("")),
   langue: z.enum(["fr", "ln", "sw"]).default("fr"),
+  codeParrainage: z.string().trim().min(3).max(20).optional(),
 });
 export type InscriptionInput = z.infer<typeof schemaInscription>;
 

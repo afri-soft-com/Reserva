@@ -17,7 +17,11 @@ export const schemaRechercheServices = z.object({
   texte: z.string().trim().optional(),
   prixMin: z.coerce.number().positive().optional(),
   prixMax: z.coerce.number().positive().optional(),
-  tri: z.enum(["prix_asc", "prix_desc", "note_desc", "nom_asc"]).optional(),
+  noteMin: z.coerce.number().min(1).max(5).optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  rayonKm: z.coerce.number().positive().max(100).optional(),
+  tri: z.enum(["prix_asc", "prix_desc", "note_desc", "nom_asc", "distance_asc"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   parPage: z.coerce.number().int().min(1).max(50).default(20),
 });
@@ -77,6 +81,7 @@ export const schemaCreerAvis = z.object({
   reservationId: z.string().uuid(),
   note: z.coerce.number().int().min(1, "La note minimale est 1").max(5, "La note maximale est 5"),
   commentaire: z.string().trim().max(1000).optional(),
+  photosUrl: z.array(z.string().url("URL de photo invalide").or(z.string().startsWith("data:image"))).max(5).optional(),
 });
 export type CreerAvisInput = z.infer<typeof schemaCreerAvis>;
 

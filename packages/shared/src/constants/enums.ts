@@ -27,6 +27,7 @@ export const LIBELLES_CATEGORIE: Record<CategorieService, string> = {
 export const STATUT_RESERVATION = {
   EN_ATTENTE: "EN_ATTENTE",
   CONFIRMEE: "CONFIRMEE",
+  EN_COURS: "EN_COURS", // check-in QR : le client est arrivé
   REFUSEE: "REFUSEE",
   ANNULEE: "ANNULEE",
   TERMINEE: "TERMINEE",

@@ -67,3 +67,15 @@ export const reinitialiserPin = asyncHandler(async (req: Request, res: Response)
   const resultat = await authService.reinitialiserPin(req.body);
   envoyerSucces(res, resultat);
 });
+
+export const codeParrainage = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await authService.monCodeParrainage(req.utilisateur.utilisateurId);
+  envoyerSucces(res, resultat);
+});
+
+export const parrainages = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await authService.mesParrainages(req.utilisateur.utilisateurId);
+  envoyerSucces(res, resultat);
+});

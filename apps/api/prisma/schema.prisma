@@ -42,6 +42,13 @@ model Utilisateur {
   messagesEnvoyes  Message[]
   pointsFidelite   PointTransaction[]
 
+  codeParrainage   String?          @unique
+  parraineParId    String?
+  parrainePar      Utilisateur?     @relation("Parrainage", fields: [parraineParId], references: [id])
+  parraines        Utilisateur[]    @relation("Parrainage")
+  cartesAchetees   CarteCadeau[]    @relation("CartesAchetees")
+  cartesRecues     CarteCadeau[]    @relation("CartesRecues")
+
   @@map("utilisateurs")
 }
 
@@ -86,6 +93,7 @@ model Prestataire {
   reservations  Reservation[]
   avis          Avis[]
   abonnements   AbonnementPrestataire[]
+  packages      PackageService[]
 
   @@index([categorie, ville])
   @@map("prestataires")
@@ -106,6 +114,7 @@ model ServiceOffert {
   creneaux        Creneau[]
   reservations    Reservation[]
   favoris         Favori[]
+  packageItems    PackageServiceItem[]
 
   @@index([prestataireId])
   @@map("services_offerts")
@@ -157,6 +166,8 @@ model Reservation {
   transactions        Transaction[]
   avis                Avis?
   notifications       Notification[]
+  carteCadeauId       String?
+  carteCadeau         CarteCadeau? @relation(fields: [carteCadeauId], references: [id])
 
   @@index([clientId])
   @@index([prestataireId])
@@ -212,7 +223,9 @@ model Avis {
   prestataire         Prestataire @relation(fields: [prestataireId], references: [id])
   note                Int
   commentaire         String?
+  photosUrl           String?
   reponsePrestataire  String?
+  modere              Boolean @default(false)
   creeLe              DateTime @default(now())
 
   @@index([prestataireId])
@@ -371,4 +384,54 @@ model PointTransaction {
 
   @@index([utilisateurId])
   @@map("points_fidelite")
+}
+
+model CarteCadeau {
+  id              String       @id @default(uuid())
+  code            String       @unique
+  acheteurId      String
+  acheteur        Utilisateur  @relation("CartesAchetees", fields: [acheteurId], references: [id])
+  montant         Float
+  solde           Float
+  devise          String       @default("CDF")
+  beneficiaireId  String?
+  beneficiaire    Utilisateur? @relation("CartesRecues", fields: [beneficiaireId], references: [id])
+  actif           Boolean      @default(true)
+  dateExpiration  DateTime?
+  creeLe          DateTime     @default(now())
+
+  reservations    Reservation[]
+
+  @@index([acheteurId])
+  @@index([beneficiaireId])
+  @@map("cartes_cadeaux")
+}
+
+model PackageService {
+  id              String   @id @default(uuid())
+  prestataireId   String
+  prestataire     Prestataire @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  nom             String
+  description     String?
+  prix            Float
+  devise          String   @default("CDF")
+  actif           Boolean  @default(true)
+  creeLe          DateTime @default(now())
+  misAJourLe      DateTime @updatedAt
+
+  services        PackageServiceItem[]
+
+  @@index([prestataireId])
+  @@map("packages_services")
+}
+
+model PackageServiceItem {
+  id          String         @id @default(uuid())
+  packageId   String
+  package     PackageService @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  serviceId   String
+  service     ServiceOffert  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, serviceId])
+  @@map("packages_services_items")
 }

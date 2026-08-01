@@ -33,6 +33,17 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
     if (filtres.prixMin) ou.prix.gte = filtres.prixMin;
     if (filtres.prixMax) ou.prix.lte = filtres.prixMax;
   }
+  if (filtres.noteMin) {
+    ou.prestataire.noteMoyenne = { gte: filtres.noteMin };
+  }
+  // Proximité (carte) : bounding box simplifié sur les coordonnées du prestataire
+  let rayonKm = filtres.rayonKm;
+  if (filtres.latitude !== undefined && filtres.longitude !== undefined) {
+    rayonKm = rayonKm ?? 10;
+    const delta = rayonKm / 111;
+    ou.prestataire.latitude = { gte: filtres.latitude - delta, lte: filtres.latitude + delta };
+    ou.prestataire.longitude = { gte: filtres.longitude - delta, lte: filtres.longitude + delta };
+  }
 
   const offset = calculerOffset(filtres.page, filtres.parPage);
 
@@ -56,6 +67,8 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
             quartier: true,
             noteMoyenne: true,
             nombreAvis: true,
+            latitude: true,
+            longitude: true,
           },
         },
         creneaux: {
@@ -72,10 +85,29 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
   ]);
 
   // Filtre les créneaux pleins et ne garde que le prochain créneau réellement disponible par service
-  const items = itemsBruts.map((service) => ({
+  let items = itemsBruts.map((service) => ({
     ...service,
     creneaux: service.creneaux.filter((c) => c.capaciteReservee < c.capaciteTotale).slice(0, 1),
   }));
+
+  // Tri par distance (carte) : calcul fait en mémoire car SQLite ne gère pas le calcul géographique
+  if (filtres.tri === "distance_asc" && filtres.latitude !== undefined && filtres.longitude !== undefined) {
+    items = items
+      .map((service) => {
+        const lat = service.prestataire.latitude;
+        const lng = service.prestataire.longitude;
+        const distanceKm = lat != null && lng != null
+          ? calculerDistanceKm(filtres.latitude!, filtres.longitude!, lat, lng)
+          : null;
+        return { ...service, distanceKm };
+      })
+      .sort((a, b) => {
+        if (a.distanceKm == null && b.distanceKm == null) return 0;
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
+  }
 
   return {
     items,
@@ -84,6 +116,17 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
     parPage: filtres.parPage,
     totalPages: Math.ceil(total / filtres.parPage),
   };
+}
+
+/** Distance en km entre deux points (formule de Haversine) */
+function calculerDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
 }
 
 /** Récupère le détail public d'un service (fiche prestataire + créneaux disponibles) */
@@ -112,7 +155,10 @@ export async function obtenirDetailService(serviceId: string) {
   // Avis récents pour ce prestataire
   const avis = await prisma.avis.findMany({
     where: { prestataireId: service.prestataireId },
-    include: { client: { select: { nom: true, photoUrl: true } } },
+    include: {
+      client: { select: { nom: true, photoUrl: true } },
+      reservation: { select: { statut: true } },
+    },
     orderBy: { creeLe: "desc" },
     take: 10,
   });
@@ -154,10 +200,24 @@ export async function obtenirDetailService(serviceId: string) {
   return {
     ...service,
     creneaux: creneauxDisponibles,
-    avis,
+    avis: avis.map(formaterAvisPublic),
     repartitionNotes: notes,
     servicesSimilaires,
   };
+}
+
+/** Formate un avis public : décode les photos et expose le statut "vérifié" */
+function formaterAvisPublic(avis: any) {
+  let photosUrl: string[] = [];
+  if (avis.photosUrl) {
+    try {
+      photosUrl = JSON.parse(avis.photosUrl);
+    } catch {
+      photosUrl = [];
+    }
+  }
+  const { reservation, photosUrl: _photos, ...rest } = avis;
+  return { ...rest, photosUrl, verifie: reservation?.statut === "TERMINEE" };
 }
 
 /** Liste les avis d'un prestataire (vue publique, paginée simplement) */
@@ -167,12 +227,17 @@ export async function listerAvisPrestataire(prestataireId: string) {
     throw new ErreurNonTrouve("Prestataire non trouvé");
   }
 
-  return prisma.avis.findMany({
+  const avis = await prisma.avis.findMany({
     where: { prestataireId },
-    include: { client: { select: { nom: true, photoUrl: true } } },
+    include: {
+      client: { select: { nom: true, photoUrl: true } },
+      reservation: { select: { statut: true } },
+    },
     orderBy: { creeLe: "desc" },
     take: 50,
   });
+
+  return avis.map(formaterAvisPublic);
 }
 
 /** [PRESTATAIRE] Crée un créneau de disponibilité pour un de ses services */

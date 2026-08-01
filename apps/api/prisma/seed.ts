@@ -3,6 +3,10 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+function codeParrainage(nom: string): string {
+  return `RESV-${nom.split(/\s+/)[0].replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 6)}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
 async function main() {
   console.log("Suppression des données existantes...");
   await prisma.favori.deleteMany();
@@ -11,12 +15,21 @@ async function main() {
   await prisma.transaction.deleteMany();
   await prisma.reservation.deleteMany();
   await prisma.creneau.deleteMany();
+  await prisma.packageServiceItem.deleteMany();
+  await prisma.packageService.deleteMany();
+  await prisma.carteCadeau.deleteMany();
+  await prisma.pointTransaction.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.conversationParticipant.deleteMany();
+  await prisma.conversation.deleteMany();
   await prisma.serviceOffert.deleteMany();
   await prisma.abonnementPrestataire.deleteMany();
   await prisma.planAbonnement.deleteMany();
   await prisma.configurationTarification.deleteMany();
+  await prisma.codePromo.deleteMany();
   await prisma.prestataire.deleteMany();
   await prisma.otp.deleteMany();
+  await prisma.publicite.deleteMany();
   await prisma.utilisateur.deleteMany();
 
   console.log("Création des utilisateurs de démonstration...");
@@ -32,6 +45,7 @@ async function main() {
       role: "ADMIN",
       telephoneVerifie: true,
       pinHash: pinHashDefaut,
+      codeParrainage: codeParrainage("Admin"),
     },
   });
 
@@ -43,6 +57,7 @@ async function main() {
       role: "CLIENT",
       telephoneVerifie: true,
       pinHash: pinHashDefaut,
+      codeParrainage: codeParrainage("Patrick"),
     },
   });
 
@@ -53,6 +68,7 @@ async function main() {
       role: "CLIENT",
       telephoneVerifie: true,
       pinHash: pinHashDefaut,
+      codeParrainage: codeParrainage("Grace"),
     },
   });
 
@@ -64,6 +80,7 @@ async function main() {
       role: "PRESTATAIRE",
       telephoneVerifie: true,
       pinHash: pinHashDefaut,
+      codeParrainage: codeParrainage("Clinique"),
     },
   });
 
@@ -103,6 +120,7 @@ async function main() {
       role: "PRESTATAIRE",
       telephoneVerifie: true,
       pinHash: pinHashDefaut,
+      codeParrainage: codeParrainage("Transport"),
     },
   });
 
@@ -142,6 +160,7 @@ async function main() {
       role: "PRESTATAIRE",
       telephoneVerifie: true,
       pinHash: pinHashDefaut,
+      codeParrainage: codeParrainage("Hotel"),
     },
   });
 
@@ -182,6 +201,7 @@ async function main() {
       role: "PRESTATAIRE",
       telephoneVerifie: true,
       pinHash: pinHashDefaut,
+      codeParrainage: codeParrainage("Restaurant"),
     },
   });
 
@@ -432,7 +452,6 @@ async function main() {
 
   console.log("Création des codes promo...");
 
-  const maintenant = new Date();
   const finAn = new Date(maintenant.getFullYear() + 1, 11, 31);
 
   await prisma.codePromo.create({
@@ -535,6 +554,50 @@ async function main() {
   }
 
   console.log("✓ 2 réservations à venir créées pour test rappels");
+
+  console.log("Création d'un package de services et d'une carte cadeau de démonstration...");
+
+  const analyseLaboratoire = await prisma.serviceOffert.create({
+    data: {
+      prestataireId: clinique.id,
+      nom: "Analyse de laboratoire",
+      description: "Bilan sanguin complet avec interprétation médicale",
+      dureeMinutes: 20,
+      prix: 10000,
+      devise: "CDF",
+    },
+  });
+
+  const packageSante = await prisma.packageService.create({
+    data: {
+      prestataireId: clinique.id,
+      nom: "Forfait Bilan Santé",
+      description: "Consultation + analyse de laboratoire à tarif préférentiel",
+      prix: 22000,
+      devise: "CDF",
+      actif: true,
+      services: {
+        create: [
+          { serviceId: consultationGenerale.id },
+          { serviceId: analyseLaboratoire.id },
+        ],
+      },
+    },
+  });
+
+  await prisma.carteCadeau.create({
+    data: {
+      code: "CADEAU-DEMO-100",
+      acheteurId: clientPatrick.id,
+      montant: 100,
+      solde: 100,
+      devise: "USD",
+      actif: true,
+      dateExpiration: new Date(maintenant.getFullYear() + 1, 11, 31),
+    },
+  });
+
+  console.log(`✓ Package "${packageSante.nom}" et carte cadeau CADEAU-DEMO-100 créés`);
 
   console.log("\n=== Comptes de démonstration (PIN universel : 1234) ===");
   console.log("Admin       :", admin.telephone);

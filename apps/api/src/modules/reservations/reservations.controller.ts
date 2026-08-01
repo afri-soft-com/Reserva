@@ -57,3 +57,15 @@ export const cloturer = asyncHandler(async (req: Request, res: Response) => {
   const resultat = await reservationsService.marquerStatutFinal(req.utilisateur.utilisateurId, req.params.reservationId, statut);
   envoyerSucces(res, resultat);
 });
+
+export const entamer = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await reservationsService.entamerReservation(req.utilisateur.utilisateurId, req.params.reservationId);
+  envoyerSucces(res, resultat);
+});
+
+export const parNumero = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await reservationsService.obtenirReservationParNumero(req.params.numero);
+  envoyerSucces(res, resultat);
+});
