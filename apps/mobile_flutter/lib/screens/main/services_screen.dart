@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../theme.dart';
 import '../../models/models.dart';
 import '../../services/api_services.dart';
@@ -32,6 +35,12 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   String? _tri;
   double? _prixMin;
   double? _prixMax;
+  double? _noteMin;
+  int? _rayonKm;
+  double? _lat;
+  double? _lng;
+  bool _afficheCarte = false;
+  bool _positionnement = false;
   bool _filtresEtendus = false;
 
   static const _villes = ['Kinshasa', 'Lubumbashi', 'Goma', 'Bukavu', 'Kisangani', 'Mbuji-Mayi', 'Kananga'];
@@ -41,7 +50,9 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
     'Prix ↓': 'prix_desc',
     'Note': 'note_desc',
     'Nom': 'nom_asc',
+    'Proximité': 'distance_asc',
   };
+  static const _optionsRayon = {'Tout': null, '5 km': 5, '10 km': 10, '20 km': 20, '50 km': 50, '100 km': 100};
 
   @override
   bool get wantKeepAlive => true;
@@ -69,7 +80,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   }
 
   String _cacheCle() {
-    return '${_searchCtrl.text}|$_villeFiltre|$_tri|$_prixMin|$_prixMax';
+    return '${_searchCtrl.text}|$_villeFiltre|$_tri|$_prixMin|$_prixMax|$_noteMin|$_rayonKm|$_lat|$_lng';
   }
 
   Future<void> _charger() async {
@@ -99,6 +110,10 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
           tri: _tri,
           prixMin: _prixMin,
           prixMax: _prixMax,
+          noteMin: _noteMin,
+          latitude: _lat,
+          longitude: _lng,
+          rayonKm: _rayonKm,
           page: 1,
           parPage: 20,
         ),
@@ -132,6 +147,10 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
         tri: _tri,
         prixMin: _prixMin,
         prixMax: _prixMax,
+        noteMin: _noteMin,
+        latitude: _lat,
+        longitude: _lng,
+        rayonKm: _rayonKm,
         page: _page + 1,
         parPage: 20,
       );
@@ -147,6 +166,119 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
     } finally {
       if (mounted) setState(() => _chargePlus = false);
     }
+  }
+
+  Future<void> _activerCarte() async {
+    if (_positionnement) return;
+    setState(() => _positionnement = true);
+    try {
+      final permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        if (mounted) ToastWidget.show(context, 'Autorisation de localisation refusée.', type: 'erreur');
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      if (!mounted) return;
+      setState(() {
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+        _rayonKm = _rayonKm ?? 10;
+        if (_tri != 'distance_asc') _tri = 'distance_asc';
+        _afficheCarte = true;
+      });
+      _page = 1;
+      await _charger();
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, 'Impossible d\'obtenir votre position.', type: 'erreur');
+    } finally {
+      if (mounted) setState(() => _positionnement = false);
+    }
+  }
+
+  void _desactiverCarte() {
+    setState(() => _afficheCarte = false);
+  }
+
+  Widget _buildCarte() {
+    if (_lat == null || _lng == null) {
+      return const Center(child: Text('Localisation indisponible', style: TextStyle(color: AppCouleurs.texteSecondaire)));
+    }
+    final marqueurs = _services.where((s) => s.latitude != null && s.longitude != null).map((s) {
+      return Marker(
+        point: LatLng(s.latitude!, s.longitude!),
+        width: 44,
+        height: 44,
+        child: GestureDetector(
+          onTap: () => context.go('/service/${s.id}'),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppCouleurs.primaire,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppCouleurs.blanc, width: 2),
+            ),
+            child: const Icon(Icons.store, size: 20, color: Colors.white),
+          ),
+        ),
+      );
+    }).toList();
+
+    return Stack(
+      children: [
+        FlutterMap(
+          options: MapOptions(
+            initialCenter: LatLng(_lat!, _lng!),
+            initialZoom: 11,
+            interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.reserva.app',
+            ),
+            MarkerLayer(markers: [
+              Marker(
+                point: LatLng(_lat!, _lng!),
+                width: 26,
+                height: 26,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppCouleurs.accent,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+              ...marqueurs,
+            ]),
+          ],
+        ),
+        Positioned(
+          top: 8,
+          left: 8,
+          child: Material(
+            color: AppCouleurs.blanc,
+            borderRadius: BorderRadius.circular(10),
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Text('${marqueurs.length} prestataire(s)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 12,
+          right: 12,
+          child: FloatingActionButton.small(
+            heroTag: 'recentrer',
+            backgroundColor: AppCouleurs.primaire,
+            onPressed: _activerCarte,
+            child: const Icon(Icons.my_location, color: Colors.white, size: 20),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _basculerFavori(String serviceId) async {
@@ -183,6 +315,11 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
       appBar: AppBar(
         title: Text(widget.categorie != null ? CategorieService.libelle(widget.categorie!) : 'Rechercher'),
         actions: [
+          IconButton(
+            icon: Icon(_afficheCarte ? Icons.list : Icons.map_outlined, size: 20),
+            tooltip: _afficheCarte ? 'Voir la liste' : 'Voir la carte',
+            onPressed: _afficheCarte ? _desactiverCarte : _activerCarte,
+          ),
           IconButton(
             icon: Icon(_filtresEtendus ? Icons.filter_list_off : Icons.filter_list, size: 20),
             onPressed: () => setState(() => _filtresEtendus = !_filtresEtendus),
@@ -258,6 +395,47 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                         Text(_prixMax != null ? _formaterMontant(_prixMax!, 'CDF') : 'Max', style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                       ],
                     ),
+                    const Divider(height: 20),
+                    const Text('Note minimale', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Slider(
+                            value: _noteMin ?? 0,
+                            min: 0,
+                            max: 5,
+                            divisions: 10,
+                            activeColor: AppCouleurs.primaire,
+                            label: (_noteMin ?? 0).toStringAsFixed(1),
+                            onChanged: (v) => setState(() => _noteMin = v >= 1 ? v : null),
+                            onChangeEnd: (_) { _page = 1; _charger(); },
+                          ),
+                        ),
+                        Text(_noteMin != null ? '${_noteMin!.toStringAsFixed(1)} ★' : 'Toutes', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Rayon de recherche', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        DropdownButton<int?>(
+                          value: _rayonKm,
+                          isDense: true,
+                          underline: const SizedBox(),
+                          items: _optionsRayon.entries.map((e) => DropdownMenuItem(
+                            value: e.value,
+                            child: Text(e.key, style: const TextStyle(fontSize: 13)),
+                          )).toList(),
+                          onChanged: (v) {
+                            setState(() => _rayonKm = v);
+                            _page = 1;
+                            _charger();
+                          },
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -287,7 +465,9 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
             ),
           ),
           Expanded(
-            child: _chargement
+            child: _afficheCarte
+                ? _buildCarte()
+                : _chargement
                 ? ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: 4,

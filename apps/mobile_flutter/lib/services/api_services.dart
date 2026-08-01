@@ -9,6 +9,10 @@ class ApiServices {
     String? tri,
     double? prixMin,
     double? prixMax,
+    double? noteMin,
+    double? latitude,
+    double? longitude,
+    int? rayonKm,
     int page = 1,
     int parPage = 20,
   }) async {
@@ -22,6 +26,10 @@ class ApiServices {
     if (tri != null) params['tri'] = tri;
     if (prixMin != null) params['prixMin'] = prixMin.toStringAsFixed(0);
     if (prixMax != null) params['prixMax'] = prixMax.toStringAsFixed(0);
+    if (noteMin != null) params['noteMin'] = noteMin.toString();
+    if (latitude != null) params['latitude'] = latitude.toStringAsFixed(6);
+    if (longitude != null) params['longitude'] = longitude.toStringAsFixed(6);
+    if (rayonKm != null) params['rayonKm'] = rayonKm.toString();
 
     final data = await ApiClient.get('/services', params: params);
     final items = (data['items'] as List<dynamic>?) ?? [];

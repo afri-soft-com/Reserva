@@ -8,11 +8,10 @@ export const routesPackages = Router();
 
 // Public
 routesPackages.get("/", packagesController.listerPublics);
-routesPackages.get("/:packageId", packagesController.detailPublic);
 
-// Prestataire
-routesPackages.post("/", authentifier, exigerRole("PRESTATAIRE"), valider(schemaCreerPackage), packagesController.creer);
+// Prestataire (declare avant les routes paramétriques /:packageId)
 routesPackages.get("/moi/packages", authentifier, exigerRole("PRESTATAIRE"), packagesController.mesPackages);
+routesPackages.post("/", authentifier, exigerRole("PRESTATAIRE"), valider(schemaCreerPackage), packagesController.creer);
 routesPackages.patch(
   "/:packageId",
   authentifier,
@@ -21,3 +20,6 @@ routesPackages.patch(
   packagesController.modifier
 );
 routesPackages.delete("/:packageId", authentifier, exigerRole("PRESTATAIRE"), packagesController.supprimer);
+
+// Public (apres les routes statiques pour eviter l'interception de /moi/packages)
+routesPackages.get("/:packageId", packagesController.detailPublic);

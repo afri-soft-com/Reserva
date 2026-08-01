@@ -47,6 +47,7 @@ class StatutStyles {
   static Map<String, ({Color fond, Color texte})> reservation = {
     'EN_ATTENTE': (fond: const Color(0xFFFEF3C7), texte: const Color(0xFF92400E)),
     'CONFIRMEE': (fond: const Color(0xFFD1FAE5), texte: const Color(0xFF047857)),
+    'EN_COURS': (fond: const Color(0xFFEDE9FE), texte: const Color(0xFF5B21B6)),
     'REFUSEE': (fond: const Color(0xFFFEE2E2), texte: const Color(0xFFB91C1C)),
     'ANNULEE': (fond: const Color(0xFFF3F4F6), texte: const Color(0xFF4B5563)),
     'TERMINEE': (fond: const Color(0xFFDBEAFE), texte: const Color(0xFF1D4ED8)),

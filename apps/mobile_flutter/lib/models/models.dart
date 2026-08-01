@@ -325,6 +325,9 @@ class ServiceAvecPrestataire {
   final double noteMoyenne;
   final int nombreAvis;
   final List<CreneauSimple> creneaux;
+  final double? distanceKm;
+  final double? latitude;
+  final double? longitude;
 
   ServiceAvecPrestataire({
     required this.id,
@@ -339,6 +342,9 @@ class ServiceAvecPrestataire {
     required this.noteMoyenne,
     required this.nombreAvis,
     required this.creneaux,
+    this.distanceKm,
+    this.latitude,
+    this.longitude,
   });
 
   factory ServiceAvecPrestataire.fromJson(Map<String, dynamic> json) {
@@ -357,6 +363,9 @@ class ServiceAvecPrestataire {
       noteMoyenne: (presta['noteMoyenne'] as num?)?.toDouble() ?? 0.0,
       nombreAvis: presta['nombreAvis'] as int? ?? 0,
       creneaux: creneauxList.map((c) => CreneauSimple.fromJson(c as Map<String, dynamic>)).toList(),
+      distanceKm: (json['distanceKm'] as num?)?.toDouble(),
+      latitude: (presta['latitude'] as num?)?.toDouble(),
+      longitude: (presta['longitude'] as num?)?.toDouble(),
     );
   }
 
@@ -373,6 +382,8 @@ class ServiceAvecPrestataire {
       'quartier': quartier,
       'noteMoyenne': noteMoyenne,
       'nombreAvis': nombreAvis,
+      'latitude': latitude,
+      'longitude': longitude,
     },
     'creneaux': creneaux.map((c) => c.toJson()).toList(),
   };

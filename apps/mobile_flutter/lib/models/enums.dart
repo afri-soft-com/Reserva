@@ -26,17 +26,19 @@ class CategorieService {
 class StatutReservation {
   static const enAttente = 'EN_ATTENTE';
   static const confirmee = 'CONFIRMEE';
+  static const enCours = 'EN_COURS';
   static const refusee = 'REFUSEE';
   static const annulee = 'ANNULEE';
   static const terminee = 'TERMINEE';
   static const absence = 'ABSENCE';
 
-  static const List<String> values = [enAttente, confirmee, refusee, annulee, terminee, absence];
+  static const List<String> values = [enAttente, confirmee, enCours, refusee, annulee, terminee, absence];
 
   static String libelle(String s) {
     switch (s) {
       case enAttente: return 'En attente';
       case confirmee: return 'Confirmée';
+      case enCours: return 'En cours';
       case refusee: return 'Refusée';
       case annulee: return 'Annulée';
       case terminee: return 'Terminée';

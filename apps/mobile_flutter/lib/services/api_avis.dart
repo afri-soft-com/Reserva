@@ -6,11 +6,13 @@ class ApiAvis {
     required String reservationId,
     required int note,
     String? commentaire,
+    List<String>? photosUrl,
   }) async {
     return (await ApiClient.post('/avis', body: {
       'reservationId': reservationId,
       'note': note,
       if (commentaire != null && commentaire.isNotEmpty) 'commentaire': commentaire,
+      if (photosUrl != null && photosUrl.isNotEmpty) 'photosUrl': photosUrl,
     })) as Map<String, dynamic>;
   }
 

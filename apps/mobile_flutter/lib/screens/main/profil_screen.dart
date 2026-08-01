@@ -111,6 +111,20 @@ class ProfilScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1, indent: 56),
                   ListTile(
+                    leading: const Icon(Icons.redeem, color: AppCouleurs.primaire),
+                    title: const Text('Cartes cadeaux', style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/cartes-cadeaux'),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.group_add, color: AppCouleurs.succes),
+                    title: const Text('Parrainage', style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/parrainage'),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
                     leading: const Icon(Icons.chat_outlined, color: AppCouleurs.primaire),
                     title: const Text('Messages', style: TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),

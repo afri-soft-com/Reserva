@@ -21,6 +21,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
   bool _chargement = false;
   final _nomCtrl = TextEditingController();
   final _telephoneCtrl = TextEditingController();
+  final _codeParrainageCtrl = TextEditingController();
   final _codeOtpCtrl = TextEditingController();
   final _pinCtrl = TextEditingController();
   final _confirmationPinCtrl = TextEditingController();
@@ -29,6 +30,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
   void dispose() {
     _nomCtrl.dispose();
     _telephoneCtrl.dispose();
+    _codeParrainageCtrl.dispose();
     _codeOtpCtrl.dispose();
     _pinCtrl.dispose();
     _confirmationPinCtrl.dispose();
@@ -38,7 +40,11 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
   Future<void> _gererFormulaire() async {
     setState(() => _chargement = true);
     try {
-      await ApiAuth.inscrire(_telephoneCtrl.text.trim(), _nomCtrl.text.trim());
+      await ApiAuth.inscrire(
+        _telephoneCtrl.text.trim(),
+        _nomCtrl.text.trim(),
+        codeParrainage: _codeParrainageCtrl.text.trim(),
+      );
       if (mounted) {
         ToastWidget.show(context, 'Code de vérification envoyé par SMS.', type: 'succes');
         setState(() => _etape = 'OTP');
@@ -104,6 +110,8 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
               Champ(libelle: 'Nom complet', controller: _nomCtrl, placeholder: 'Ex: Jean Mukendi'),
               const SizedBox(height: 12),
               Champ(libelle: 'Numéro de téléphone', controller: _telephoneCtrl, placeholder: 'Ex: 0991234567', keyboardType: TextInputType.phone),
+              const SizedBox(height: 12),
+              Champ(libelle: 'Code de parrainage (optionnel)', controller: _codeParrainageCtrl, placeholder: 'Ex: RESV-JEAN-1234'),
               const SizedBox(height: 8),
               Bouton(titre: 'Continuer', onPressed: _gererFormulaire, chargement: _chargement),
             ],

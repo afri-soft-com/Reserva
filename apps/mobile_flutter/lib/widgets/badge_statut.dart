@@ -36,6 +36,7 @@ class BadgeStatut extends StatelessWidget {
     switch (s) {
       case 'EN_ATTENTE': return 'En attente';
       case 'CONFIRMEE': return 'Confirmée';
+      case 'EN_COURS': return 'En cours';
       case 'REFUSEE': return 'Refusée';
       case 'ANNULEE': return 'Annulée';
       case 'TERMINEE': return 'Terminée';

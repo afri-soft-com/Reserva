@@ -243,8 +243,20 @@ class ApiPrestataire {
     });
   }
 
-  static Future<void> cloturerReservation(String reservationId) async {
-    await ApiClient.post('/reservations/cloturer', body: {'reservationId': reservationId});
+  static Future<void> entamerReservation(String reservationId) async {
+    await ApiClient.post('/reservations/$reservationId/entamer');
+  }
+
+  static Future<void> cloturerReservation(String reservationId, {String statut = 'TERMINEE'}) async {
+    await ApiClient.post('/reservations/$reservationId/cloturer', body: {'statut': statut});
+  }
+
+  static Future<Map<String, dynamic>> obtenirReservationParNumero(String numero) async {
+    return (await ApiClient.get('/reservations/par-numero/${Uri.encodeComponent(numero)}')) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> obtenirDetailReservationParId(String reservationId) async {
+    return (await ApiClient.get('/reservations/$reservationId')) as Map<String, dynamic>;
   }
 
   static Future<Map<String, dynamic>> creerProfilPrestataire(Map<String, dynamic> body) async {

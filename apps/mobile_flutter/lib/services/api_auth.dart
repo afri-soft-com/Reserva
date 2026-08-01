@@ -1,11 +1,12 @@
 import 'api_client.dart';
 
 class ApiAuth {
-  static Future<Map<String, dynamic>> inscrire(String telephone, String nom) async {
+  static Future<Map<String, dynamic>> inscrire(String telephone, String nom, {String? codeParrainage}) async {
     return (await ApiClient.post('/auth/inscription', body: {
       'telephone': telephone,
       'nom': nom,
       'langue': 'fr',
+      if (codeParrainage != null && codeParrainage.trim().isNotEmpty) 'codeParrainage': codeParrainage.trim(),
     })) as Map<String, dynamic>;
   }
 
@@ -51,5 +52,16 @@ class ApiAuth {
     if (email != null) body['email'] = email;
     if (langue != null) body['langue'] = langue;
     return (await ApiClient.patch('/auth/profil', body: body)) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> monCodeParrainage() async {
+    return (await ApiClient.get('/auth/moi/code-parrainage')) as Map<String, dynamic>;
+  }
+
+  static Future<List<dynamic>> mesParrainages() async {
+    final data = await ApiClient.get('/auth/moi/parrainages');
+    if (data is Map && data.containsKey('parrainages')) return data['parrainages'] as List<dynamic>? ?? [];
+    if (data is List) return data;
+    return [];
   }
 }

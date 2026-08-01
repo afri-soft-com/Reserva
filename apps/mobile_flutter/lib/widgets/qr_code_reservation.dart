@@ -47,7 +47,7 @@ class QrCodeReservation extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               QrImageView(
-                data: reservationId,
+                data: numero,
                 version: QrVersions.auto,
                 size: 140,
                 eyeStyle: QrEyeStyle(color: AppCouleurs.primaireFonce),
@@ -81,7 +81,7 @@ class QrCodeReservation extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 QrImageView(
-                  data: reservationId,
+                  data: numero,
                   version: QrVersions.auto,
                   size: 280,
                   eyeStyle: QrEyeStyle(color: AppCouleurs.primaireFonce),

@@ -19,6 +19,10 @@ import 'screens/main/favoris_screen.dart';
 import 'screens/chat/conversations_screen.dart';
 import 'screens/chat/conversation_detail_screen.dart';
 import 'screens/fidelite/fidelite_screen.dart';
+import 'screens/cartes_cadeaux/cartes_cadeaux_screen.dart';
+import 'screens/cartes_cadeaux/acheter_carte_cadeau_screen.dart';
+import 'screens/cartes_cadeaux/detail_carte_cadeau_screen.dart';
+import 'screens/parrainage/parrainage_screen.dart';
 
 GoRouter createRouter(AuthProvider auth) {
   return GoRouter(
@@ -116,6 +120,22 @@ GoRouter createRouter(AuthProvider auth) {
         path: '/conversations/:id',
         builder: (ctx, state) => ConversationDetailScreen(
             conversationId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/cartes-cadeaux',
+        builder: (ctx, state) => const CartesCadeauxScreen(),
+      ),
+      GoRoute(
+        path: '/cartes-cadeaux/acheter',
+        builder: (ctx, state) => const AcheterCarteCadeauScreen(),
+      ),
+      GoRoute(
+        path: '/cartes-cadeaux/:code',
+        builder: (ctx, state) => DetailCarteCadeauScreen(code: state.pathParameters['code']!),
+      ),
+      GoRoute(
+        path: '/parrainage',
+        builder: (ctx, state) => const ParrainageScreen(),
       ),
     ],
   );

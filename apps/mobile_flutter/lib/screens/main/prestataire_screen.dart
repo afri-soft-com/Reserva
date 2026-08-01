@@ -7,6 +7,8 @@ import '../../widgets/carte.dart';
 import '../../widgets/badge_statut.dart';
 import '../../widgets/squelette.dart';
 import '../../widgets/toast.dart';
+import '../prestataire/scan_qr_screen.dart';
+import '../prestataire/packages_screen.dart';
 
 class PrestataireScreen extends StatefulWidget {
   const PrestataireScreen({super.key});
@@ -141,6 +143,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         title: const Text('Mon espace'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: 'Scanner un QR client',
+            onPressed: _ouvrirScanner,
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _charger,
           ),
@@ -173,6 +180,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             if (_ongletCourant == 1) _buildReservationsTab(),
             if (_ongletCourant == 2) _buildServicesTab(),
             if (_ongletCourant == 3) _buildAvisTab(),
+            if (_ongletCourant == 4) const PackagesScreen(),
           ],
         ),
       ),
@@ -309,6 +317,8 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         _onglet('Services', 2, badge: _services.length),
         const SizedBox(width: 8),
         _onglet('Avis', 3, badge: _avisData?.nombreAvis ?? 0),
+        const SizedBox(width: 8),
+        _onglet('Packages', 4),
       ],
     );
   }
@@ -421,14 +431,51 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ],
                 if (r.reservation.statut == StatutReservation.confirmee) ...[
                   const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 36,
+                          child: ElevatedButton.icon(
+                            onPressed: () => _entamerReservation(r.reservation.id),
+                            icon: const Icon(Icons.play_arrow, size: 16),
+                            label: const Text('Démarrer', style: TextStyle(fontSize: 12)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppCouleurs.primaire, foregroundColor: AppCouleurs.blanc,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SizedBox(
+                          height: 36,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _ouvrirScanner(),
+                            icon: const Icon(Icons.qr_code_scanner, size: 16),
+                            label: const Text('Scanner', style: TextStyle(fontSize: 12)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppCouleurs.primaire,
+                              side: const BorderSide(color: AppCouleurs.primaire),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (r.reservation.statut == StatutReservation.enCours) ...[
+                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity, height: 36,
                     child: ElevatedButton.icon(
                       onPressed: () => _cloturerReservation(r.reservation.id),
                       icon: const Icon(Icons.task_alt, size: 16),
-                      label: const Text('Marquer comme terminée', style: TextStyle(fontSize: 12)),
+                      label: const Text('Clôturer la prestation', style: TextStyle(fontSize: 12)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppCouleurs.primaire, foregroundColor: AppCouleurs.blanc,
+                        backgroundColor: AppCouleurs.succes, foregroundColor: AppCouleurs.blanc,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
@@ -626,6 +673,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     switch (statut) {
       case 'EN_ATTENTE': return 'En attente';
       case 'CONFIRMEE': return 'Confirmée';
+      case 'EN_COURS': return 'En cours';
       case 'REFUSEE': return 'Refusée';
       case 'ANNULEE': return 'Annulée';
       case 'TERMINEE': return 'Terminée';
@@ -638,6 +686,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     switch (statut) {
       case 'EN_ATTENTE': return AppCouleurs.avertissement;
       case 'CONFIRMEE': return AppCouleurs.succes;
+      case 'EN_COURS': return AppCouleurs.primaire;
       case 'REFUSEE': return AppCouleurs.alerte;
       case 'ANNULEE': return AppCouleurs.texteSecondaire;
       case 'TERMINEE': return AppCouleurs.primaire;
@@ -1322,13 +1371,62 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     }
   }
 
-  Future<void> _cloturerReservation(String reservationId) async {
+  Future<void> _entamerReservation(String reservationId) async {
     try {
-      await ApiPrestataire.cloturerReservation(reservationId);
+      await ApiPrestataire.entamerReservation(reservationId);
       _charger();
-      if (mounted) ToastWidget.show(context, 'Réservation terminée', type: 'succes');
+      if (mounted) ToastWidget.show(context, 'Prestation démarrée', type: 'succes');
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     }
+  }
+
+  Future<void> _cloturerReservation(String reservationId) async {
+    final statut = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Clôturer la prestation'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'TERMINEE'),
+            child: const Row(
+              children: [
+                Icon(Icons.task_alt, color: AppCouleurs.succes),
+                SizedBox(width: 12),
+                Text('Terminée'),
+              ],
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'ABSENCE'),
+            child: const Row(
+              children: [
+                Icon(Icons.person_off, color: AppCouleurs.alerte),
+                SizedBox(width: 12),
+                Text('Absence (no-show)'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (statut == null || !mounted) return;
+    try {
+      await ApiPrestataire.cloturerReservation(reservationId, statut: statut);
+      _charger();
+      if (mounted) {
+        ToastWidget.show(context, statut == 'TERMINEE' ? 'Réservation terminée' : 'Marquée comme absence', type: 'succes');
+      }
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    }
+  }
+
+  void _ouvrirScanner() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ScanQrScreen()),
+    ).then((_) {
+      if (mounted) _charger();
+    });
   }
 }
