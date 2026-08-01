@@ -13,7 +13,8 @@ import 'profil_screen.dart';
 import '../chat/conversations_screen.dart';
 
 class MainShell extends StatelessWidget {
-  const MainShell({super.key});
+  final int ongletInitial;
+  const MainShell({super.key, this.ongletInitial = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +28,7 @@ class MainShell extends StatelessWidget {
         + (auth.estAdmin ? 1 : 0);
     return DefaultTabController(
       length: nbTabs,
+      initialIndex: ongletInitial.clamp(0, nbTabs - 1).toInt(),
       child: Scaffold(
         body: ConnectivityBanner(
           child: TabBarView(

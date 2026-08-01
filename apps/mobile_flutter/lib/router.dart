@@ -56,6 +56,10 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(path: '/inscription', builder: (ctx, state) => const InscriptionScreen()),
       GoRoute(path: '/reinitialiser-pin', builder: (ctx, state) => const ReinitialiserPinScreen()),
       GoRoute(path: '/accueil', builder: (ctx, state) => const MainShell()),
+      GoRoute(
+        path: '/reservations',
+        builder: (ctx, state) => const MainShell(ongletInitial: 2),
+      ),
       GoRoute(path: '/services', builder: (ctx, state) {
         final categorie = state.extra as String?;
         return ServicesScreen(categorie: categorie);
