@@ -10,6 +10,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:prod": "tsx prisma/seed.ts --prod",
+    "db:backup": "node scripts/backup.mjs",
+    "backup": "npm run db:backup",
     "db:studio": "prisma studio",
     "lint": "tsc --noEmit",
     "test": "vitest run"

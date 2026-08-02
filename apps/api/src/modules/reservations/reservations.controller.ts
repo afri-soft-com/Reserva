@@ -36,6 +36,12 @@ export const modifier = asyncHandler(async (req: Request, res: Response) => {
   envoyerSucces(res, resultat);
 });
 
+export const reproduire = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await reservationsService.reproduireReservation(req.utilisateur.utilisateurId, req.body.reservationId);
+  envoyerSucces(res, resultat, 201);
+});
+
 export const mesReservations = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const resultat = await reservationsService.listerMesReservations(req.utilisateur.utilisateurId, req.query.statut as string | undefined);

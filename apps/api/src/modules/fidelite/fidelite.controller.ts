@@ -23,3 +23,13 @@ export const estimer = asyncHandler(async (req: Request, res: Response) => {
   const resultat = await fideliteService.estimerReduction(points);
   envoyerSucces(res, resultat);
 });
+
+export const appliquer = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await fideliteService.appliquerPoints(
+    req.utilisateur.utilisateurId,
+    req.body.reservationId,
+    req.body.points
+  );
+  envoyerSucces(res, resultat);
+});

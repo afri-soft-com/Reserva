@@ -10,6 +10,9 @@ import {
 import { envoyerConfirmationReservation, envoyerNotificationAnnulation } from "../notifications/sms.adapter";
 import { rembourserMobileMoney } from "../paiements/mobilemoney.adapter";
 import { OperateurMobileMoney } from "@reserva/shared";
+import { creerAvoir } from "../avoirs/avoirs.service";
+import { promouvoirCreneau } from "../attentes/attentes.service";
+import { notifierAlertesService } from "../alertes/alertes.service";
 
 /**
  * Crée une réservation. Utilise une transaction Prisma avec verrouillage pour éviter
@@ -176,6 +179,9 @@ export async function repondreReservation(utilisateurId: string, reservationId: 
       prisma.creneau.update({ where: { id: reservation.creneauId }, data: { capaciteReservee: { decrement: 1 } } }),
     ]);
 
+    promouvoirCreneau(reservation.serviceId, reservation.creneauId).catch(() => {});
+    notifierAlertesService(reservation.serviceId).catch(() => {});
+
     await creerNotification({
       utilisateurId: reservation.clientId,
       reservationId: reservation.id,
@@ -254,14 +260,29 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
     }),
   ]);
 
+  // Une place se libère : on informe les abonnés à l'alerte dispo et on promeut la file d'attente
+  promouvoirCreneau(reservation.serviceId, reservation.creneauId).catch(() => {});
+  notifierAlertesService(reservation.serviceId).catch(() => {});
+
+  let rembourseParAvoir = false;
   if (montantRembourse > 0) {
-    const derniereTransactionReussie = reservation.transactions.find((t) => t.statut === "PAYE");
-    if (derniereTransactionReussie) {
-      await rembourserMobileMoney({
-        operateur: derniereTransactionReussie.operateur as OperateurMobileMoney,
-        telephonePaiement: derniereTransactionReussie.telephonePaiement ?? reservation.client.telephone,
+    if (input.modeRemboursement === "AVOIR") {
+      const avoir = await creerAvoir({
+        utilisateurId: reservation.clientId,
         montant: montantRembourse,
+        devise: reservation.devise,
+        sourceReservationId: reservation.id,
       });
+      rembourseParAvoir = !!avoir;
+    } else {
+      const derniereTransactionReussie = reservation.transactions.find((t) => t.statut === "PAYE");
+      if (derniereTransactionReussie) {
+        await rembourserMobileMoney({
+          operateur: derniereTransactionReussie.operateur as OperateurMobileMoney,
+          telephonePaiement: derniereTransactionReussie.telephonePaiement ?? reservation.client.telephone,
+          montant: montantRembourse,
+        });
+      }
     }
   }
 
@@ -276,12 +297,14 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
     reservationId: reservation.id,
     titre: "Réservation annulée",
     message: montantRembourse > 0
-      ? `Votre réservation ${reservation.numero} a été annulée. Remboursement de ${montantRembourse} ${reservation.devise} en cours.`
+      ? (rembourseParAvoir
+          ? `Votre réservation ${reservation.numero} a été annulée. Un avoir de ${montantRembourse} ${reservation.devise} a été crédité sur votre compte.`
+          : `Votre réservation ${reservation.numero} a été annulée. Remboursement de ${montantRembourse} ${reservation.devise} en cours.`)
       : `Votre réservation ${reservation.numero} a été annulée.`,
     type: "ANNULATION",
   });
 
-  return { annule: true, montantRembourse };
+  return { annule: true, montantRembourse, rembourseParAvoir };
 }
 
 /** Liste les réservations du client connecté */
@@ -523,4 +546,76 @@ export async function creerReservationsRecurrentes(
     nombreCreees: reservations.length,
     reservations,
   };
+}
+
+/**
+ * [CLIENT] Re-réserver « comme la dernière fois ».
+ * Reproduit une réservation passée : même service, prochain créneau équivalent.
+ * Si la réservation d'origine faisait partie d'une série, la série est reproduite.
+ */
+export async function reproduireReservation(clientId: string, reservationId: string) {
+  const originale = await prisma.reservation.findUnique({
+    where: { id: reservationId },
+    include: { service: { include: { prestataire: true } }, creneau: true },
+  });
+
+  if (!originale) {
+    throw new ErreurNonTrouve("Réservation non trouvée");
+  }
+  if (originale.clientId !== clientId) {
+    throw new ErreurInterdit("Vous ne pouvez reproduire que vos propres réservations");
+  }
+  if (!originale.service.actif) {
+    throw new ErreurValidation("Ce service n'est plus disponible");
+  }
+
+  // Série récurrente : reproduit l'ensemble des occurrences
+  if (originale.recurrenceGroupeId) {
+    const occ = await prisma.reservation.findMany({
+      where: { recurrenceGroupeId: originale.recurrenceGroupeId },
+      orderBy: { creneau: { debut: "asc" } },
+    });
+    if (occ.length >= 2) {
+      const reference = occ[0].creneauId;
+      return creerReservationsRecurrentes(clientId, {
+        serviceId: originale.serviceId,
+        creneauId: reference,
+        nombreOccurrences: Math.min(12, occ.length),
+      });
+    }
+  }
+
+  // Réservation simple : prochain créneau du même service (même créneau de semaine si possible)
+  const maintenant = new Date();
+  const creneaux = await prisma.creneau.findMany({
+    where: {
+      serviceId: originale.serviceId,
+      debut: { gt: maintenant },
+      capaciteReservee: { lt: prisma.creneau.fields.capaciteTotale },
+    },
+    orderBy: { debut: "asc" },
+    take: 30,
+  });
+
+  if (creneaux.length === 0) {
+    throw new ErreurConflit("Aucun créneau disponible pour ce service pour le moment");
+  }
+
+  const jourSemaine = originale.creneau ? new Date(originale.creneau.debut).getDay() : -1;
+  const heure = originale.creneau ? new Date(originale.creneau.debut).getHours() : -1;
+  const minute = originale.creneau ? new Date(originale.creneau.debut).getMinutes() : -1;
+
+  const equivalent = creneaux.find(
+    (c) => c.debut.getDay() === jourSemaine && c.debut.getHours() === heure && c.debut.getMinutes() === minute
+  );
+  const creneauChoisi = equivalent ?? creneaux[0];
+
+  return creerReservation(clientId, {
+    serviceId: originale.serviceId,
+    creneauId: creneauChoisi.id,
+    notes: originale.notes ? `[Reprise] ${originale.notes}`.trim() : "[Reprise]",
+    reservePourTiers: originale.reservePourTiers,
+    nomTiers: originale.nomTiers ?? undefined,
+    telephoneTiers: originale.telephoneTiers ?? undefined,
+  });
 }

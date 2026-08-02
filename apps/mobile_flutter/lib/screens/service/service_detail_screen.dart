@@ -6,6 +6,8 @@ import '../../models/models.dart';
 import '../../services/api_services.dart';
 import '../../services/api_reservations.dart';
 import '../../services/api_packages.dart';
+import '../../services/api_alertes.dart';
+import '../../services/api_attentes.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/bouton.dart';
@@ -109,6 +111,47 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     } finally {
       if (mounted) setState(() => _reservationEnCours = false);
+    }
+  }
+
+  bool _alerteEnCours = false;
+  bool _attenteEnCours = false;
+
+  Future<void> _creerAlerte() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.estPrestataire) {
+      ToastWidget.show(context, 'Seuls les clients peuvent créer une alerte.', type: 'erreur');
+      return;
+    }
+    setState(() => _alerteEnCours = true);
+    try {
+      await ApiAlertes.creerAlerte(widget.serviceId);
+      if (mounted) {
+        ToastWidget.show(context, 'Alerte créée. Vous serez prévenu dès qu\'un créneau se libère.', type: 'succes');
+      }
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    } finally {
+      if (mounted) setState(() => _alerteEnCours = false);
+    }
+  }
+
+  Future<void> _inscrireAttente(Creneau creneau) async {
+    final auth = context.read<AuthProvider>();
+    if (auth.estPrestataire) {
+      ToastWidget.show(context, 'Seuls les clients peuvent s\'inscrire en file d\'attente.', type: 'erreur');
+      return;
+    }
+    setState(() => _attenteEnCours = true);
+    try {
+      await ApiAttentes.inscrire(serviceId: widget.serviceId, creneauId: creneau.id);
+      if (mounted) {
+        ToastWidget.show(context, 'Inscrit en file d\'attente. Vous serez réservé automatiquement si une place se libère.', type: 'succes');
+      }
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    } finally {
+      if (mounted) setState(() => _attenteEnCours = false);
     }
   }
 
@@ -326,12 +369,37 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
   Widget _buildCreneaux(List<Creneau> creneaux) {
     final disponibles = creneaux.where((c) => c.disponible).toList();
+    final complets = creneaux.where((c) => !c.disponible).toList();
+    final auth = context.watch<AuthProvider>();
+    final estClient = !auth.estPrestataire;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Créneaux disponibles', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
-        if (disponibles.isEmpty)
+        if (disponibles.isEmpty && estClient)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Carte(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Aucun créneau disponible pour le moment',
+                      style: TextStyle(color: AppCouleurs.texteSecondaire)),
+                    const SizedBox(height: 12),
+                    Bouton(
+                      titre: 'Me prévenir quand un créneau se libère',
+                      chargement: _alerteEnCours,
+                      onPressed: _creerAlerte,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else if (disponibles.isEmpty)
           const Carte(child: Padding(
             padding: EdgeInsets.all(16),
             child: Text('Aucun créneau disponible pour le moment',
@@ -378,6 +446,39 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
               ),
             ),
           )),
+        if (complets.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('Créneaux complets', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          ...complets.map((c) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Carte(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${c.debut.substring(11, 16)} - ${c.fin.substring(11, 16)}',
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text('${c.debut.substring(0, 10)} • Complet',
+                          style: const TextStyle(fontSize: 13, color: AppCouleurs.alerte)),
+                      ],
+                    ),
+                  ),
+                  if (estClient)
+                    Bouton(
+                      titre: 'File d\'attente',
+                      chargement: _attenteEnCours,
+                      onPressed: () => _inscrireAttente(c),
+                    )
+                  else
+                    const Icon(Icons.block, color: AppCouleurs.texteSecondaire),
+                ],
+              ),
+            ),
+          )),
+        ],
       ],
     );
   }

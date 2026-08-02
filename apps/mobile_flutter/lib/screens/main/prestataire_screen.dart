@@ -9,6 +9,7 @@ import '../../widgets/squelette.dart';
 import '../../widgets/toast.dart';
 import '../prestataire/scan_qr_screen.dart';
 import '../prestataire/packages_screen.dart';
+import '../prestataire/calendrier_prestataire_screen.dart';
 
 class PrestataireScreen extends StatefulWidget {
   const PrestataireScreen({super.key});
@@ -142,6 +143,13 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
       appBar: AppBar(
         title: const Text('Mon espace'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month),
+            tooltip: 'Calendrier',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CalendrierPrestataireScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Scanner un QR client',

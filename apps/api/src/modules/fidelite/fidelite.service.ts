@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { ErreurValidation, ErreurNonTrouve, ErreurInterdit } from "../../utils/erreurs";
 
 const POINTS_PAR_TRANCHE = 1000;
 const POINTS_PAR_TRANCHE_VALEUR = 1;
@@ -72,4 +73,64 @@ export async function deduirePoints(utilisateurId: string, pointsDepenses: numbe
 
 export async function estimerReduction(points: number) {
   return { points, reductionFC: points * VALEUR_POINT_FC };
+}
+
+/**
+ * [CLIENT] Échange des points de fidélité contre une réduction sur une réservation.
+ * La réduction est déduite du montant total et un mouvement DEPENSE est enregistré.
+ */
+export async function appliquerPoints(utilisateurId: string, reservationId: string, points: number) {
+  const solde = await obtenirSoldePoints(utilisateurId);
+  if (solde.solde < points) {
+    throw new ErreurValidation("Solde de points insuffisant");
+  }
+
+  const reservation = await prisma.reservation.findUnique({ where: { id: reservationId } });
+  if (!reservation) {
+    throw new ErreurNonTrouve("Réservation introuvable");
+  }
+  if (reservation.clientId !== utilisateurId) {
+    throw new ErreurInterdit("Cette réservation ne vous appartient pas");
+  }
+  if (reservation.statut !== "EN_ATTENTE" && reservation.statut !== "CONFIRMEE") {
+    throw new ErreurValidation("Impossible d'appliquer des points sur cette réservation");
+  }
+
+  const reduction = points * VALEUR_POINT_FC;
+  const montantBase = reservation.montantTotal + reservation.montantReduction;
+  if (reduction > montantBase) {
+    throw new ErreurValidation("La réduction dépasse le montant de la réservation");
+  }
+
+  await prisma.$transaction([
+    prisma.reservation.update({
+      where: { id: reservationId },
+      data: {
+        montantReduction: { increment: reduction },
+        montantTotal: montantBase - reduction,
+        pointsUtilises: { increment: points },
+      },
+    }),
+    prisma.pointTransaction.create({
+      data: {
+        utilisateurId,
+        type: "DEPENSE",
+        montantPoints: points,
+        soldeApres: solde.solde - points,
+        reservationId,
+        description: `Points échangés contre une réduction de ${reduction} FC`,
+      },
+    }),
+    prisma.notification.create({
+      data: {
+        utilisateurId,
+        reservationId,
+        titre: "Points utilisés",
+        message: `Vous avez échangé ${points} points contre ${reduction} FC de réduction sur la réservation ${reservation.numero}.`,
+        type: "PAIEMENT",
+      },
+    }),
+  ]);
+
+  return { points, reduction, montantFinal: montantBase - reduction, nouveauSolde: solde.solde - points };
 }

@@ -51,3 +51,8 @@ packages/shared/dist/
 
 # OS
 Thumbs.db
+
+# Logs structurés et sauvegardes locales
+apps/api/logs/
+apps/api/backups/
+apps/api/uploads/

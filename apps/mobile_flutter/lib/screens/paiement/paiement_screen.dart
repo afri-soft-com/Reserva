@@ -5,6 +5,7 @@ import '../../models/models.dart';
 import '../../services/api_paiements.dart';
 import '../../services/api_reservations.dart';
 import '../../services/api_codes_promos.dart';
+import '../../services/api_fidelite.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/bouton.dart';
 import '../../widgets/toast.dart';
@@ -31,6 +32,13 @@ class _PaiementScreenState extends State<PaiementScreen> {
   double _montantReduction = 0;
   double _montantTotalAvecReduction = 0;
 
+  // Fidélité
+  final _pointsCtrl = TextEditingController();
+  int _pointsSolde = 0;
+  int _pointsAppliques = 0;
+  bool _applicationPoints = false;
+  bool _recupSoldePoints = false;
+
   final _telephoneCtrl = TextEditingController();
 
   @override
@@ -42,6 +50,7 @@ class _PaiementScreenState extends State<PaiementScreen> {
   @override
   void dispose() {
     _codePromoCtrl.dispose();
+    _pointsCtrl.dispose();
     _telephoneCtrl.dispose();
     super.dispose();
   }
@@ -60,6 +69,19 @@ class _PaiementScreenState extends State<PaiementScreen> {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     } finally {
       if (mounted) setState(() => _chargement = false);
+    }
+    _recupererSoldePoints();
+  }
+
+  Future<void> _recupererSoldePoints() async {
+    setState(() => _recupSoldePoints = true);
+    try {
+      final solde = await ApiFidelite.obtenirSolde();
+      if (mounted) setState(() => _pointsSolde = (solde['solde'] as num?)?.toInt() ?? 0);
+    } catch (_) {
+      // Section fidélité silencieuse si l'appel échoue
+    } finally {
+      if (mounted) setState(() => _recupSoldePoints = false);
     }
   }
 
@@ -85,6 +107,44 @@ class _PaiementScreenState extends State<PaiementScreen> {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     } finally {
       if (mounted) setState(() => _validationPromo = false);
+    }
+  }
+
+  Future<void> _appliquerPoints() async {
+    final points = int.tryParse(_pointsCtrl.text.trim()) ?? 0;
+    if (points <= 0) {
+      ToastWidget.show(context, 'Saisissez un nombre de points valide.', type: 'erreur');
+      return;
+    }
+    if (points > _pointsSolde) {
+      ToastWidget.show(context, 'Solde de points insuffisant.', type: 'erreur');
+      return;
+    }
+    setState(() => _applicationPoints = true);
+    try {
+      final resultat = await ApiFidelite.appliquerPoints(
+        reservationId: widget.reservationId,
+        points: points,
+      );
+      if (mounted) {
+        setState(() {
+          _pointsAppliques += points;
+          _pointsSolde = (resultat['nouveauSolde'] as num?)?.toInt() ?? (_pointsSolde - points);
+          _montantReduction += (resultat['reduction'] as num?)?.toDouble() ?? 0;
+          _montantTotalAvecReduction =
+              (resultat['montantFinal'] as num?)?.toDouble() ?? _montantTotalAvecReduction;
+          _pointsCtrl.clear();
+        });
+        ToastWidget.show(
+          context,
+          '${(resultat['reduction'] as num?)?.toInt() ?? 0} FC de réduction appliqués avec vos points.',
+          type: 'succes',
+        );
+      }
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    } finally {
+      if (mounted) setState(() => _applicationPoints = false);
     }
   }
 
@@ -217,6 +277,68 @@ class _PaiementScreenState extends State<PaiementScreen> {
                       }),
                       child: const Icon(Icons.close, size: 18, color: AppCouleurs.succes),
                     ),
+                  ],
+                ),
+              ),
+            ],
+            if (_pointsSolde > 0 || _pointsAppliques > 0) ...[
+              const SizedBox(height: 20),
+              Carte(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.card_giftcard, size: 20, color: AppCouleurs.accent),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('Dépenser mes points',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        ),
+                        if (_recupSoldePoints)
+                          const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+                        if (_pointsAppliques > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppCouleurs.succesClair,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text('$_pointsAppliques pts',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppCouleurs.succes)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Solde: $_pointsSolde points (1 point = 50 FC de réduction)',
+                      style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                    if (_pointsAppliques == 0) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _pointsCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                hintText: 'Nombre de points',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRayons.champ)),
+                                filled: true, fillColor: AppCouleurs.fondChamp,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Bouton(
+                            titre: 'Appliquer',
+                            variante: 'secondaire',
+                            taille: 'sm',
+                            chargement: _applicationPoints,
+                            onPressed: _appliquerPoints,
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

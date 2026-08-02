@@ -58,10 +58,17 @@ class ApiReservations {
     return ReservationDetaillee.fromJson(data);
   }
 
-  static Future<Map<String, dynamic>> annulerReservation(String reservationId, {String? motif}) async {
+  static Future<Map<String, dynamic>> annulerReservation(String reservationId, {String? motif, String modeRemboursement = 'AVOIR'}) async {
     return (await ApiClient.post('/reservations/annuler', body: {
       'reservationId': reservationId,
+      'modeRemboursement': modeRemboursement,
       if (motif != null) 'motif': motif,
+    })) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> reproduireReservation(String reservationId) async {
+    return (await ApiClient.post('/reservations/reproduire', body: {
+      'reservationId': reservationId,
     })) as Map<String, dynamic>;
   }
 

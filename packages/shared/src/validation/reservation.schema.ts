@@ -48,6 +48,7 @@ export type CreerReservationInput = z.infer<typeof schemaCreerReservation>;
 export const schemaAnnulerReservation = z.object({
   reservationId: z.string().uuid(),
   motif: z.string().trim().max(300).optional(),
+  modeRemboursement: z.enum(["AVOIR", "MOBILE_MONEY"]).optional().default("AVOIR"),
 });
 export type AnnulerReservationInput = z.infer<typeof schemaAnnulerReservation>;
 

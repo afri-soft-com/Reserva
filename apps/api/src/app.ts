@@ -9,6 +9,7 @@ import { env } from "./config/env";
 import { swaggerSpec } from "./config/swagger";
 import { routesApi } from "./routes";
 import { gestionnaireErreurs } from "./middlewares/erreurs";
+import { fluxLogsJson, formatLogsJson } from "./utils/logger";
 
 export const app = express();
 
@@ -40,6 +41,7 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan(env.NODE_ENV === "development" ? "dev" : "combined"));
+app.use(morgan(formatLogsJson, { stream: fluxLogsJson }));
 
 const limiteurGlobal = rateLimit({
   windowMs: 15 * 60 * 1000,

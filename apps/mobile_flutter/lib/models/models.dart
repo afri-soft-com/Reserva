@@ -170,6 +170,9 @@ class Reservation {
   final String statutPaiement;
   final double montantTotal;
   final double montantPaye;
+  final double montantReduction;
+  final int pointsUtilises;
+  final double avoirUtilise;
   final String devise;
   final String? notes;
   final bool reservePourTiers;
@@ -190,6 +193,9 @@ class Reservation {
     required this.statutPaiement,
     required this.montantTotal,
     required this.montantPaye,
+    this.montantReduction = 0,
+    this.pointsUtilises = 0,
+    this.avoirUtilise = 0,
     required this.devise,
     this.notes,
     required this.reservePourTiers,
@@ -211,6 +217,9 @@ class Reservation {
     statutPaiement: json['statutPaiement'] as String,
     montantTotal: (json['montantTotal'] as num?)?.toDouble() ?? 0.0,
     montantPaye: (json['montantPaye'] as num?)?.toDouble() ?? 0.0,
+    montantReduction: (json['montantReduction'] as num?)?.toDouble() ?? 0.0,
+    pointsUtilises: (json['pointsUtilises'] as num?)?.toInt() ?? 0,
+    avoirUtilise: (json['avoirUtilise'] as num?)?.toDouble() ?? 0.0,
     devise: json['devise'] as String? ?? 'CDF',
     notes: json['notes'] as String?,
     reservePourTiers: json['reservePourTiers'] as bool? ?? false,

@@ -56,6 +56,15 @@ export const tableauDeBord = asyncHandler(async (req: Request, res: Response) =>
   envoyerSucces(res, resultat);
 });
 
+export const calendrier = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await prestatairesService.obtenirCalendrier(
+    req.utilisateur.utilisateurId,
+    req.query.mois as string | undefined
+  );
+  envoyerSucces(res, resultat);
+});
+
 export const listerProches = asyncHandler(async (req: Request, res: Response) => {
   const { latitude, longitude, rayonKm, categorie, ville } = req.query;
   if (!latitude || !longitude) {

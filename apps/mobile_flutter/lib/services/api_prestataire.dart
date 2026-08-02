@@ -231,9 +231,15 @@ class ApiPrestataire {
   static Future<List<ReservationDetaillee>> listerReservationsPrestataire({String? statut}) async {
     final params = <String, String>{};
     if (statut != null) params['statut'] = statut;
-    final data = await ApiClient.get('/reservations/recues', params: params.isNotEmpty ? params : null);
+    final data = await ApiClient.get('/reservations/recues/liste', params: params.isNotEmpty ? params : null);
     final items = (data is Map ? data['items'] as List<dynamic>? : data as List<dynamic>?) ?? [];
     return items.map((e) => ReservationDetaillee.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  static Future<Map<String, dynamic>> obtenirCalendrier({String? mois}) async {
+    final params = <String, String>{};
+    if (mois != null) params['mois'] = mois;
+    return (await ApiClient.get('/prestataires/moi/calendrier', params: params.isNotEmpty ? params : null)) as Map<String, dynamic>;
   }
 
   static Future<void> repondreReservation(String reservationId, bool approuver) async {

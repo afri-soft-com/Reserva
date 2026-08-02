@@ -102,6 +102,22 @@ class ProfilScreen extends StatelessWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/favoris'),
                   ),
+                  if (!auth.estPrestataire) ...[
+                    const Divider(height: 1, indent: 56),
+                    ListTile(
+                      leading: const Icon(Icons.notifications_active_outlined, color: AppCouleurs.accent),
+                      title: const Text('Mes alertes de disponibilité', style: TextStyle(fontWeight: FontWeight.w600)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/alertes'),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    ListTile(
+                      leading: const Icon(Icons.queue, color: AppCouleurs.primaire),
+                      title: const Text('Mes files d\'attente', style: TextStyle(fontWeight: FontWeight.w600)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/attentes'),
+                    ),
+                  ],
                   const Divider(height: 1, indent: 56),
                   ListTile(
                     leading: const Icon(Icons.card_giftcard, color: AppCouleurs.accent),

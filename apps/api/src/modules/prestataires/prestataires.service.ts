@@ -315,3 +315,62 @@ function debutMoisPrecedent(): Date {
   d.setHours(0, 0, 0, 0);
   return d;
 }
+
+/**
+ * [PRESTATAIRE] Calendrier visuel : tous les créneaux d'un mois pour les services du prestataire,
+ * chacun avec les réservations associées (client, statut, numéro).
+ */
+export async function obtenirCalendrier(utilisateurId: string, mois?: string) {
+  const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
+  if (!prestataire) {
+    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+  }
+
+  const maintenant = new Date();
+  const debutMois = mois ? new Date(`${mois}-01T00:00:00.000Z`) : new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+  const finMois = new Date(debutMois);
+  finMois.setMonth(finMois.getMonth() + 1);
+
+  const creneaux = await prisma.creneau.findMany({
+    where: {
+      service: { prestataireId: prestataire.id },
+      debut: { gte: debutMois, lt: finMois },
+    },
+    include: {
+      service: { select: { id: true, nom: true, prix: true, devise: true } },
+      reservations: {
+        select: {
+          id: true,
+          numero: true,
+          statut: true,
+          statutPaiement: true,
+          montantPaye: true,
+          client: { select: { nom: true, telephone: true } },
+        },
+      },
+    },
+    orderBy: { debut: "asc" },
+  });
+
+  const jours: Record<string, any[]> = {};
+  for (const creneau of creneaux) {
+    const cle = creneau.debut.toISOString().slice(0, 10);
+    if (!jours[cle]) jours[cle] = [];
+    jours[cle].push({
+      id: creneau.id,
+      debut: creneau.debut.toISOString(),
+      fin: creneau.fin.toISOString(),
+      capaciteTotale: creneau.capaciteTotale,
+      capaciteReservee: creneau.capaciteReservee,
+      service: creneau.service,
+      reservations: creneau.reservations,
+    });
+  }
+
+  return {
+    mois: `${debutMois.getFullYear()}-${String(debutMois.getMonth() + 1).padStart(2, "0")}`,
+    totalCreneaux: creneaux.length,
+    totalReservations: creneaux.reduce((s, c) => s + c.reservations.length, 0),
+    jours,
+  };
+}

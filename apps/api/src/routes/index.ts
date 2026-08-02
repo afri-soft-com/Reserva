@@ -15,6 +15,9 @@ import { routesCodesPromos } from "../modules/codes-promos/codes-promos.routes";
 import { routesFidelite } from "../modules/fidelite/fidelite.routes";
 import { routesCartesCadeaux } from "../modules/cartes-cadeaux/cartes-cadeaux.routes";
 import { routesPackages } from "../modules/packages/packages.routes";
+import { routesAvoirs } from "../modules/avoirs/avoirs.routes";
+import { routesAlertes } from "../modules/alertes/alertes.routes";
+import { routesAttentes } from "../modules/attentes/attentes.routes";
 
 export const routesApi = Router();
 
@@ -34,3 +37,6 @@ routesApi.use("/codes-promos", routesCodesPromos);
 routesApi.use("/fidelite", routesFidelite);
 routesApi.use("/cartes-cadeaux", routesCartesCadeaux);
 routesApi.use("/packages", routesPackages);
+routesApi.use("/avoirs", routesAvoirs);
+routesApi.use("/alertes", routesAlertes);
+routesApi.use("/attentes", routesAttentes);

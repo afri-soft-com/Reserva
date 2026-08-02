@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme.dart';
 import '../../models/models.dart';
 import '../../services/api_fidelite.dart';
+import '../../services/api_avoirs.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/squelette.dart';
 
@@ -15,6 +16,7 @@ class FideliteScreen extends StatefulWidget {
 class _FideliteScreenState extends State<FideliteScreen> {
   Map<String, dynamic>? _solde;
   List<PointTransaction> _transactions = [];
+  Map<String, dynamic>? _avoirs;
   bool _chargement = true;
 
   @override
@@ -46,6 +48,12 @@ class _FideliteScreenState extends State<FideliteScreen> {
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
+    try {
+      final avoirs = await ApiAvoirs.obtenirMesAvoirs();
+      if (mounted) setState(() => _avoirs = avoirs);
+    } catch (_) {
+      // Section avoirs silencieuse si l'appel échoue
+    }
   }
 
   @override
@@ -70,6 +78,8 @@ class _FideliteScreenState extends State<FideliteScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 _buildSoldeCard(),
+                const SizedBox(height: 20),
+                _buildAvoirsSection(),
                 const SizedBox(height: 20),
                 const Text('Historique des points', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
@@ -117,6 +127,90 @@ class _FideliteScreenState extends State<FideliteScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildAvoirsSection() {
+    final avoirs = _avoirs;
+    if (avoirs == null) return const SizedBox.shrink();
+    final items = (avoirs['items'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+    if (items.isEmpty) return const SizedBox.shrink();
+    final soldeActif = (avoirs['soldeActif'] as num?)?.toDouble() ?? 0;
+    final devise = avoirs['devise'] as String? ?? 'CDF';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Carte(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppCouleurs.primaireClair,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.account_balance_wallet, color: AppCouleurs.primaire, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Crédits disponibles', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(_formaterMontant(soldeActif, devise),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
+                    const Text('Crédits obtenus lors d\'annulations', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text('Mes avoirs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 12),
+        ...items.map((a) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Carte(
+            child: Row(
+              children: [
+                Icon(
+                  a['statut'] == 'ACTIF' ? Icons.check_circle : Icons.remove_circle_outline,
+                  size: 20,
+                  color: a['statut'] == 'ACTIF' ? AppCouleurs.succes : AppCouleurs.texteSecondaire,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Avoir ${_formaterMontant((a['montantInitial'] as num?)?.toDouble() ?? 0, devise)}',
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      const SizedBox(height: 2),
+                      Text(a['statut'] == 'ACTIF'
+                          ? 'Restant: ${_formaterMontant((a['montantRestant'] as num?)?.toDouble() ?? 0, devise)}'
+                          : 'Crédit utilisé',
+                        style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                      if (a['dateExpiration'] != null) ...[
+                        const SizedBox(height: 2),
+                        Text('Expire le: ${(a['dateExpiration'] as String).substring(0, 10)}',
+                          style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )),
+      ],
+    );
+  }
+
+  String _formaterMontant(double montant, String devise) {
+    if (devise == 'USD') return '\$${montant.toStringAsFixed(2)}';
+    return '${montant.toStringAsFixed(0)} FC';
   }
 
   Widget _buildTransactionCard(PointTransaction t) {

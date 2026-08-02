@@ -41,6 +41,9 @@ model Utilisateur {
   conversations    ConversationParticipant[]
   messagesEnvoyes  Message[]
   pointsFidelite   PointTransaction[]
+  avoirs           Avoir[]
+  alertesDisponibilite AlerteDisponibilite[]
+  listeAttente     ListeAttente[]
 
   codeParrainage   String?          @unique
   parraineParId    String?
@@ -115,6 +118,8 @@ model ServiceOffert {
   reservations    Reservation[]
   favoris         Favori[]
   packageItems    PackageServiceItem[]
+  alertes         AlerteDisponibilite[]
+  listeAttente    ListeAttente[]
 
   @@index([prestataireId])
   @@map("services_offerts")
@@ -131,6 +136,7 @@ model Creneau {
   creeLe           DateTime @default(now())
 
   reservations     Reservation[]
+  listeAttente     ListeAttente[]
 
   @@index([serviceId, debut])
   @@map("creneaux")
@@ -153,6 +159,8 @@ model Reservation {
   montantPaye         Float    @default(0)
   devise              String   @default("CDF")
   montantReduction    Float    @default(0)
+  pointsUtilises      Int      @default(0)
+  avoirUtilise        Float    @default(0)
   notes               String?
   reservePourTiers    Boolean  @default(false)
   nomTiers            String?
@@ -438,4 +446,50 @@ model PackageServiceItem {
 
   @@unique([packageId, serviceId])
   @@map("packages_services_items")
+}
+
+model Avoir {
+  id                String    @id @default(uuid())
+  utilisateurId     String
+  utilisateur       Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  montantInitial    Float
+  montantRestant    Float
+  devise            String    @default("CDF")
+  sourceReservationId String?
+  statut            String    @default("ACTIF") // ACTIF | UTILISE | EXPIRE
+  dateExpiration    DateTime?
+  creeLe            DateTime  @default(now())
+
+  @@index([utilisateurId, statut])
+  @@map("avoirs")
+}
+
+model AlerteDisponibilite {
+  id            String    @id @default(uuid())
+  utilisateurId String
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  serviceId     String
+  service       ServiceOffert @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  actif         Boolean   @default(true)
+  creeLe        DateTime  @default(now())
+
+  @@unique([utilisateurId, serviceId])
+  @@index([serviceId, actif])
+  @@map("alertes_disponibilite")
+}
+
+model ListeAttente {
+  id            String     @id @default(uuid())
+  clientId      String
+  client        Utilisateur @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId     String
+  service       ServiceOffert @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  creneauId     String
+  creneau       Creneau    @relation(fields: [creneauId], references: [id], onDelete: Cascade)
+  statut        String     @default("EN_ATTENTE") // EN_ATTENTE | NOTIFIE | RESERVE | RETIRE
+  creeLe        DateTime   @default(now())
+
+  @@index([creneauId, statut])
+  @@index([clientId])
+  @@map("liste_attente")
 }

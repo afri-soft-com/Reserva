@@ -69,6 +69,36 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     }
   }
 
+  Future<void> _reproduire() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Re-réserver'),
+        content: const Text('Reproduire cette réservation comme la dernière fois ? Le prochain créneau disponible sera choisi.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Non')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Oui, reproduire')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      final resultat = await ApiReservations.reproduireReservation(widget.reservationId);
+      if (mounted) {
+        final creees = (resultat['nombreCreees'] as num?)?.toInt();
+        ToastWidget.show(
+          context,
+          creees != null && creees > 1 ? 'Série reproduite : $creees réservation(s).' : 'Réservation reproduite.',
+          type: 'succes',
+        );
+        context.go('/reservations');
+      }
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    }
+  }
+
   String _formaterMontant(double montant, String devise) {
     if (devise == 'USD') return '\$${montant.toStringAsFixed(2)}';
     return '${montant.toStringAsFixed(0)} FC';
@@ -184,6 +214,15 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                   if (result == true) _charger();
                 },
                 icone: Icons.payment,
+              ),
+            ],
+            if ((r.reservation.statut == StatutReservation.terminee ||
+                r.reservation.statut == StatutReservation.annulee) && estClient) ...[
+              const SizedBox(height: 16),
+              Bouton(
+                titre: 'Re-réserver',
+                onPressed: _reproduire,
+                icone: Icons.replay,
               ),
             ],
             ...[

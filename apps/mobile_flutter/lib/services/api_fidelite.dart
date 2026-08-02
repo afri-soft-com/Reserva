@@ -6,6 +6,16 @@ class ApiFidelite {
     return (await ApiClient.get('/fidelite/solde')) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> appliquerPoints({
+    required String reservationId,
+    required int points,
+  }) async {
+    return (await ApiClient.post('/fidelite/appliquer', body: {
+      'reservationId': reservationId,
+      'points': points,
+    })) as Map<String, dynamic>;
+  }
+
   static Future<ResultatPagine<PointTransaction>> obtenirHistorique({int page = 1, int parPage = 20}) async {
     final data = await ApiClient.get('/fidelite/historique', params: {
       'page': '$page', 'parPage': '$parPage',

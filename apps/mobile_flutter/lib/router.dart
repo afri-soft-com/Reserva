@@ -24,6 +24,9 @@ import 'screens/cartes_cadeaux/acheter_carte_cadeau_screen.dart';
 import 'screens/cartes_cadeaux/detail_carte_cadeau_screen.dart';
 import 'screens/parrainage/parrainage_screen.dart';
 import 'screens/package/package_detail_screen.dart';
+import 'screens/alertes/alertes_screen.dart';
+import 'screens/attentes/attentes_screen.dart';
+import 'screens/prestataire/calendrier_prestataire_screen.dart';
 
 GoRouter createRouter(AuthProvider auth) {
   return GoRouter(
@@ -141,6 +144,18 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(
         path: '/package/:id',
         builder: (ctx, state) => PackageDetailScreen(packageId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/alertes',
+        builder: (ctx, state) => const AlertesScreen(),
+      ),
+      GoRoute(
+        path: '/attentes',
+        builder: (ctx, state) => const AttentesScreen(),
+      ),
+      GoRoute(
+        path: '/prestataire/calendrier',
+        builder: (ctx, state) => const CalendrierPrestataireScreen(),
       ),
     ],
   );
