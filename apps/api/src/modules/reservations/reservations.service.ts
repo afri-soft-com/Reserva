@@ -427,3 +427,100 @@ async function creerNotification(params: {
 }) {
   return prisma.notification.create({ data: params });
 }
+
+/**
+ * [CLIENT] Crée une série de réservations récurrentes à partir d'un créneau de référence.
+ * Les occurrences suivantes sont recherchées dans les créneaux existants du même service,
+ * même jour de semaine et même heure (hebdomadaire). L'ensemble est atomique.
+ */
+export async function creerReservationsRecurrentes(
+  clientId: string,
+  input: { serviceId: string; creneauId: string; nombreOccurrences?: number; notes?: string }
+) {
+  const nombreOccurrences = input.nombreOccurrences ?? 4;
+  const creneauBase = await prisma.creneau.findUnique({
+    where: { id: input.creneauId },
+    include: { service: { include: { prestataire: true } } },
+  });
+
+  if (!creneauBase) throw new ErreurNonTrouve("Créneau non trouvé");
+  if (creneauBase.serviceId !== input.serviceId) {
+    throw new ErreurValidation("Le créneau ne correspond pas au service indiqué");
+  }
+  if (creneauBase.debut < new Date()) throw new ErreurValidation("Ce créneau est déjà passé");
+  if (!creneauBase.service.actif) throw new ErreurValidation("Ce service n'est plus disponible");
+
+  const jourSemaine = creneauBase.debut.getDay();
+  const heure = creneauBase.debut.getHours();
+  const minute = creneauBase.debut.getMinutes();
+
+  // Occurrences hebdomadaires suivantes : même jour, même heure, dans les créneaux déjà publiés
+  const occurrencesFutures = await prisma.creneau.findMany({
+    where: {
+      serviceId: input.serviceId,
+      id: { not: input.creneauId },
+      debut: { gte: creneauBase.debut },
+    },
+    orderBy: { debut: "asc" },
+    take: 50,
+  });
+
+  const correspondances = occurrencesFutures.filter(
+    (c) => c.debut.getDay() === jourSemaine && c.debut.getHours() === heure && c.debut.getMinutes() === minute
+  ).slice(0, nombreOccurrences - 1);
+
+  const creneauxAServir = [creneauBase, ...correspondances];
+  const recurrenceGroupeId = crypto.randomUUID();
+
+  const reservations = await prisma.$transaction(async (tx) => {
+    const resultats = [];
+    for (const creneau of creneauxAServir) {
+      const actuel = await tx.creneau.findUnique({ where: { id: creneau.id } });
+      if (!actuel || actuel.capaciteReservee >= actuel.capaciteTotale) {
+        throw new ErreurConflit(`Un des créneaux de la série vient d'être complet. Veuillez réessayer.`);
+      }
+      await tx.creneau.update({
+        where: { id: creneau.id },
+        data: { capaciteReservee: { increment: 1 } },
+      });
+      resultats.push(
+        await tx.reservation.create({
+          data: {
+            numero: genererNumeroReservation(),
+            clientId,
+            prestataireId: creneauBase.service.prestataireId,
+            serviceId: input.serviceId,
+            creneauId: creneau.id,
+            recurrenceGroupeId,
+            statut: "EN_ATTENTE",
+            statutPaiement: "EN_ATTENTE",
+            montantTotal: creneauBase.service.prix,
+            devise: creneauBase.service.devise,
+            notes: input.notes ? `[Récurrent] ${input.notes}`.trim() : "[Récurrent]",
+          },
+          include: { service: true, prestataire: true, creneau: true },
+        })
+      );
+    }
+    return resultats;
+  });
+
+  for (const reservation of reservations) {
+    await prisma.notification.create({
+      data: {
+        utilisateurId: clientId,
+        reservationId: reservation.id,
+        titre: "Réservation récurrente créée",
+        message: `Votre réservation ${reservation.numero} (série) chez ${reservation.prestataire.nomEntreprise} est en attente de confirmation.`,
+        type: "CONFIRMATION",
+      },
+    });
+  }
+
+  return {
+    recurrenceGroupeId,
+    nombreSouhaitees: nombreOccurrences,
+    nombreCreees: reservations.length,
+    reservations,
+  };
+}

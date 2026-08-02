@@ -131,7 +131,17 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                                       Row(
                                         children: [
                                           Expanded(
-                                            child: Text(r.reservation.numero, style: const TextStyle(fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
+                                            child: Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(r.reservation.numero, style: const TextStyle(fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
+                                                ),
+                                                if (r.reservation.recurrenceGroupeId != null) ...[
+                                                  const SizedBox(width: 6),
+                                                  const Icon(Icons.repeat, size: 14, color: AppCouleurs.primaire),
+                                                ],
+                                              ],
+                                            ),
                                           ),
                                           const SizedBox(width: 8),
                                           BadgeStatut(statut: r.reservation.statut),

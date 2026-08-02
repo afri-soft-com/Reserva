@@ -21,6 +21,20 @@ class ApiReservations {
     return ReservationDetaillee.fromJson(data);
   }
 
+  static Future<Map<String, dynamic>> creerReservationRecurrente({
+    required String serviceId,
+    required String creneauId,
+    required int nombreOccurrences,
+    String? notes,
+  }) async {
+    return (await ApiClient.post('/reservations/recurrentes', body: {
+      'serviceId': serviceId,
+      'creneauId': creneauId,
+      'nombreOccurrences': nombreOccurrences,
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes,
+    })) as Map<String, dynamic>;
+  }
+
   static Future<List<ReservationDetaillee>> listerMesReservations({String? statut}) async {
     final params = <String, String>{};
     if (statut != null) params['statut'] = statut;

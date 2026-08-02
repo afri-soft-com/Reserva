@@ -170,6 +170,7 @@ model Reservation {
   carteCadeau         CarteCadeau? @relation(fields: [carteCadeauId], references: [id])
   packageId           String?
   package             PackageService? @relation(fields: [packageId], references: [id])
+  recurrenceGroupeId  String? // identifiant de la série (réservation récurrente) le cas échéant
 
   @@index([clientId])
   @@index([prestataireId])

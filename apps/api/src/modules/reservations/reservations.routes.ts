@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import * as reservationsController from "./reservations.controller";
 import { valider } from "../../middlewares/valider";
 import { authentifier, exigerRole } from "../../middlewares/auth";
@@ -6,6 +7,15 @@ import { schemaCreerReservation, schemaAnnulerReservation, schemaModifierReserva
 
 export const routesReservations = Router();
 
+// Réservation récurrente (série) — créée en une seule opération
+const schemaReservationRecurrente = z.object({
+  serviceId: z.string().uuid("Identifiant de service invalide"),
+  creneauId: z.string().uuid("Identifiant de créneau invalide"),
+  nombreOccurrences: z.coerce.number().int().min(2).max(12).default(4),
+  notes: z.string().trim().max(500).optional(),
+});
+
+routesReservations.post("/recurrentes", authentifier, exigerRole("CLIENT", "ADMIN"), valider(schemaReservationRecurrente), reservationsController.creerRecurrentes);
 routesReservations.post("/", authentifier, exigerRole("CLIENT", "ADMIN"), valider(schemaCreerReservation), reservationsController.creer);
 routesReservations.post("/modifier", authentifier, valider(schemaModifierReservation), reservationsController.modifier);
 routesReservations.post("/annuler", authentifier, valider(schemaAnnulerReservation), reservationsController.annuler);

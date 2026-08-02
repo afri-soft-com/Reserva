@@ -175,6 +175,7 @@ class Reservation {
   final bool reservePourTiers;
   final String? nomTiers;
   final String? telephoneTiers;
+  final String? recurrenceGroupeId;
   final String creeLe;
   final String misAJourLe;
 
@@ -194,6 +195,7 @@ class Reservation {
     required this.reservePourTiers,
     this.nomTiers,
     this.telephoneTiers,
+    this.recurrenceGroupeId,
     required this.creeLe,
     required this.misAJourLe,
   });
@@ -214,6 +216,7 @@ class Reservation {
     reservePourTiers: json['reservePourTiers'] as bool? ?? false,
     nomTiers: json['nomTiers'] as String?,
     telephoneTiers: json['telephoneTiers'] as String?,
+    recurrenceGroupeId: json['recurrenceGroupeId'] as String?,
     creeLe: json['creeLe'] as String,
     misAJourLe: json['misAJourLe'] as String,
   );

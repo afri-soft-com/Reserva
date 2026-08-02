@@ -10,6 +10,12 @@ export const creer = asyncHandler(async (req: Request, res: Response) => {
   envoyerSucces(res, resultat, 201);
 });
 
+export const creerRecurrentes = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await reservationsService.creerReservationsRecurrentes(req.utilisateur.utilisateurId, req.body);
+  envoyerSucces(res, resultat, 201);
+});
+
 export const repondre = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const { accepter } = req.body as { accepter: boolean };

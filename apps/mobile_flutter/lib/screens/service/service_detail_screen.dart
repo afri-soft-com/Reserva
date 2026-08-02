@@ -25,6 +25,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   bool _chargement = true;
   String? _selectedCreneauId;
   bool _reservationEnCours = false;
+  int _occurrences = 1;
   List<dynamic> _packages = [];
   bool _chargementPackages = true;
 
@@ -76,13 +77,33 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     }
     setState(() => _reservationEnCours = true);
     try {
-      await ApiReservations.creerReservation(
-        serviceId: widget.serviceId,
-        creneauId: _selectedCreneauId!,
-      );
-      if (mounted) {
-        ToastWidget.show(context, 'Réservation effectuée !', type: 'succes');
-        context.go('/reservations');
+      if (_occurrences > 1) {
+        final resultat = await ApiReservations.creerReservationRecurrente(
+          serviceId: widget.serviceId,
+          creneauId: _selectedCreneauId!,
+          nombreOccurrences: _occurrences,
+        );
+        final creees = (resultat['nombreCreees'] as num?)?.toInt() ?? _occurrences;
+        final souhaitees = (resultat['nombreSouhaitees'] as num?)?.toInt() ?? _occurrences;
+        if (mounted) {
+          ToastWidget.show(
+            context,
+            creees < souhaitees
+                ? 'Série créée : $creees réservation(s) sur $souhaitees planifiée(s).'
+                : 'Série créée : $creees réservation(s).',
+            type: 'succes',
+          );
+          context.go('/reservations');
+        }
+      } else {
+        await ApiReservations.creerReservation(
+          serviceId: widget.serviceId,
+          creneauId: _selectedCreneauId!,
+        );
+        if (mounted) {
+          ToastWidget.show(context, 'Réservation effectuée !', type: 'succes');
+          context.go('/reservations');
+        }
       }
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
@@ -154,6 +175,31 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             ],
             if (!auth.estPrestataire) ...[
               const SizedBox(height: 16),
+              Carte(
+                child: Row(
+                  children: [
+                    const Icon(Icons.repeat, size: 20, color: AppCouleurs.primaire),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text('Répéter chaque semaine', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    ),
+                    DropdownButton<int>(
+                      value: _occurrences,
+                      isDense: true,
+                      underline: const SizedBox(),
+                      items: const [
+                        DropdownMenuItem(value: 1, child: Text('Ponctuelle')),
+                        DropdownMenuItem(value: 2, child: Text('2 semaines')),
+                        DropdownMenuItem(value: 4, child: Text('4 semaines')),
+                        DropdownMenuItem(value: 8, child: Text('8 semaines')),
+                        DropdownMenuItem(value: 12, child: Text('12 semaines')),
+                      ],
+                      onChanged: (v) => setState(() => _occurrences = v ?? 1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
               Bouton(titre: 'Réserver ce service', onPressed: _reserver, chargement: _reservationEnCours),
             ],
             const SizedBox(height: 24),

@@ -1,8 +1,8 @@
-import { prisma } from "../../config/prisma";
+﻿import { prisma } from "../../config/prisma";
 import { ErreurNonTrouve, ErreurValidation, ErreurInterdit, ErreurConflit } from "../../utils/erreurs";
 import { RechercheServicesInput, CreerCreneauInput, calculerOffset } from "@reserva/shared";
 
-/** Recherche publique de services — utilisée par les clients pour découvrir des prestataires */
+/** Recherche publique de services â€” utilisÃ©e par les clients pour dÃ©couvrir des prestataires */
 export async function rechercherServices(filtres: RechercheServicesInput) {
   const ou: any = {
     actif: true,
@@ -13,19 +13,19 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
     ou.prestataire.categorie = filtres.categorie;
   }
   if (filtres.ville) {
-    ou.prestataire.ville = { equals: filtres.ville, mode: "insensitive" };
+    ou.prestataire.ville = { equals: filtres.ville };
   }
   if (filtres.quartier) {
-    ou.prestataire.quartier = { contains: filtres.quartier, mode: "insensitive" };
+    ou.prestataire.quartier = { contains: filtres.quartier };
   }
   if (filtres.texte) {
     ou.OR = [
-      { nom: { contains: filtres.texte, mode: "insensitive" } },
-      { description: { contains: filtres.texte, mode: "insensitive" } },
-      { prestataire: { nomEntreprise: { contains: filtres.texte, mode: "insensitive" } } },
-      { prestataire: { quartier: { contains: filtres.texte, mode: "insensitive" } } },
-      { prestataire: { ville: { contains: filtres.texte, mode: "insensitive" } } },
-      { prestataire: { description: { contains: filtres.texte, mode: "insensitive" } } },
+      { nom: { contains: filtres.texte } },
+      { description: { contains: filtres.texte } },
+      { prestataire: { nomEntreprise: { contains: filtres.texte } } },
+      { prestataire: { quartier: { contains: filtres.texte } } },
+      { prestataire: { ville: { contains: filtres.texte } } },
+      { prestataire: { description: { contains: filtres.texte } } },
     ];
   }
   if (filtres.prixMin || filtres.prixMax) {
@@ -36,7 +36,7 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
   if (filtres.noteMin) {
     ou.prestataire.noteMoyenne = { gte: filtres.noteMin };
   }
-  // Proximité (carte) : bounding box simplifié sur les coordonnées du prestataire
+  // ProximitÃ© (carte) : bounding box simplifiÃ© sur les coordonnÃ©es du prestataire
   let rayonKm = filtres.rayonKm;
   if (filtres.latitude !== undefined && filtres.longitude !== undefined) {
     rayonKm = rayonKm ?? 10;
@@ -84,13 +84,13 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
     prisma.serviceOffert.count({ where: ou }),
   ]);
 
-  // Filtre les créneaux pleins et ne garde que le prochain créneau réellement disponible par service
+  // Filtre les crÃ©neaux pleins et ne garde que le prochain crÃ©neau rÃ©ellement disponible par service
   let items = itemsBruts.map((service) => ({
     ...service,
     creneaux: service.creneaux.filter((c) => c.capaciteReservee < c.capaciteTotale).slice(0, 1),
   }));
 
-  // Tri par distance (carte) : calcul fait en mémoire car SQLite ne gère pas le calcul géographique
+  // Tri par distance (carte) : calcul fait en mÃ©moire car SQLite ne gÃ¨re pas le calcul gÃ©ographique
   if (filtres.tri === "distance_asc" && filtres.latitude !== undefined && filtres.longitude !== undefined) {
     items = items
       .map((service) => {
@@ -129,7 +129,7 @@ function calculerDistanceKm(lat1: number, lng1: number, lat2: number, lng2: numb
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
 }
 
-/** Récupère le détail public d'un service (fiche prestataire + créneaux disponibles) */
+/** RÃ©cupÃ¨re le dÃ©tail public d'un service (fiche prestataire + crÃ©neaux disponibles) */
 export async function obtenirDetailService(serviceId: string) {
   const service = await prisma.serviceOffert.findUnique({
     where: { id: serviceId },
@@ -143,16 +143,16 @@ export async function obtenirDetailService(serviceId: string) {
   });
 
   if (!service || !service.actif) {
-    throw new ErreurNonTrouve("Service non trouvé");
+    throw new ErreurNonTrouve("Service non trouvÃ©");
   }
 
-  // N'expose que les créneaux ayant encore de la capacité disponible
+  // N'expose que les crÃ©neaux ayant encore de la capacitÃ© disponible
   const creneauxDisponibles = service.creneaux.map((c) => ({
     ...c,
     disponible: c.capaciteReservee < c.capaciteTotale,
   }));
 
-  // Avis récents pour ce prestataire
+  // Avis rÃ©cents pour ce prestataire
   const avis = await prisma.avis.findMany({
     where: { prestataireId: service.prestataireId },
     include: {
@@ -163,7 +163,7 @@ export async function obtenirDetailService(serviceId: string) {
     take: 10,
   });
 
-  // Répartition des notes
+  // RÃ©partition des notes
   const repartitionNotes = await prisma.avis.groupBy({
     by: ["note"],
     where: { prestataireId: service.prestataireId },
@@ -174,7 +174,7 @@ export async function obtenirDetailService(serviceId: string) {
     notes[r.note as keyof typeof notes] = r._count;
   }
 
-  // Services similaires (même catégorie, autre services du prestataire)
+  // Services similaires (mÃªme catÃ©gorie, autre services du prestataire)
   const servicesSimilaires = await prisma.serviceOffert.findMany({
     where: {
       prestataireId: service.prestataireId,
@@ -206,7 +206,7 @@ export async function obtenirDetailService(serviceId: string) {
   };
 }
 
-/** Formate un avis public : décode les photos et expose le statut "vérifié" */
+/** Formate un avis public : dÃ©code les photos et expose le statut "vÃ©rifiÃ©" */
 function formaterAvisPublic(avis: any) {
   let photosUrl: string[] = [];
   if (avis.photosUrl) {
@@ -220,11 +220,11 @@ function formaterAvisPublic(avis: any) {
   return { ...rest, photosUrl, verifie: reservation?.statut === "TERMINEE" };
 }
 
-/** Liste les avis d'un prestataire (vue publique, paginée simplement) */
+/** Liste les avis d'un prestataire (vue publique, paginÃ©e simplement) */
 export async function listerAvisPrestataire(prestataireId: string) {
   const prestataire = await prisma.prestataire.findUnique({ where: { id: prestataireId } });
   if (!prestataire) {
-    throw new ErreurNonTrouve("Prestataire non trouvé");
+    throw new ErreurNonTrouve("Prestataire non trouvÃ©");
   }
 
   const avis = await prisma.avis.findMany({
@@ -240,29 +240,29 @@ export async function listerAvisPrestataire(prestataireId: string) {
   return avis.map(formaterAvisPublic);
 }
 
-/** [PRESTATAIRE] Crée un créneau de disponibilité pour un de ses services */
+/** [PRESTATAIRE] CrÃ©e un crÃ©neau de disponibilitÃ© pour un de ses services */
 export async function creerCreneau(utilisateurId: string, input: CreerCreneauInput) {
   const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
   if (!prestataire) {
-    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+    throw new ErreurNonTrouve("Profil prestataire non trouvÃ©");
   }
 
   const service = await prisma.serviceOffert.findUnique({ where: { id: input.serviceId } });
   if (!service || service.prestataireId !== prestataire.id) {
-    throw new ErreurNonTrouve("Service non trouvé");
+    throw new ErreurNonTrouve("Service non trouvÃ©");
   }
 
   const debut = new Date(input.debut);
   const fin = new Date(input.fin);
 
   if (fin <= debut) {
-    throw new ErreurValidation("La date de fin doit être après la date de début");
+    throw new ErreurValidation("La date de fin doit Ãªtre aprÃ¨s la date de dÃ©but");
   }
   if (debut < new Date()) {
-    throw new ErreurValidation("Impossible de créer un créneau dans le passé");
+    throw new ErreurValidation("Impossible de crÃ©er un crÃ©neau dans le passÃ©");
   }
 
-  // Empêche le chevauchement de créneaux pour le même service
+  // EmpÃªche le chevauchement de crÃ©neaux pour le mÃªme service
   const chevauchement = await prisma.creneau.findFirst({
     where: {
       serviceId: input.serviceId,
@@ -270,7 +270,7 @@ export async function creerCreneau(utilisateurId: string, input: CreerCreneauInp
     },
   });
   if (chevauchement) {
-    throw new ErreurConflit("Ce créneau chevauche un créneau existant pour ce service");
+    throw new ErreurConflit("Ce crÃ©neau chevauche un crÃ©neau existant pour ce service");
   }
 
   return prisma.creneau.create({
@@ -283,7 +283,7 @@ export async function creerCreneau(utilisateurId: string, input: CreerCreneauInp
   });
 }
 
-/** [PRESTATAIRE] Crée plusieurs créneaux récurrents en une fois (ex: tous les jours ouvrés à 9h, 10h, etc.) */
+/** [PRESTATAIRE] CrÃ©e plusieurs crÃ©neaux rÃ©currents en une fois (ex: tous les jours ouvrÃ©s Ã  9h, 10h, etc.) */
 export async function creerCreneauxRecurrents(
   utilisateurId: string,
   params: {
@@ -298,14 +298,14 @@ export async function creerCreneauxRecurrents(
 ) {
   const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
   if (!prestataire) {
-    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+    throw new ErreurNonTrouve("Profil prestataire non trouvÃ©");
   }
   const service = await prisma.serviceOffert.findUnique({ where: { id: params.serviceId } });
   if (!service || service.prestataireId !== prestataire.id) {
-    throw new ErreurNonTrouve("Service non trouvé");
+    throw new ErreurNonTrouve("Service non trouvÃ©");
   }
 
-  const joursExclus = params.joursExclus ?? [0]; // dimanche exclu par défaut
+  const joursExclus = params.joursExclus ?? [0]; // dimanche exclu par dÃ©faut
   const creneauxACreer: { serviceId: string; debut: Date; fin: Date; capaciteTotale: number }[] = [];
 
   const dateCourante = new Date(params.dateDebut);
@@ -328,16 +328,16 @@ export async function creerCreneauxRecurrents(
   }
 
   if (creneauxACreer.length === 0) {
-    throw new ErreurValidation("Aucun créneau valide à créer sur cette période");
+    throw new ErreurValidation("Aucun crÃ©neau valide Ã  crÃ©er sur cette pÃ©riode");
   }
 
   await prisma.creneau.createMany({ data: creneauxACreer });
   return { nombreCreneauxCrees: creneauxACreer.length };
 }
 
-/** Recommandations personnalisées basées sur l'historique des réservations de l'utilisateur */
+/** Recommandations personnalisÃ©es basÃ©es sur l'historique des rÃ©servations de l'utilisateur */
 export async function recommanderServices(utilisateurId: string, limite = 10) {
-  // Trouve les catégories les plus réservées par l'utilisateur
+  // Trouve les catÃ©gories les plus rÃ©servÃ©es par l'utilisateur
   const categoriesReservees = await prisma.reservation.groupBy({
     by: ["prestataireId"],
     where: { clientId: utilisateurId },
@@ -351,7 +351,7 @@ export async function recommanderServices(utilisateurId: string, limite = 10) {
   let ou: any = { actif: true, prestataire: { statut: "APPROUVE" } };
 
   if (prestataireIds.length > 0) {
-    // Récupère les catégories des prestataires fréquentés
+    // RÃ©cupÃ¨re les catÃ©gories des prestataires frÃ©quentÃ©s
     const prestataires = await prisma.prestataire.findMany({
       where: { id: { in: prestataireIds } },
       select: { categorie: true },
@@ -387,11 +387,11 @@ export async function recommanderServices(utilisateurId: string, limite = 10) {
   }));
 }
 
-/** [PRESTATAIRE] Bloque (supprime) un créneau futur sans réservation */
+/** [PRESTATAIRE] Bloque (supprime) un crÃ©neau futur sans rÃ©servation */
 export async function supprimerCreneau(utilisateurId: string, creneauId: string) {
   const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
   if (!prestataire) {
-    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+    throw new ErreurNonTrouve("Profil prestataire non trouvÃ©");
   }
 
   const creneau = await prisma.creneau.findUnique({
@@ -399,25 +399,25 @@ export async function supprimerCreneau(utilisateurId: string, creneauId: string)
     include: { service: true },
   });
   if (!creneau || creneau.service.prestataireId !== prestataire.id) {
-    throw new ErreurNonTrouve("Créneau non trouvé");
+    throw new ErreurNonTrouve("CrÃ©neau non trouvÃ©");
   }
   if (creneau.capaciteReservee > 0) {
-    throw new ErreurInterdit("Impossible de supprimer un créneau ayant déjà des réservations. Annulez d'abord les réservations concernées.");
+    throw new ErreurInterdit("Impossible de supprimer un crÃ©neau ayant dÃ©jÃ  des rÃ©servations. Annulez d'abord les rÃ©servations concernÃ©es.");
   }
 
   await prisma.creneau.delete({ where: { id: creneauId } });
   return { supprime: true };
 }
 
-/** [PRESTATAIRE] Liste les créneaux d'un service donné, y compris passés (pour gestion) */
+/** [PRESTATAIRE] Liste les crÃ©neaux d'un service donnÃ©, y compris passÃ©s (pour gestion) */
 export async function listerCreneauxService(utilisateurId: string, serviceId: string) {
   const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
   if (!prestataire) {
-    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+    throw new ErreurNonTrouve("Profil prestataire non trouvÃ©");
   }
   const service = await prisma.serviceOffert.findUnique({ where: { id: serviceId } });
   if (!service || service.prestataireId !== prestataire.id) {
-    throw new ErreurNonTrouve("Service non trouvé");
+    throw new ErreurNonTrouve("Service non trouvÃ©");
   }
 
   return prisma.creneau.findMany({
