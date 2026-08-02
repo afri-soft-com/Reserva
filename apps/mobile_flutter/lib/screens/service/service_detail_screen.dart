@@ -467,10 +467,13 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     ),
                   ),
                   if (estClient)
-                    Bouton(
-                      titre: 'File d\'attente',
-                      chargement: _attenteEnCours,
-                      onPressed: () => _inscrireAttente(c),
+                    SizedBox(
+                      width: 130,
+                      child: Bouton(
+                        titre: 'File d\'attente',
+                        chargement: _attenteEnCours,
+                        onPressed: () => _inscrireAttente(c),
+                      ),
                     )
                   else
                     const Icon(Icons.block, color: AppCouleurs.texteSecondaire),

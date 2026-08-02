@@ -46,9 +46,33 @@ export async function desactiverAlerte(utilisateurId: string, alerteId: string) 
 }
 
 /** Interne : notifie les abonnés d'un service qu'un créneau s'est libéré */
-export async function notifierAlertesService(serviceId: string) {
+export async function notifierAlertesService(serviceId: string, creneauId?: string) {
+  // Ne notifie que s'il reste réellement des places disponibles dans le futur
+  const creneauxLibres = await prisma.creneau.count({
+    where: {
+      serviceId,
+      debut: { gt: new Date() },
+      capaciteReservee: { lt: prisma.creneau.fields.capaciteTotale },
+    },
+  });
+  if (creneauxLibres === 0) return { notifiees: 0 };
+
+  // Exclut les utilisateurs déjà en file d'attente sur le créneau libéré
+  // (ils sont gérés par la promotion automatique / notifiés séparément)
+  const dejaEnAttente = creneauId
+    ? await prisma.listeAttente.findMany({
+        where: { creneauId, statut: { in: ["EN_ATTENTE", "NOTIFIE"] } },
+        select: { clientId: true },
+      })
+    : [];
+  const idsEnAttente = new Set(dejaEnAttente.map((e) => e.clientId));
+
   const alertes = await prisma.alerteDisponibilite.findMany({
-    where: { serviceId, actif: true },
+    where: {
+      serviceId,
+      actif: true,
+      utilisateurId: { notIn: Array.from(idsEnAttente) },
+    },
     include: { service: { select: { nom: true } } },
   });
   if (alertes.length === 0) return { notifiees: 0 };

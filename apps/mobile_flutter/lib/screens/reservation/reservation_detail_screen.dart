@@ -178,6 +178,21 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                   _ligne('Horaire', '${r.creneau.debut.substring(11, 16)} - ${r.creneau.fin.substring(11, 16)}'),
                   const Divider(height: 24),
                   _ligne('Montant total', _formaterMontant(r.reservation.montantTotal, r.reservation.devise)),
+                  if (r.reservation.montantReduction > 0) ...[
+                    const SizedBox(height: 8),
+                    _ligne('Réductions appliquées',
+                        '-${_formaterMontant(r.reservation.montantReduction, r.reservation.devise)}',
+                        valeurStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.succes)),
+                  ],
+                  if (r.reservation.pointsUtilises > 0) ...[
+                    const SizedBox(height: 8),
+                    _ligne('Points fidélité utilisés', '${r.reservation.pointsUtilises} pts'),
+                  ],
+                  if (r.reservation.avoirUtilise > 0) ...[
+                    const SizedBox(height: 8),
+                    _ligne('Crédits (avoirs) utilisés',
+                        _formaterMontant(r.reservation.avoirUtilise, r.reservation.devise)),
+                  ],
                   const SizedBox(height: 8),
                   _ligne('Payé', _formaterMontant(r.reservation.montantPaye, r.reservation.devise)),
                 ],
@@ -252,12 +267,12 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     );
   }
 
-  Widget _ligne(String label, String value) {
+  Widget _ligne(String label, String value, {TextStyle? valeurStyle}) {
     return Row(
       children: [
         Text(label, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
         const Spacer(),
-        Flexible(child: Text(value, textAlign: TextAlign.right, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.texte))),
+        Flexible(child: Text(value, textAlign: TextAlign.right, style: valeurStyle ?? const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.texte))),
       ],
     );
   }

@@ -6,6 +6,7 @@ import '../../services/api_paiements.dart';
 import '../../services/api_reservations.dart';
 import '../../services/api_codes_promos.dart';
 import '../../services/api_fidelite.dart';
+import '../../services/api_avoirs.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/bouton.dart';
 import '../../widgets/toast.dart';
@@ -39,6 +40,12 @@ class _PaiementScreenState extends State<PaiementScreen> {
   bool _applicationPoints = false;
   bool _recupSoldePoints = false;
 
+  // Avoirs
+  double _soldeAvoirs = 0;
+  double _montantAvoirApplique = 0;
+  bool _applicationAvoir = false;
+  bool _recupAvoirs = false;
+
   final _telephoneCtrl = TextEditingController();
 
   @override
@@ -71,6 +78,7 @@ class _PaiementScreenState extends State<PaiementScreen> {
       if (mounted) setState(() => _chargement = false);
     }
     _recupererSoldePoints();
+    _recupererAvoirs();
   }
 
   Future<void> _recupererSoldePoints() async {
@@ -82,6 +90,20 @@ class _PaiementScreenState extends State<PaiementScreen> {
       // Section fidélité silencieuse si l'appel échoue
     } finally {
       if (mounted) setState(() => _recupSoldePoints = false);
+    }
+  }
+
+  Future<void> _recupererAvoirs() async {
+    setState(() => _recupAvoirs = true);
+    try {
+      final avoirs = await ApiAvoirs.obtenirMesAvoirs();
+      if (mounted) {
+        setState(() => _soldeAvoirs = (avoirs['soldeActif'] as num?)?.toDouble() ?? 0);
+      }
+    } catch (_) {
+      // Section avoirs silencieuse si l'appel échoue
+    } finally {
+      if (mounted) setState(() => _recupAvoirs = false);
     }
   }
 
@@ -145,6 +167,31 @@ class _PaiementScreenState extends State<PaiementScreen> {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     } finally {
       if (mounted) setState(() => _applicationPoints = false);
+    }
+  }
+
+  Future<void> _appliquerAvoir() async {
+    setState(() => _applicationAvoir = true);
+    try {
+      final resultat = await ApiAvoirs.appliquerAvoir(reservationId: widget.reservationId);
+      if (mounted) {
+        setState(() {
+          _montantAvoirApplique = (resultat['montantApplique'] as num?)?.toDouble() ?? 0;
+          _soldeAvoirs = _soldeAvoirs - _montantAvoirApplique;
+          _montantReduction += _montantAvoirApplique;
+          _montantTotalAvecReduction =
+              (resultat['montantFinal'] as num?)?.toDouble() ?? _montantTotalAvecReduction;
+        });
+        ToastWidget.show(
+          context,
+          '${_formaterMontant(_montantAvoirApplique, _detail!.reservation.devise)} de crédit appliqués.',
+          type: 'succes',
+        );
+      }
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    } finally {
+      if (mounted) setState(() => _applicationAvoir = false);
     }
   }
 
@@ -339,6 +386,60 @@ class _PaiementScreenState extends State<PaiementScreen> {
                         ],
                       ),
                     ],
+                  ],
+                ),
+              ),
+            ],
+            if (_soldeAvoirs > 0 && _montantAvoirApplique <= 0) ...[
+              const SizedBox(height: 12),
+              Carte(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.account_balance_wallet, size: 20, color: AppCouleurs.primaire),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('Crédits (avoirs) disponibles',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        ),
+                        if (_recupAvoirs)
+                          const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Solde: ${_formaterMontant(_soldeAvoirs, r.reservation.devise)} — obtenus lors d\'annulations.',
+                      style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                    const SizedBox(height: 8),
+                    Bouton(
+                      titre: 'Utiliser mes crédits',
+                      variante: 'secondaire',
+                      taille: 'sm',
+                      chargement: _applicationAvoir,
+                      onPressed: _appliquerAvoir,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (_montantAvoirApplique > 0) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppCouleurs.succesClair,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppCouleurs.succes.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: AppCouleurs.succes, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Crédits appliqués : ${_formaterMontant(_montantAvoirApplique, r.reservation.devise)}',
+                          style: const TextStyle(fontSize: 13, color: AppCouleurs.succes, fontWeight: FontWeight.w600)),
+                    ),
                   ],
                 ),
               ),

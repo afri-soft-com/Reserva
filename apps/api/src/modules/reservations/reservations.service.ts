@@ -180,7 +180,7 @@ export async function repondreReservation(utilisateurId: string, reservationId: 
     ]);
 
     promouvoirCreneau(reservation.serviceId, reservation.creneauId).catch(() => {});
-    notifierAlertesService(reservation.serviceId).catch(() => {});
+    notifierAlertesService(reservation.serviceId, reservation.creneauId).catch(() => {});
 
     await creerNotification({
       utilisateurId: reservation.clientId,
@@ -262,7 +262,7 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
 
   // Une place se libère : on informe les abonnés à l'alerte dispo et on promeut la file d'attente
   promouvoirCreneau(reservation.serviceId, reservation.creneauId).catch(() => {});
-  notifierAlertesService(reservation.serviceId).catch(() => {});
+  notifierAlertesService(reservation.serviceId, reservation.creneauId).catch(() => {});
 
   let rembourseParAvoir = false;
   if (montantRembourse > 0) {
