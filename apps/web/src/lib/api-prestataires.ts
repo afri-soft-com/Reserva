@@ -84,3 +84,51 @@ export async function supprimerCreneau(creneauId: string) {
   const { data } = await clientApi.delete(`/services/creneaux/${creneauId}`);
   return data.donnees as { supprime: boolean };
 }
+
+export interface ReservationCalendrier {
+  id: string;
+  numero: string;
+  statut: string;
+  statutPaiement: string;
+  montantPaye: number;
+  client: { nom: string; telephone: string };
+}
+
+export interface CreneauCalendrier {
+  id: string;
+  debut: string;
+  fin: string;
+  capaciteTotale: number;
+  capaciteReservee: number;
+  service: { id: string; nom: string; prix: number; devise: "CDF" | "USD" };
+  reservations: ReservationCalendrier[];
+}
+
+export interface ReponseCalendrier {
+  mois: string;
+  totalCreneaux: number;
+  totalReservations: number;
+  jours: Record<string, CreneauCalendrier[]>;
+}
+
+export async function obtenirCalendrier(mois?: string) {
+  const { data } = await clientApi.get("/prestataires/moi/calendrier", { params: mois ? { mois } : {} });
+  return data.donnees as ReponseCalendrier;
+}
+
+export interface StatistiquesPrestataire {
+  noteMoyenne: number;
+  nombreAvis: number;
+  totalReservations: number;
+  tauxAnnulation: number;
+  parJour: { date: string; reservations: number; revenus: number }[];
+  parService: { serviceId: string; nom: string; reservations: number; revenus: number }[];
+  parStatut: { statut: string; _count: number }[];
+  repartitionNotes: { note: number; nombre: number }[];
+  topClients: { clientId: string; nom: string; telephone: string; reservations: number; totalDepense: number }[];
+}
+
+export async function obtenirStatistiquesPrestataire() {
+  const { data } = await clientApi.get("/prestataires/moi/statistiques");
+  return data.donnees as StatistiquesPrestataire;
+}

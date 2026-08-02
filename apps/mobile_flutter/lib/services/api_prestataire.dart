@@ -242,6 +242,10 @@ class ApiPrestataire {
     return (await ApiClient.get('/prestataires/moi/calendrier', params: params.isNotEmpty ? params : null)) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> obtenirStatistiques() async {
+    return (await ApiClient.get('/prestataires/moi/statistiques')) as Map<String, dynamic>;
+  }
+
   static Future<void> repondreReservation(String reservationId, bool approuver) async {
     await ApiClient.post('/reservations/repondre', body: {
       'reservationId': reservationId,

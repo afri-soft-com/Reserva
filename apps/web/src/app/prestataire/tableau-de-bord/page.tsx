@@ -66,6 +66,16 @@ export default function PageTableauDeBordPrestataire() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
         <div className="flex gap-3">
+          <Link href="/prestataire/statistiques">
+            <Bouton variante="secondaire">
+              <TrendingUp className="h-4 w-4" /> Statistiques
+            </Bouton>
+          </Link>
+          <Link href="/prestataire/calendrier">
+            <Bouton variante="secondaire">
+              <Calendar className="h-4 w-4" /> Calendrier
+            </Bouton>
+          </Link>
           <Link href="/prestataire/services">
             <Bouton variante="secondaire">
               <Package className="h-4 w-4" /> Gérer mes services

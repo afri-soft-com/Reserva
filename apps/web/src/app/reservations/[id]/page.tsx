@@ -27,6 +27,8 @@ export default function PageDetailReservation() {
   const [chargementAction, setChargementAction] = useState(false);
   const [noteAvis, setNoteAvis] = useState(5);
   const [commentaireAvis, setCommentaireAvis] = useState("");
+  const [afficherAnnulation, setAfficherAnnulation] = useState(false);
+  const [modeRemboursement, setModeRemboursement] = useState<"AVOIR" | "MOBILE_MONEY">("AVOIR");
 
   useEffect(() => {
     charger();
@@ -76,16 +78,20 @@ export default function PageDetailReservation() {
 
   async function gererAnnulation() {
     if (!reservation) return;
-    if (!confirm("Confirmez-vous l'annulation de cette réservation ?")) return;
-
     setChargementAction(true);
     try {
-      const resultat = await annulerReservation({ reservationId: reservation.id });
-      if (resultat.montantRembourse > 0) {
-        toastSucces(`Réservation annulée. ${formaterMontant(resultat.montantRembourse, reservation.devise)} seront remboursés.`);
+      const resultat = await annulerReservation({ reservationId: reservation.id, modeRemboursement });
+      const montantRestitue = resultat.montantRembourse + (resultat as any).avoirsRestitues;
+      if (montantRestitue > 0) {
+        toastSucces(
+          modeRemboursement === "AVOIR"
+            ? `Réservation annulée. ${formaterMontant(montantRestitue, reservation.devise)} crédités en avoir.`
+            : `Réservation annulée. ${formaterMontant(resultat.montantRembourse, reservation.devise)} seront remboursés.`
+        );
       } else {
         toastSucces("Réservation annulée.");
       }
+      setAfficherAnnulation(false);
       await charger();
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
@@ -195,12 +201,47 @@ export default function PageDetailReservation() {
             </Bouton>
           )}
           {peutAnnuler && (
-            <Bouton variante="destructif" chargement={chargementAction} onClick={gererAnnulation}>
+            <Bouton variante="destructif" onClick={() => setAfficherAnnulation(true)}>
               Annuler la réservation
             </Bouton>
           )}
         </div>
       </Carte>
+
+      {afficherAnnulation && (
+        <Carte>
+          <h2 className="mb-1 font-bold text-gray-900">Annuler la réservation</h2>
+          <p className="mb-4 text-sm text-gray-500">Comment souhaitez-vous recevoir le remboursement ?</p>
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setModeRemboursement("AVOIR")}
+              className={`rounded-champ border px-3 py-2 text-left text-sm ${
+                modeRemboursement === "AVOIR" ? "border-primaire bg-primaire-50" : "border-gray-200"
+              }`}
+            >
+              <p className="font-semibold text-gray-900">Avoir RESERVA</p>
+              <p className="text-xs text-gray-500">Crédit réutilisable sur votre prochaine réservation</p>
+            </button>
+            <button
+              onClick={() => setModeRemboursement("MOBILE_MONEY")}
+              className={`rounded-champ border px-3 py-2 text-left text-sm ${
+                modeRemboursement === "MOBILE_MONEY" ? "border-primaire bg-primaire-50" : "border-gray-200"
+              }`}
+            >
+              <p className="font-semibold text-gray-900">Mobile money</p>
+              <p className="text-xs text-gray-500">Remboursement sur votre numéro de paiement</p>
+            </button>
+          </div>
+          <div className="flex gap-3">
+            <Bouton variante="destructif" chargement={chargementAction} onClick={gererAnnulation}>
+              Confirmer l&apos;annulation
+            </Bouton>
+            <Bouton variante="fantome" onClick={() => setAfficherAnnulation(false)}>
+              Retour
+            </Bouton>
+          </div>
+        </Carte>
+      )}
 
       {afficherPaiement && (
         <Carte>

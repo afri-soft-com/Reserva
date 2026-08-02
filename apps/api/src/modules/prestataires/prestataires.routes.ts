@@ -21,6 +21,7 @@ routesPrestataires.get("/moi", authentifier, prestatairesController.monProfil);
 routesPrestataires.patch("/moi", authentifier, valider(schemaModifierPrestataire), prestatairesController.modifierProfil);
 routesPrestataires.get("/moi/tableau-de-bord", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.tableauDeBord);
 routesPrestataires.get("/moi/calendrier", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.calendrier);
+routesPrestataires.get("/moi/statistiques", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.statistiques);
 routesPrestataires.get("/moi/abonnement", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.monAbonnement);
 
 // Gestion des services proposés

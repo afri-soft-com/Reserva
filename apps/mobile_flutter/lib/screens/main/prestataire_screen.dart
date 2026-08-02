@@ -10,6 +10,7 @@ import '../../widgets/toast.dart';
 import '../prestataire/scan_qr_screen.dart';
 import '../prestataire/packages_screen.dart';
 import '../prestataire/calendrier_prestataire_screen.dart';
+import '../prestataire/statistiques_prestataire_screen.dart';
 
 class PrestataireScreen extends StatefulWidget {
   const PrestataireScreen({super.key});
@@ -148,6 +149,13 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             tooltip: 'Calendrier',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const CalendrierPrestataireScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.bar_chart),
+            tooltip: 'Statistiques',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const StatistiquesPrestataireScreen()),
             ),
           ),
           IconButton(

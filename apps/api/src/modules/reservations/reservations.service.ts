@@ -265,23 +265,34 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
   notifierAlertesService(reservation.serviceId, reservation.creneauId).catch(() => {});
 
   let rembourseParAvoir = false;
-  if (montantRembourse > 0) {
+  // Les avoirs déjà consommés sur cette réservation sont restitués au client (crédit en magasin)
+  const avoirsRestitues = reservation.avoirUtilise;
+  if (montantRembourse > 0 || avoirsRestitues > 0) {
     if (input.modeRemboursement === "AVOIR") {
       const avoir = await creerAvoir({
         utilisateurId: reservation.clientId,
-        montant: montantRembourse,
+        montant: montantRembourse + avoirsRestitues,
         devise: reservation.devise,
         sourceReservationId: reservation.id,
       });
       rembourseParAvoir = !!avoir;
     } else {
       const derniereTransactionReussie = reservation.transactions.find((t) => t.statut === "PAYE");
-      if (derniereTransactionReussie) {
+      if (derniereTransactionReussie && montantRembourse > 0) {
         await rembourserMobileMoney({
           operateur: derniereTransactionReussie.operateur as OperateurMobileMoney,
           telephonePaiement: derniereTransactionReussie.telephonePaiement ?? reservation.client.telephone,
           montant: montantRembourse,
         });
+      }
+      if (avoirsRestitues > 0) {
+        const avoir = await creerAvoir({
+          utilisateurId: reservation.clientId,
+          montant: avoirsRestitues,
+          devise: reservation.devise,
+          sourceReservationId: reservation.id,
+        });
+        rembourseParAvoir = rembourseParAvoir || !!avoir;
       }
     }
   }
@@ -296,15 +307,15 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
     utilisateurId: reservation.clientId,
     reservationId: reservation.id,
     titre: "Réservation annulée",
-    message: montantRembourse > 0
+    message: (montantRembourse + avoirsRestitues) > 0
       ? (rembourseParAvoir
-          ? `Votre réservation ${reservation.numero} a été annulée. Un avoir de ${montantRembourse} ${reservation.devise} a été crédité sur votre compte.`
+          ? `Votre réservation ${reservation.numero} a été annulée. Un avoir de ${montantRembourse + avoirsRestitues} ${reservation.devise} a été crédité sur votre compte.`
           : `Votre réservation ${reservation.numero} a été annulée. Remboursement de ${montantRembourse} ${reservation.devise} en cours.`)
       : `Votre réservation ${reservation.numero} a été annulée.`,
     type: "ANNULATION",
   });
 
-  return { annule: true, montantRembourse, rembourseParAvoir };
+  return { annule: true, montantRembourse, avoirsRestitues, rembourseParAvoir };
 }
 
 /** Liste les réservations du client connecté */

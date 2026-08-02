@@ -24,6 +24,7 @@ const STYLES_STATUT_RESERVATION: Record<StatutReservation, string> = {
   ANNULEE: "bg-gray-100 text-gray-600",
   TERMINEE: "bg-blue-100 text-blue-700",
   ABSENCE: "bg-red-100 text-red-700",
+  EN_COURS: "bg-purple-100 text-purple-700",
 };
 
 const LIBELLES_STATUT_RESERVATION: Record<StatutReservation, string> = {
@@ -33,6 +34,7 @@ const LIBELLES_STATUT_RESERVATION: Record<StatutReservation, string> = {
   ANNULEE: "Annulée",
   TERMINEE: "Terminée",
   ABSENCE: "Absence",
+  EN_COURS: "En cours",
 };
 
 export function BadgeStatutReservation({ statut }: { statut: StatutReservation }) {

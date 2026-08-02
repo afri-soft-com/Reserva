@@ -86,3 +86,9 @@ export const monAbonnement = asyncHandler(async (req: Request, res: Response) =>
   const resultat = await prestatairesService.obtenirMonAbonnement(req.utilisateur.utilisateurId);
   envoyerSucces(res, resultat);
 });
+
+export const statistiques = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await prestatairesService.obtenirStatistiquesDetaillees(req.utilisateur.utilisateurId);
+  envoyerSucces(res, resultat);
+});

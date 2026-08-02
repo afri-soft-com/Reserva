@@ -374,3 +374,126 @@ export async function obtenirCalendrier(utilisateurId: string, mois?: string) {
     jours,
   };
 }
+
+/**
+ * [PRESTATAIRE] Statistiques détaillées : activité sur les 30 derniers jours,
+ * répartition par service/statut, distribution des notes et top clients.
+ */
+export async function obtenirStatistiquesDetaillees(utilisateurId: string) {
+  const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
+  if (!prestataire) {
+    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+  }
+
+  const debutMois = new Date();
+  debutMois.setDate(1);
+  debutMois.setHours(0, 0, 0, 0);
+  const finMois = new Date(debutMois);
+  finMois.setMonth(finMois.getMonth() + 1);
+
+  const debut30 = new Date();
+  debut30.setDate(debut30.getDate() - 29);
+  debut30.setHours(0, 0, 0, 0);
+
+  const [reservations30, parStatut, avisListe, parServiceCount, revenusParService, services, topClientsGroup, totalCount, annuleCount] = await Promise.all([
+    prisma.reservation.findMany({
+      where: { prestataireId: prestataire.id, creneau: { debut: { gte: debut30 } } },
+      select: { montantPaye: true, statutPaiement: true, creneau: { select: { debut: true } } },
+    }),
+    prisma.reservation.groupBy({
+      by: ["statut"],
+      where: { prestataireId: prestataire.id },
+      _count: true,
+    }),
+    prisma.avis.findMany({
+      where: { prestataireId: prestataire.id },
+      select: { note: true },
+    }),
+    prisma.reservation.groupBy({
+      by: ["serviceId"],
+      where: { prestataireId: prestataire.id, creneau: { debut: { gte: debutMois } } },
+      _count: true,
+    }),
+    prisma.reservation.groupBy({
+      by: ["serviceId"],
+      where: { prestataireId: prestataire.id, statutPaiement: "PAYE", creneau: { debut: { gte: debutMois } } },
+      _sum: { montantPaye: true },
+    }),
+    prisma.serviceOffert.findMany({
+      where: { prestataireId: prestataire.id },
+      select: { id: true, nom: true },
+    }),
+    prisma.reservation.groupBy({
+      by: ["clientId"],
+      where: { prestataireId: prestataire.id },
+      _count: true,
+      _sum: { montantPaye: true },
+      orderBy: { _count: { id: "desc" } },
+      take: 5,
+    }),
+    prisma.reservation.count({ where: { prestataireId: prestataire.id } }),
+    prisma.reservation.count({ where: { prestataireId: prestataire.id, statut: "ANNULEE" } }),
+  ]);
+
+  // Activité jour par jour sur les 30 derniers jours
+  const parJour: { date: string; reservations: number; revenus: number }[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const jour = new Date();
+    jour.setDate(jour.getDate() - i);
+    jour.setHours(0, 0, 0, 0);
+    const finJour = new Date(jour);
+    finJour.setHours(23, 59, 59, 999);
+    const duJour = reservations30.filter((r) => {
+      const d = r.creneau.debut;
+      return d >= jour && d <= finJour;
+    });
+    parJour.push({
+      date: jour.toISOString().slice(0, 10),
+      reservations: duJour.length,
+      revenus: duJour.reduce((s, r) => s + (r.statutPaiement === "PAYE" ? r.montantPaye : 0), 0),
+    });
+  }
+
+  // Répartition par service (mois courant)
+  const parService = parServiceCount.map((ps) => {
+    const service = services.find((s) => s.id === ps.serviceId);
+    const revenu = revenusParService.find((r) => r.serviceId === ps.serviceId);
+    return {
+      serviceId: ps.serviceId,
+      nom: service?.nom ?? "Inconnu",
+      reservations: ps._count,
+      revenus: revenu?._sum.montantPaye ?? 0,
+    };
+  });
+
+  // Distribution des notes
+  const repartitionNotes = [1, 2, 3, 4, 5].map((note) => ({
+    note,
+    nombre: avisListe.filter((a) => a.note === note).length,
+  }));
+
+  // Meilleurs clients
+  const clients = await prisma.utilisateur.findMany({
+    where: { id: { in: topClientsGroup.map((t) => t.clientId) } },
+    select: { id: true, nom: true, telephone: true },
+  });
+  const topClients = topClientsGroup.map((t) => ({
+    clientId: t.clientId,
+    nom: clients.find((c) => c.id === t.clientId)?.nom ?? "Client",
+    telephone: clients.find((c) => c.id === t.clientId)?.telephone ?? "",
+    reservations: t._count,
+    totalDepense: t._sum.montantPaye ?? 0,
+  }));
+
+  return {
+    noteMoyenne: prestataire.noteMoyenne,
+    nombreAvis: prestataire.nombreAvis,
+    totalReservations: totalCount,
+    tauxAnnulation: totalCount > 0 ? Math.round((annuleCount / totalCount) * 1000) / 10 : 0,
+    parJour,
+    parService,
+    parStatut,
+    repartitionNotes,
+    topClients,
+  };
+}
