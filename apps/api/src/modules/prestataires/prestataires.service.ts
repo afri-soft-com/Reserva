@@ -367,11 +367,29 @@ export async function obtenirCalendrier(utilisateurId: string, mois?: string) {
     });
   }
 
+  // Périodes bloquées par le prestataire sur ce mois (journées entières ou par service)
+  const periodesBloquees = await prisma.periodeIndisponible.findMany({
+    where: {
+      prestataireId: prestataire.id,
+      dateDebut: { lt: finMois },
+      dateFin: { gt: debutMois },
+    },
+    include: { service: { select: { id: true, nom: true } } },
+    orderBy: { dateDebut: "asc" },
+  });
+
   return {
     mois: `${debutMois.getFullYear()}-${String(debutMois.getMonth() + 1).padStart(2, "0")}`,
     totalCreneaux: creneaux.length,
     totalReservations: creneaux.reduce((s, c) => s + c.reservations.length, 0),
     jours,
+    periodesBloquees: periodesBloquees.map((p) => ({
+      id: p.id,
+      dateDebut: p.dateDebut.toISOString(),
+      dateFin: p.dateFin.toISOString(),
+      motif: p.motif,
+      service: p.service,
+    })),
   };
 }
 

@@ -137,6 +137,7 @@ class Creneau {
   final int capaciteTotale;
   final int capaciteReservee;
   final bool disponible;
+  final bool bloque;
 
   Creneau({
     required this.id,
@@ -146,6 +147,7 @@ class Creneau {
     required this.capaciteTotale,
     required this.capaciteReservee,
     required this.disponible,
+    this.bloque = false,
   });
 
   factory Creneau.fromJson(Map<String, dynamic> json) => Creneau(
@@ -156,6 +158,7 @@ class Creneau {
     capaciteTotale: json['capaciteTotale'] as int? ?? 1,
     capaciteReservee: json['capaciteReservee'] as int? ?? 0,
     disponible: json['disponible'] as bool? ?? true,
+    bloque: json['bloque'] as bool? ?? false,
   );
 }
 

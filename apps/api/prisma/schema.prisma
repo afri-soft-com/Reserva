@@ -97,6 +97,7 @@ model Prestataire {
   avis          Avis[]
   abonnements   AbonnementPrestataire[]
   packages      PackageService[]
+  periodesIndisponibles PeriodeIndisponible[]
 
   @@index([categorie, ville])
   @@map("prestataires")
@@ -120,6 +121,7 @@ model ServiceOffert {
   packageItems    PackageServiceItem[]
   alertes         AlerteDisponibilite[]
   listeAttente    ListeAttente[]
+  periodesIndisponibles PeriodeIndisponible[]
 
   @@index([prestataireId])
   @@map("services_offerts")
@@ -492,4 +494,19 @@ model ListeAttente {
   @@index([creneauId, statut])
   @@index([clientId])
   @@map("liste_attente")
+}
+
+model PeriodeIndisponible {
+  id            String          @id @default(uuid())
+  prestataireId String
+  prestataire   Prestataire     @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  serviceId     String?
+  service       ServiceOffert?  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  dateDebut     DateTime
+  dateFin       DateTime
+  motif         String?
+  creeLe        DateTime        @default(now())
+
+  @@index([prestataireId, dateDebut, dateFin])
+  @@map("periodes_indisponibles")
 }

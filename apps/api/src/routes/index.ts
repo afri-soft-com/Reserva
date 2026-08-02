@@ -18,6 +18,7 @@ import { routesPackages } from "../modules/packages/packages.routes";
 import { routesAvoirs } from "../modules/avoirs/avoirs.routes";
 import { routesAlertes } from "../modules/alertes/alertes.routes";
 import { routesAttentes } from "../modules/attentes/attentes.routes";
+import { routesIndisponibilites } from "../modules/indisponibilites/indisponibilites.routes";
 
 export const routesApi = Router();
 
@@ -40,3 +41,4 @@ routesApi.use("/packages", routesPackages);
 routesApi.use("/avoirs", routesAvoirs);
 routesApi.use("/alertes", routesAlertes);
 routesApi.use("/attentes", routesAttentes);
+routesApi.use("/indisponibilites", routesIndisponibilites);

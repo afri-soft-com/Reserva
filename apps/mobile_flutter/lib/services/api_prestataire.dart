@@ -246,6 +246,20 @@ class ApiPrestataire {
     return (await ApiClient.get('/prestataires/moi/statistiques')) as Map<String, dynamic>;
   }
 
+  static Future<List<dynamic>> listerPeriodesIndisponibles() async {
+    final data = await ApiClient.get('/indisponibilites/moi');
+    if (data is List) return data;
+    return [];
+  }
+
+  static Future<Map<String, dynamic>> creerPeriodeIndisponible(Map<String, dynamic> body) async {
+    return (await ApiClient.post('/indisponibilites/', body: body)) as Map<String, dynamic>;
+  }
+
+  static Future<void> supprimerPeriodeIndisponible(String periodeId) async {
+    await ApiClient.delete('/indisponibilites/$periodeId');
+  }
+
   static Future<void> repondreReservation(String reservationId, bool approuver) async {
     await ApiClient.post('/reservations/repondre', body: {
       'reservationId': reservationId,

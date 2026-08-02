@@ -14,6 +14,43 @@ import { creerAvoir } from "../avoirs/avoirs.service";
 import { promouvoirCreneau } from "../attentes/attentes.service";
 import { notifierAlertesService } from "../alertes/alertes.service";
 
+interface PeriodeBloqueeApi {
+  serviceId: string | null;
+  dateDebut: Date;
+  dateFin: Date;
+}
+
+/** Vrai si le créneau tombe dans une période d'indisponibilité (blocage global ou propre au service) */
+function creneauEstDansPeriode(creneau: { serviceId: string; debut: Date }, periode: PeriodeBloqueeApi): boolean {
+  return (
+    (periode.serviceId === null || periode.serviceId === creneau.serviceId) &&
+    creneau.debut >= periode.dateDebut &&
+    creneau.debut < periode.dateFin
+  );
+}
+
+/** Lève une erreur si le prestataire a bloqué ce créneau — protège la réservation */
+async function exigerCreneauNonBloque(
+  client: { periodeIndisponible: { findFirst: (args: any) => Promise<any> } },
+  creneau: { serviceId: string; debut: Date },
+  prestataireId: string
+) {
+  const periode = await client.periodeIndisponible.findFirst({
+    where: {
+      prestataireId,
+      OR: [{ serviceId: null }, { serviceId: creneau.serviceId }],
+      dateDebut: { lte: creneau.debut },
+      dateFin: { gt: creneau.debut },
+    },
+    select: { id: true },
+  });
+  if (periode) {
+    throw new ErreurConflit(
+      "Ce créneau est indisponible : le prestataire l'a bloqué. Veuillez choisir un autre horaire."
+    );
+  }
+}
+
 /**
  * Crée une réservation. Utilise une transaction Prisma avec verrouillage pour éviter
  * la surréservation en cas de requêtes concurrentes sur le même créneau.
@@ -36,6 +73,8 @@ export async function creerReservation(clientId: string, input: CreerReservation
   if (!creneau.service.actif) {
     throw new ErreurValidation("Ce service n'est plus disponible");
   }
+
+  await exigerCreneauNonBloque(prisma, creneau, creneau.service.prestataireId);
 
   // Transaction atomique : vérifie la capacité ET incrémente en une seule opération,
   // afin d'empêcher deux clients de prendre la dernière place simultanément.
@@ -119,6 +158,7 @@ export async function modifierReservation(utilisateurId: string, input: { reserv
   if (nouveauCreneau.capaciteReservee >= nouveauCreneau.capaciteTotale) {
     throw new ErreurConflit("Ce créneau est complet. Veuillez en choisir un autre.");
   }
+  await exigerCreneauNonBloque(prisma, nouveauCreneau, reservation.prestataireId);
 
   const heuresAvantCreneau = heuresEntre(new Date(), reservation.creneau.debut);
   if (heuresAvantCreneau < 1) {
@@ -513,6 +553,7 @@ export async function creerReservationsRecurrentes(
       if (!actuel || actuel.capaciteReservee >= actuel.capaciteTotale) {
         throw new ErreurConflit(`Un des créneaux de la série vient d'être complet. Veuillez réessayer.`);
       }
+      await exigerCreneauNonBloque(tx, actuel, creneauBase.service.prestataireId);
       await tx.creneau.update({
         where: { id: creneau.id },
         data: { capaciteReservee: { increment: 1 } },
@@ -608,7 +649,20 @@ export async function reproduireReservation(clientId: string, reservationId: str
     take: 30,
   });
 
-  if (creneaux.length === 0) {
+  // Exclut les créneaux tombant dans une période bloquée par le prestataire
+  const periodes = await prisma.periodeIndisponible.findMany({
+    where: {
+      prestataireId: originale.service.prestataireId,
+      dateFin: { gt: maintenant },
+      OR: [{ serviceId: null }, { serviceId: originale.serviceId }],
+    },
+    select: { serviceId: true, dateDebut: true, dateFin: true },
+  });
+  const creneauxDisponibles = creneaux.filter(
+    (c) => !periodes.some((p) => creneauEstDansPeriode(c, p))
+  );
+
+  if (creneauxDisponibles.length === 0) {
     throw new ErreurConflit("Aucun créneau disponible pour ce service pour le moment");
   }
 
@@ -616,10 +670,10 @@ export async function reproduireReservation(clientId: string, reservationId: str
   const heure = originale.creneau ? new Date(originale.creneau.debut).getHours() : -1;
   const minute = originale.creneau ? new Date(originale.creneau.debut).getMinutes() : -1;
 
-  const equivalent = creneaux.find(
+  const equivalent = creneauxDisponibles.find(
     (c) => c.debut.getDay() === jourSemaine && c.debut.getHours() === heure && c.debut.getMinutes() === minute
   );
-  const creneauChoisi = equivalent ?? creneaux[0];
+  const creneauChoisi = equivalent ?? creneauxDisponibles[0];
 
   return creerReservation(clientId, {
     serviceId: originale.serviceId,

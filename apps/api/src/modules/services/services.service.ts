@@ -2,6 +2,40 @@
 import { ErreurNonTrouve, ErreurValidation, ErreurInterdit, ErreurConflit } from "../../utils/erreurs";
 import { RechercheServicesInput, CreerCreneauInput, calculerOffset } from "@reserva/shared";
 
+interface PeriodeBloquee {
+  prestataireId: string;
+  serviceId: string | null;
+  dateDebut: Date;
+  dateFin: Date;
+}
+
+/** Charge les périodes d'indisponibilité (tous services ou service précis) des prestataires donnés */
+async function chargerPeriodesBloquees(prestataireIds: string[]): Promise<PeriodeBloquee[]> {
+  if (prestataireIds.length === 0) return [];
+  return prisma.periodeIndisponible.findMany({
+    where: {
+      prestataireId: { in: prestataireIds },
+      dateFin: { gte: new Date() },
+    },
+    select: { prestataireId: true, serviceId: true, dateDebut: true, dateFin: true },
+  });
+}
+
+/** Vrai si le créneau tombe dans une période bloquée (blocage global ou propre au service) */
+function creneauEstBloque(
+  creneau: { serviceId: string; debut: Date },
+  periodes: PeriodeBloquee[],
+  prestataireId: string
+): boolean {
+  return periodes.some(
+    (p) =>
+      p.prestataireId === prestataireId &&
+      (p.serviceId === null || p.serviceId === creneau.serviceId) &&
+      creneau.debut >= p.dateDebut &&
+      creneau.debut < p.dateFin
+  );
+}
+
 /** Recherche publique de services â€” utilisÃ©e par les clients pour dÃ©couvrir des prestataires */
 export async function rechercherServices(filtres: RechercheServicesInput) {
   const ou: any = {
@@ -84,10 +118,16 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
     prisma.serviceOffert.count({ where: ou }),
   ]);
 
-  // Filtre les crÃ©neaux pleins et ne garde que le prochain crÃ©neau rÃ©ellement disponible par service
+  // Filtre les créneaux pleins ou tombant dans une période d'indisponibilité
+  // et ne garde que le prochain créneau réellement disponible par service
+  const prestatairesIds = [...new Set(itemsBruts.map((s) => s.prestataire.id))];
+  const periodesBloquees = await chargerPeriodesBloquees(prestatairesIds);
   let items = itemsBruts.map((service) => ({
     ...service,
-    creneaux: service.creneaux.filter((c) => c.capaciteReservee < c.capaciteTotale).slice(0, 1),
+    creneaux: service.creneaux
+      .filter((c) => c.capaciteReservee < c.capaciteTotale)
+      .filter((c) => !creneauEstBloque(c, periodesBloquees, service.prestataire.id))
+      .slice(0, 1),
   }));
 
   // Tri par distance (carte) : calcul fait en mÃ©moire car SQLite ne gÃ¨re pas le calcul gÃ©ographique
@@ -146,11 +186,16 @@ export async function obtenirDetailService(serviceId: string) {
     throw new ErreurNonTrouve("Service non trouvÃ©");
   }
 
-  // N'expose que les crÃ©neaux ayant encore de la capacitÃ© disponible
-  const creneauxDisponibles = service.creneaux.map((c) => ({
-    ...c,
-    disponible: c.capaciteReservee < c.capaciteTotale,
-  }));
+  // N'expose que les créneaux ayant encore de la capacité disponible et hors périodes d'indisponibilité
+  const periodesBloquees = await chargerPeriodesBloquees([service.prestataireId]);
+  const creneauxDisponibles = service.creneaux.map((c) => {
+    const estBloque = creneauEstBloque(c, periodesBloquees, service.prestataireId);
+    return {
+      ...c,
+      disponible: c.capaciteReservee < c.capaciteTotale && !estBloque,
+      bloque: estBloque,
+    };
+  });
 
   // Avis rÃ©cents pour ce prestataire
   const avis = await prisma.avis.findMany({
@@ -362,7 +407,7 @@ export async function recommanderServices(utilisateurId: string, limite = 10) {
     }
   }
 
-  const items = await prisma.serviceOffert.findMany({
+  const itemsBruts = await prisma.serviceOffert.findMany({
     where: ou,
     include: {
       prestataire: {
@@ -381,9 +426,13 @@ export async function recommanderServices(utilisateurId: string, limite = 10) {
     take: limite,
   });
 
-  return items.map((s) => ({
+  const periodesBloquees = await chargerPeriodesBloquees([...new Set(itemsBruts.map((s) => s.prestataire.id))]);
+
+  return itemsBruts.map((s) => ({
     ...s,
-    creneaux: s.creneaux.filter((c) => c.capaciteReservee < c.capaciteTotale),
+    creneaux: s.creneaux.filter(
+      (c) => c.capaciteReservee < c.capaciteTotale && !creneauEstBloque(c, periodesBloquees, s.prestataire.id)
+    ),
   }));
 }
 

@@ -11,6 +11,7 @@ import '../prestataire/scan_qr_screen.dart';
 import '../prestataire/packages_screen.dart';
 import '../prestataire/calendrier_prestataire_screen.dart';
 import '../prestataire/statistiques_prestataire_screen.dart';
+import '../prestataire/indisponibilites_prestataire_screen.dart';
 
 class PrestataireScreen extends StatefulWidget {
   const PrestataireScreen({super.key});
@@ -156,6 +157,13 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             tooltip: 'Statistiques',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const StatistiquesPrestataireScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.event_busy),
+            tooltip: 'Jours bloqués',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const IndisponibilitesPrestataireScreen()),
             ),
           ),
           IconButton(

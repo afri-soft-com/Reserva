@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users, CalendarX } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { BadgeStatutReservation } from "../../../components/Carte";
 import { toastErreur } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
-import { obtenirCalendrier, ReponseCalendrier, CreneauCalendrier } from "../../../lib/api-prestataires";
+import { obtenirCalendrier, ReponseCalendrier, CreneauCalendrier, PeriodeIndisponible } from "../../../lib/api-prestataires";
 import { formaterMontant } from "@reserva/shared";
 import clsx from "clsx";
 
@@ -56,6 +56,25 @@ export default function PageCalendrierPrestataire() {
   const cellules = construireJours(annee, moisNum);
   const libelleMois = new Date(annee, moisNum, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
   const creneauxSelectionnes = jourSelectionne ? donnees?.jours[jourSelectionne] ?? [] : [];
+  const periodes = donnees?.periodesBloquees ?? [];
+
+  function jourEstBloque(cle: string) {
+    const jourDebut = new Date(`${cle}T00:00:00.000Z`);
+    const jourFin = new Date(jourDebut.getTime() + 86400000);
+    return periodes.some((p) => {
+      const dDebut = new Date(p.dateDebut);
+      const dFin = new Date(p.dateFin);
+      return dDebut < jourFin && dFin > jourDebut;
+    });
+  }
+
+  const periodesDuJourSelectionne: PeriodeIndisponible[] = jourSelectionne
+    ? periodes.filter((p) => {
+        const jourDebut = new Date(`${jourSelectionne}T00:00:00.000Z`);
+        const jourFin = new Date(jourDebut.getTime() + 86400000);
+        return new Date(p.dateDebut) < jourFin && new Date(p.dateFin) > jourDebut;
+      })
+    : [];
 
   return (
     <div className="space-y-6">
@@ -111,6 +130,7 @@ export default function PageCalendrierPrestataire() {
               const cle = `${mois}-${String(jour).padStart(2, "0")}`;
               const creneauxDuJour = donnees.jours[cle] ?? [];
               const reserve = creneauxDuJour.reduce((s, c) => s + c.reservations.length, 0);
+              const bloque = jourEstBloque(cle);
               const aujourdhuiCle = `${aujourdhui.getFullYear()}-${String(aujourdhui.getMonth() + 1).padStart(2, "0")}-${String(aujourdhui.getDate()).padStart(2, "0")}`;
               return (
                 <button
@@ -118,12 +138,22 @@ export default function PageCalendrierPrestataire() {
                   onClick={() => setJourSelectionne(cle)}
                   className={clsx(
                     "min-h-20 rounded-lg p-1.5 text-left align-top transition",
-                    creneauxDuJour.length === 0 ? "bg-gray-50 text-gray-400" : "bg-primaire-50 text-gray-900 hover:bg-primaire-100",
+                    bloque
+                      ? "bg-red-50 text-red-900 hover:bg-red-100"
+                      : creneauxDuJour.length === 0
+                        ? "bg-gray-50 text-gray-400"
+                        : "bg-primaire-50 text-gray-900 hover:bg-primaire-100",
                     jourSelectionne === cle && "ring-2 ring-primaire",
                     aujourdhuiCle === cle && "font-bold"
                   )}
                 >
                   <span className="text-sm font-semibold">{jour}</span>
+                  {bloque && (
+                    <div className="mt-1 flex items-center gap-1 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700">
+                      <CalendarX className="h-3 w-3" />
+                      Bloqué
+                    </div>
+                  )}
                   <div className="mt-1 space-y-0.5">
                     {creneauxDuJour.slice(0, 3).map((c) => (
                       <div key={c.id} className="flex items-center gap-1 rounded bg-white/70 px-1 text-[10px]">
@@ -152,6 +182,23 @@ export default function PageCalendrierPrestataire() {
                 ? `Détails du ${new Date(`${jourSelectionne}T00:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`
                 : "Sélectionnez un jour pour voir le détail"}
             </h2>
+            {periodesDuJourSelectionne.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {periodesDuJourSelectionne.map((p) => (
+                  <div key={p.id} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                    <p className="font-semibold">
+                      <CalendarX className="mr-1 inline h-4 w-4" />
+                      Jour bloqué {p.service ? `· ${p.service.nom}` : "· tous les services"}
+                    </p>
+                    <p className="text-xs text-red-700">
+                      Du {new Date(p.dateDebut).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} au{" "}
+                      {new Date(p.dateFin).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                      {p.motif ? ` — ${p.motif}` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
             {jourSelectionne && creneauxSelectionnes.length === 0 && (
               <p className="text-sm text-gray-500">Aucun créneau ce jour.</p>
             )}

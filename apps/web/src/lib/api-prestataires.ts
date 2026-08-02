@@ -109,11 +109,40 @@ export interface ReponseCalendrier {
   totalCreneaux: number;
   totalReservations: number;
   jours: Record<string, CreneauCalendrier[]>;
+  periodesBloquees?: PeriodeIndisponible[];
+}
+
+export interface PeriodeIndisponible {
+  id: string;
+  dateDebut: string;
+  dateFin: string;
+  motif?: string | null;
+  service?: { id: string; nom: string } | null;
 }
 
 export async function obtenirCalendrier(mois?: string) {
   const { data } = await clientApi.get("/prestataires/moi/calendrier", { params: mois ? { mois } : {} });
   return data.donnees as ReponseCalendrier;
+}
+
+export async function creerPeriodeIndisponible(input: {
+  serviceId?: string;
+  dateDebut: string;
+  dateFin: string;
+  motif?: string;
+}) {
+  const { data } = await clientApi.post("/indisponibilites/", input);
+  return data.donnees as PeriodeIndisponible;
+}
+
+export async function listerMesPeriodesIndisponibles(serviceId?: string) {
+  const { data } = await clientApi.get("/indisponibilites/moi", { params: serviceId ? { serviceId } : {} });
+  return data.donnees as PeriodeIndisponible[];
+}
+
+export async function supprimerPeriodeIndisponible(periodeId: string) {
+  const { data } = await clientApi.delete(`/indisponibilites/${periodeId}`);
+  return data.donnees as { id: string };
 }
 
 export interface StatistiquesPrestataire {

@@ -369,7 +369,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
   Widget _buildCreneaux(List<Creneau> creneaux) {
     final disponibles = creneaux.where((c) => c.disponible).toList();
-    final complets = creneaux.where((c) => !c.disponible).toList();
+    final bloques = creneaux.where((c) => c.bloque).toList();
+    final complets = creneaux.where((c) => !c.disponible && !c.bloque).toList();
     final auth = context.watch<AuthProvider>();
     final estClient = !auth.estPrestataire;
     return Column(
@@ -477,6 +478,33 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     )
                   else
                     const Icon(Icons.block, color: AppCouleurs.texteSecondaire),
+                ],
+              ),
+            ),
+          )),
+        ],
+        if (bloques.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('Créneaux indisponibles', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          ...bloques.map((c) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Carte(
+              child: Row(
+                children: [
+                  const Icon(Icons.event_busy, color: AppCouleurs.texteSecondaire, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${c.debut.substring(11, 16)} - ${c.fin.substring(11, 16)}',
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text('${c.debut.substring(0, 10)} • Bloqué par le prestataire',
+                          style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
