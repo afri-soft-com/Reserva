@@ -39,4 +39,18 @@ class ApiPackages {
     if (data is List) return data;
     return [];
   }
+
+  static Future<Map<String, dynamic>> detailPublic(String packageId) async {
+    return (await ApiClient.get('/packages/$packageId')) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> reserverPackage({
+    required String packageId,
+    required List<Map<String, String>> items,
+  }) async {
+    return (await ApiClient.post('/packages/reserver', body: {
+      'packageId': packageId,
+      'items': items,
+    })) as Map<String, dynamic>;
+  }
 }

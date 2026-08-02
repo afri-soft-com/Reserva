@@ -2,12 +2,15 @@ import { Router } from "express";
 import * as packagesController from "./packages.controller";
 import { valider } from "../../middlewares/valider";
 import { authentifier, exigerRole } from "../../middlewares/auth";
-import { schemaCreerPackage, schemaModifierPackage } from "./packages.schema";
+import { schemaCreerPackage, schemaModifierPackage, schemaReserverPackage } from "./packages.schema";
 
 export const routesPackages = Router();
 
 // Public
 routesPackages.get("/", packagesController.listerPublics);
+
+// Client — réservation d'un package en 1 clic (déclaré avant les routes paramétriques)
+routesPackages.post("/reserver", authentifier, exigerRole("CLIENT", "ADMIN"), valider(schemaReserverPackage), packagesController.reserver);
 
 // Prestataire (declare avant les routes paramétriques /:packageId)
 routesPackages.get("/moi/packages", authentifier, exigerRole("PRESTATAIRE"), packagesController.mesPackages);

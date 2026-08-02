@@ -578,6 +578,14 @@ void _showDetailPackage(BuildContext context, Map<String, dynamic> pack) {
             const SizedBox(height: 12),
             const Text('Forfait groupant plusieurs services de ce prestataire. Réservez chaque service individuellement via sa fiche.',
               style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+            const SizedBox(height: 16),
+            Bouton(
+              titre: 'Réserver ce package',
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                context.push('/package/${pack['id']}');
+              },
+            ),
           ],
         ),
       ),

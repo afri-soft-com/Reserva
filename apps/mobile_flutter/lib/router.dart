@@ -23,6 +23,7 @@ import 'screens/cartes_cadeaux/cartes_cadeaux_screen.dart';
 import 'screens/cartes_cadeaux/acheter_carte_cadeau_screen.dart';
 import 'screens/cartes_cadeaux/detail_carte_cadeau_screen.dart';
 import 'screens/parrainage/parrainage_screen.dart';
+import 'screens/package/package_detail_screen.dart';
 
 GoRouter createRouter(AuthProvider auth) {
   return GoRouter(
@@ -136,6 +137,10 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(
         path: '/parrainage',
         builder: (ctx, state) => const ParrainageScreen(),
+      ),
+      GoRoute(
+        path: '/package/:id',
+        builder: (ctx, state) => PackageDetailScreen(packageId: state.pathParameters['id']!),
       ),
     ],
   );

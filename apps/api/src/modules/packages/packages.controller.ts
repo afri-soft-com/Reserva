@@ -28,6 +28,12 @@ export const mesPackages = asyncHandler(async (req: Request, res: Response) => {
   envoyerSucces(res, resultat);
 });
 
+export const reserver = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await packagesService.reserverPackage(req.utilisateur.utilisateurId, req.body);
+  envoyerSucces(res, resultat, 201);
+});
+
 export const modifier = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const resultat = await packagesService.modifierPackage(req.utilisateur.utilisateurId, req.params.packageId, req.body);

@@ -168,6 +168,8 @@ model Reservation {
   notifications       Notification[]
   carteCadeauId       String?
   carteCadeau         CarteCadeau? @relation(fields: [carteCadeauId], references: [id])
+  packageId           String?
+  package             PackageService? @relation(fields: [packageId], references: [id])
 
   @@index([clientId])
   @@index([prestataireId])
@@ -420,6 +422,7 @@ model PackageService {
   misAJourLe      DateTime @updatedAt
 
   services        PackageServiceItem[]
+  reservations    Reservation[]
 
   @@index([prestataireId])
   @@map("packages_services")
