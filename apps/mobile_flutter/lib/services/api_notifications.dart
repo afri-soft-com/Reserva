@@ -41,7 +41,7 @@ class ApiNotifications {
 
   static Future<int> compteur() async {
     final data = await ApiClient.get('/notifications/compteur');
-    if (data is Map) return data['compteur'] as int? ?? 0;
+    if (data is Map) return data['total'] as int? ?? 0;
     return 0;
   }
 
