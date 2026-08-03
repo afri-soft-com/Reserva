@@ -77,7 +77,7 @@ class _CartesCadeauxScreenState extends State<CartesCadeauxScreen> {
                             children: [
                               const Text('Solde disponible', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                               const SizedBox(height: 2),
-                              Text(_formater(_soldeTotal, 'USD'),
+                              Text(_formater(_soldeTotal, 'CDF'),
                                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
                             ],
                           ),
