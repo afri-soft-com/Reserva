@@ -39,6 +39,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   int? _rayonKm;
   double? _lat;
   double? _lng;
+  String? _disponibilite;
   bool _afficheCarte = false;
   bool _positionnement = false;
   bool _filtresEtendus = false;
@@ -51,6 +52,12 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
     'Note': 'note_desc',
     'Nom': 'nom_asc',
     'Proximité': 'distance_asc',
+    'Disponible le plus tôt': 'disponible_asc',
+  };
+  static const _optionsDisponibilite = {
+    'Toutes': null,
+    "Disponible aujourd'hui": 'aujourdhui',
+    'Sous 24h': '24h',
   };
   static const _optionsRayon = {'Tout': null, '5 km': 5, '10 km': 10, '20 km': 20, '50 km': 50, '100 km': 100};
 
@@ -80,7 +87,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   }
 
   String _cacheCle() {
-    return '${_searchCtrl.text}|$_villeFiltre|$_tri|$_prixMin|$_prixMax|$_noteMin|$_rayonKm|$_lat|$_lng';
+    return '${_searchCtrl.text}|$_villeFiltre|$_tri|$_prixMin|$_prixMax|$_noteMin|$_rayonKm|$_lat|$_lng|$_disponibilite';
   }
 
   Future<void> _charger() async {
@@ -114,6 +121,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
           latitude: _lat,
           longitude: _lng,
           rayonKm: _rayonKm,
+          disponibilite: _disponibilite,
           page: 1,
           parPage: 20,
         ),
@@ -151,6 +159,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
         latitude: _lat,
         longitude: _lng,
         rayonKm: _rayonKm,
+        disponibilite: _disponibilite,
         page: _page + 1,
         parPage: 20,
       );
@@ -435,6 +444,27 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                           },
                         ),
                       ],
+                    ),
+                    const Divider(height: 20),
+                    const Text('Disponibilité', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: _optionsDisponibilite.entries.map((e) {
+                        final actif = _disponibilite == e.value;
+                        return ChoiceChip(
+                          label: Text(e.key, style: TextStyle(fontSize: 12, color: actif ? Colors.white : AppCouleurs.texteSecondaire)),
+                          selected: actif,
+                          selectedColor: AppCouleurs.primaire,
+                          backgroundColor: AppCouleurs.fond,
+                          onSelected: (_) {
+                            setState(() => _disponibilite = e.value);
+                            _page = 1;
+                            _charger();
+                          },
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        );
+                      }).toList(),
                     ),
                   ],
                 ),

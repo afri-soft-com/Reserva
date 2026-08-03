@@ -21,7 +21,8 @@ export const schemaRechercheServices = z.object({
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
   rayonKm: z.coerce.number().positive().max(100).optional(),
-  tri: z.enum(["prix_asc", "prix_desc", "note_desc", "nom_asc", "distance_asc"]).optional(),
+  disponibilite: z.enum(["aujourdhui", "24h"]).optional(),
+  tri: z.enum(["prix_asc", "prix_desc", "note_desc", "nom_asc", "distance_asc", "disponible_asc"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   parPage: z.coerce.number().int().min(1).max(50).default(20),
 });

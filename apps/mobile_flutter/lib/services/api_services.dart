@@ -13,6 +13,7 @@ class ApiServices {
     double? latitude,
     double? longitude,
     int? rayonKm,
+    String? disponibilite,
     int page = 1,
     int parPage = 20,
   }) async {
@@ -30,6 +31,7 @@ class ApiServices {
     if (latitude != null) params['latitude'] = latitude.toStringAsFixed(6);
     if (longitude != null) params['longitude'] = longitude.toStringAsFixed(6);
     if (rayonKm != null) params['rayonKm'] = rayonKm.toString();
+    if (disponibilite != null) params['disponibilite'] = disponibilite;
 
     final data = await ApiClient.get('/services', params: params);
     final items = (data['items'] as List<dynamic>?) ?? [];

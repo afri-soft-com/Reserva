@@ -88,6 +88,10 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
   else if (filtres.tri === "note_desc") orderBy = { prestataire: { noteMoyenne: "desc" } };
   else if (filtres.tri === "nom_asc") orderBy = { nom: "asc" };
 
+  // Quand un filtre de disponibilité est actif, on charge plus de candidats
+  // pour que le tri/filtrage post-traitement (disponibilité réelle) reste pertinent.
+  const takeBase = filtres.disponibilite ? Math.min(filtres.parPage * 5, 200) : filtres.parPage;
+
   const [itemsBruts, total] = await Promise.all([
     prisma.serviceOffert.findMany({
       where: ou,
@@ -112,7 +116,7 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
         },
       },
       skip: offset,
-      take: filtres.parPage,
+      take: takeBase,
       orderBy,
     }),
     prisma.serviceOffert.count({ where: ou }),
@@ -129,6 +133,31 @@ export async function rechercherServices(filtres: RechercheServicesInput) {
       .filter((c) => !creneauEstBloque(c, periodesBloquees, service.prestataire.id))
       .slice(0, 1),
   }));
+
+  // Filtre "disponible aujourd'hui" ou "disponible sous 24h"
+  if (filtres.disponibilite) {
+    const maintenant = new Date();
+    let limite: Date;
+    if (filtres.disponibilite === "aujourdhui") {
+      limite = new Date(maintenant);
+      limite.setHours(23, 59, 59, 999);
+    } else {
+      limite = new Date(maintenant.getTime() + 24 * 60 * 60 * 1000);
+    }
+    items = items.filter((s) => s.creneaux.length > 0 && s.creneaux[0].debut <= limite);
+  }
+
+  // Tri par disponibilité : prochain créneau le plus proche d'abord
+  if (filtres.tri === "disponible_asc") {
+    items = [...items].sort((a, b) => {
+      const aDebut = a.creneaux[0]?.debut;
+      const bDebut = b.creneaux[0]?.debut;
+      if (!aDebut && !bDebut) return 0;
+      if (!aDebut) return 1;
+      if (!bDebut) return -1;
+      return aDebut.getTime() - bDebut.getTime();
+    });
+  }
 
   // Tri par distance (carte) : calcul fait en mÃ©moire car SQLite ne gÃ¨re pas le calcul gÃ©ographique
   if (filtres.tri === "distance_asc" && filtres.latitude !== undefined && filtres.longitude !== undefined) {
