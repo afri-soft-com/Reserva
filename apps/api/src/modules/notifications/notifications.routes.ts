@@ -9,6 +9,7 @@ routesNotifications.get("/", authentifier, notificationsController.lister);
 routesNotifications.get("/compteur", authentifier, notificationsController.compteur);
 routesNotifications.patch("/:notificationId/lue", authentifier, notificationsController.marquerLue);
 routesNotifications.patch("/toutes-lues", authentifier, notificationsController.marquerToutesLues);
+routesNotifications.delete("/:notificationId", authentifier, notificationsController.supprimer);
 
 // Endpoint pour scheduler externe — protégé par secret partagé, pas par JWT utilisateur
 routesNotifications.post("/cron/rappels", verifierSecretCron, notificationsController.declencherRappels);

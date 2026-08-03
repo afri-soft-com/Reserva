@@ -111,57 +111,74 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (ctx, i) {
                   final n = _notifications[i];
-                  return Material(
-                    color: n.lu ? AppCouleurs.blanc : AppCouleurs.primaireClair,
-                    borderRadius: BorderRadius.circular(AppRayons.carte),
-                    child: InkWell(
+                  return Dismissible(
+                    key: ValueKey(n.id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      decoration: BoxDecoration(
+                        color: AppCouleurs.alerte,
+                        borderRadius: BorderRadius.circular(AppRayons.carte),
+                      ),
+                      child: const Icon(Icons.delete_outline, color: AppCouleurs.blanc),
+                    ),
+                    onDismissed: (_) {
+                      setState(() => _notifications.removeWhere((x) => x.id == n.id));
+                      ApiNotifications.supprimer(n.id).catchError((_) {});
+                    },
+                    child: Material(
+                      color: n.lu ? AppCouleurs.blanc : AppCouleurs.primaireClair,
                       borderRadius: BorderRadius.circular(AppRayons.carte),
-                      onTap: () {
-                        if (!n.lu) _marquerLue(n.id);
-                        if (n.reservationId != null) {
-                          context.push('/reservation/${n.reservationId}');
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: _couleurType(n.type).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRayons.carte),
+                        onTap: () {
+                          if (!n.lu) _marquerLue(n.id);
+                          if (n.reservationId != null) {
+                            context.push('/reservation/${n.reservationId}');
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _couleurType(n.type).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(_iconeType(n.type), size: 20, color: _couleurType(n.type)),
                               ),
-                              child: Icon(_iconeType(n.type), size: 20, color: _couleurType(n.type)),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(n.titre,
-                                          style: TextStyle(
-                                            fontSize: 14, fontWeight: n.lu ? FontWeight.w500 : FontWeight.w700,
-                                            color: AppCouleurs.texte,
-                                          )),
-                                      ),
-                                      Text(_tempsDepuis(n.creeLe),
-                                        style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(n.message,
-                                    style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
-                                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                                ],
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(n.titre,
+                                            style: TextStyle(
+                                              fontSize: 14, fontWeight: n.lu ? FontWeight.w500 : FontWeight.w700,
+                                              color: AppCouleurs.texte,
+                                            )),
+                                        ),
+                                        Text(_tempsDepuis(n.creeLe),
+                                          style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(n.message,
+                                      style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
+                                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),

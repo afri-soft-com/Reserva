@@ -73,7 +73,19 @@ export async function repondreAvis(utilisateurId: string, input: ReponseAvisInpu
     throw new ErreurValidation("Une réponse a déjà été apportée à cet avis");
   }
 
-  return prisma.avis.update({ where: { id: input.avisId }, data: { reponsePrestataire: input.reponse } });
+  const avisMisAJour = await prisma.avis.update({ where: { id: input.avisId }, data: { reponsePrestataire: input.reponse } });
+
+  await prisma.notification.create({
+    data: {
+      utilisateurId: avis.clientId,
+      reservationId: avis.reservationId,
+      titre: "Réponse à votre avis",
+      message: `${prestataire.nomEntreprise} a répondu à votre avis : « ${input.reponse} »`,
+      type: "AVIS",
+    },
+  });
+
+  return avisMisAJour;
 }
 
 /** Liste les avis laissés par le client connecté */

@@ -52,4 +52,8 @@ class ApiNotifications {
   static Future<void> marquerToutesLues() async {
     await ApiClient.patch('/notifications/toutes-lues');
   }
+
+  static Future<void> supprimer(String notificationId) async {
+    await ApiClient.delete('/notifications/$notificationId');
+  }
 }

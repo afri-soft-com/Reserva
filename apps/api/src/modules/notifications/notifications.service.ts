@@ -37,6 +37,19 @@ export async function marquerToutesLues(utilisateurId: string) {
   return { nombreMisesAJour: resultat.count };
 }
 
+/** Supprime une notification de l'utilisateur */
+export async function supprimerNotification(utilisateurId: string, notificationId: string) {
+  const notification = await prisma.notification.findUnique({ where: { id: notificationId } });
+  if (!notification) {
+    throw new ErreurNonTrouve("Notification non trouvée");
+  }
+  if (notification.utilisateurId !== utilisateurId) {
+    throw new ErreurInterdit("Accès refusé à cette notification");
+  }
+  await prisma.notification.delete({ where: { id: notificationId } });
+  return { supprime: true };
+}
+
 /**
  * Tâche planifiée : envoie les rappels SMS pour les réservations confirmées dans les
  * prochaines 24h et 1h. Conçu pour être appelé par un cron job (voir docs/cron.md).

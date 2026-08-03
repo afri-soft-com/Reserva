@@ -29,6 +29,12 @@ export const marquerToutesLues = asyncHandler(async (req: Request, res: Response
   envoyerSucces(res, resultat);
 });
 
+export const supprimer = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await notificationsService.supprimerNotification(req.utilisateur.utilisateurId, req.params.notificationId);
+  envoyerSucces(res, resultat);
+});
+
 /** Endpoint déclenchable par un cron externe (ex: cron-job.org, ou un scheduler interne) */
 export const declencherRappels = asyncHandler(async (_req: Request, res: Response) => {
   const resultat = await notificationsService.envoyerRappelsAutomatiques();
