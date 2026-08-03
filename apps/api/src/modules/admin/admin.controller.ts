@@ -107,3 +107,9 @@ export const exporterCSV = asyncHandler(async (req: Request, res: Response) => {
   res.setHeader("Content-Disposition", `attachment; filename="export-${req.params.type}-${Date.now()}.csv"`);
   res.send("\uFEFF" + csv); // BOM UTF-8 pour Excel
 });
+
+/** Endpoint déclenchable par un cron externe : génère et persiste le rapport hebdomadaire PDF */
+export const rapportHebdomadaire = asyncHandler(async (_req: Request, res: Response) => {
+  const resultat = await adminService.genererRapportHebdomadaire();
+  envoyerSucces(res, resultat);
+});

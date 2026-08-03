@@ -22,7 +22,8 @@ function construireFiltres(filtres?: FiltresStatistiques) {
 
   let debutPeriode: Date | null = null;
   const periode = filtres?.periode ?? "mois";
-  if (periode === "mois") debutPeriode = debutMois;
+  if (periode === "semaine") debutPeriode = debutSemaine;
+  else if (periode === "mois") debutPeriode = debutMois;
   else if (periode === "trimestre") {
     debutPeriode = new Date(maintenant);
     debutPeriode.setDate(debutPeriode.getDate() - 90);
@@ -34,7 +35,8 @@ function construireFiltres(filtres?: FiltresStatistiques) {
   const filtreDates = debutPeriode ? { creeLe: { gte: debutPeriode } } : {};
   const baseWhere = { ...wherePrestataire, ...filtreDates };
   const libellePeriode =
-    periode === "mois" ? "Ce mois-ci"
+    periode === "semaine" ? "Cette semaine"
+    : periode === "mois" ? "Ce mois-ci"
     : periode === "trimestre" ? "90 derniers jours"
     : periode === "annee" ? "Cette année"
     : "Toute la période";
@@ -413,4 +415,30 @@ export async function genererStatistiquesPdf(filtres?: FiltresStatistiques): Pro
   return new Promise((resolve) => {
     doc.on("end", () => resolve(Buffer.concat(buffers)));
   });
+}
+
+/**
+ * Génère et enregistre le rapport hebdomadaire (PDF) dans le dossier des rapports.
+ * Conçu pour être déclenché chaque semaine par un cron externe (voir docs/cron.md).
+ */
+export async function genererRapportHebdomadaire() {
+  const fs = await import("fs");
+  const path = await import("path");
+
+  const dossierRapports = path.join(process.cwd(), "rapports");
+  fs.mkdirSync(dossierRapports, { recursive: true });
+
+  const maintenant = new Date();
+  const nomFichier = `rapport-hebdomadaire-${maintenant.toISOString().slice(0, 10)}.pdf`;
+  const cheminComplet = path.join(dossierRapports, nomFichier);
+
+  const pdf = await genererStatistiquesPdf({ periode: "semaine" });
+  fs.writeFileSync(cheminComplet, pdf);
+
+  return {
+    fichier: nomFichier,
+    chemin: cheminComplet,
+    tailleOctets: pdf.length,
+    genereLe: maintenant.toISOString(),
+  };
 }
