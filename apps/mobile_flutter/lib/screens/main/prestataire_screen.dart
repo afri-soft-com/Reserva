@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../theme.dart';
 import '../../models/models.dart';
 import '../../services/api_prestataire.dart';
+import '../../services/cache_hors_ligne.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/badge_statut.dart';
 import '../../widgets/squelette.dart';
@@ -189,6 +190,10 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (ApiPrestataire.horsLigne) ...[
+              _buildBandeauHorsLigne(),
+              const SizedBox(height: 8),
+            ],
             _buildStatsRow(stats),
             const SizedBox(height: 8),
             _buildStatsRow2(stats),
@@ -1468,5 +1473,28 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     }
+  }
+
+  Widget _buildBandeauHorsLigne() {
+    final date = ApiPrestataire.cacheSauvegardeLe;
+    final texte = date != null
+        ? 'Mode hors ligne — données du ${CacheHorsLigne.formaterDate(date)}'
+        : 'Mode hors ligne — données enregistrées';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppCouleurs.avertissement.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off, size: 18, color: AppCouleurs.avertissement),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(texte, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppCouleurs.avertissement)),
+          ),
+        ],
+      ),
+    );
   }
 }

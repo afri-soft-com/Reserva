@@ -1,4 +1,5 @@
 import 'api_client.dart';
+import 'cache_hors_ligne.dart';
 import '../models/models.dart';
 
 class DashboardStats {
@@ -140,8 +141,22 @@ class AvisRecusData {
 }
 
 class ApiPrestataire {
+  static bool horsLigne = false;
+  static DateTime? cacheSauvegardeLe;
+
   static Future<DashboardData> obtenirTableauDeBord() async {
-    final data = await ApiClient.get('/prestataires/moi/tableau-de-bord');
+    late final Map<String, dynamic> data;
+    try {
+      data = (await ApiClient.get('/prestataires/moi/tableau-de-bord')) as Map<String, dynamic>;
+      await CacheHorsLigne.sauvegarder('dashboard_prestataire', {'data': data});
+      horsLigne = false;
+    } catch (_) {
+      final cache = await CacheHorsLigne.lire('dashboard_prestataire');
+      if (cache == null || cache['data'] is! Map<String, dynamic>) rethrow;
+      horsLigne = true;
+      cacheSauvegardeLe = await CacheHorsLigne.dateSauvegarde('dashboard_prestataire');
+      data = cache['data'] as Map<String, dynamic>;
+    }
     final aujourdhui = (data['reservationsAujourdhui'] as List<dynamic>? ?? []).map((e) {
       final r = e as Map<String, dynamic>;
       final service = ServiceOffert.fromJson(r['service'] as Map<String, dynamic>? ?? {});

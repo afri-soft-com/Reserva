@@ -17,6 +17,23 @@ class ApiClient {
   static Future<void> saveBiometriePref(String valeur) => _storage.write(key: _biometrieKey, value: valeur);
   static Future<void> deleteBiometriePref() => _storage.delete(key: _biometrieKey);
 
+  /// Stocke une structure JSON localement (cache hors ligne)
+  static Future<void> saveJson(String cle, Map<String, dynamic> donnees) =>
+      _storage.write(key: cle, value: jsonEncode(donnees));
+
+  /// Lit une structure JSON stockée localement (ou null si absente)
+  static Future<Map<String, dynamic>?> readJson(String cle) async {
+    final brut = await _storage.read(key: cle);
+    if (brut == null) return null;
+    try {
+      final decoded = jsonDecode(brut);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
   static Future<dynamic> request(
     String method,
     String path, {

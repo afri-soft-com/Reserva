@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../theme.dart';
 import '../../models/models.dart';
 import '../../services/api_reservations.dart';
+import '../../services/cache_hors_ligne.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/badge_statut.dart';
 import '../../widgets/toast.dart';
@@ -60,6 +61,29 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
     return '${montant.toStringAsFixed(0)} FC';
   }
 
+  Widget _buildBandeauHorsLigne() {
+    final date = ApiReservations.cacheSauvegardeLe;
+    final texte = date != null
+        ? 'Mode hors ligne — données du ${CacheHorsLigne.formaterDate(date)}'
+        : 'Mode hors ligne — données enregistrées';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppCouleurs.avertissement.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off, size: 18, color: AppCouleurs.avertissement),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(texte, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppCouleurs.avertissement)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -93,6 +117,12 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
               }),
             ),
           ),
+          if (ApiReservations.horsLigne) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: _buildBandeauHorsLigne(),
+            ),
+          ],
           Expanded(
             child: _chargement
                 ? ListView.builder(

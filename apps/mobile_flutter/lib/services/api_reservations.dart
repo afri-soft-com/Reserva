@@ -1,7 +1,10 @@
 import 'api_client.dart';
+import 'cache_hors_ligne.dart';
 import '../models/models.dart';
 
 class ApiReservations {
+  static bool horsLigne = false;
+  static DateTime? cacheSauvegardeLe;
   static Future<ReservationDetaillee> creerReservation({
     required String serviceId,
     required String creneauId,
@@ -38,18 +41,34 @@ class ApiReservations {
   static Future<List<ReservationDetaillee>> listerMesReservations({String? statut}) async {
     final params = <String, String>{};
     if (statut != null) params['statut'] = statut;
-    final data = await ApiClient.get('/reservations/moi', params: params.isNotEmpty ? params : null);
-    final List<dynamic> items;
-    if (data is Map && data.containsKey('items')) {
-      items = data['items'] as List<dynamic>? ?? [];
-    } else if (data is List) {
-      items = data;
-    } else {
-      items = [];
-    }
-    if (items.isNotEmpty) {
+    try {
+      final data = await ApiClient.get('/reservations/moi', params: params.isNotEmpty ? params : null);
+      final items = _extraireItems(data);
+      if (statut == null) {
+        await CacheHorsLigne.sauvegarder('reservations_client', {'items': items});
+      }
+      horsLigne = false;
       return items.map((e) => ReservationDetaillee.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      final cache = await CacheHorsLigne.lire('reservations_client');
+      if (cache != null && cache['items'] is List) {
+        horsLigne = true;
+        cacheSauvegardeLe = await CacheHorsLigne.dateSauvegarde('reservations_client');
+        var items = (cache['items'] as List).cast<Map<String, dynamic>>();
+        if (statut != null) {
+          items = items.where((e) => e['statut'] == statut).toList();
+        }
+        return items.map((e) => ReservationDetaillee.fromJson(e)).toList();
+      }
+      rethrow;
     }
+  }
+
+  static List<dynamic> _extraireItems(dynamic data) {
+    if (data is Map && data.containsKey('items')) {
+      return data['items'] as List<dynamic>? ?? [];
+    }
+    if (data is List) return data;
     return [];
   }
 
