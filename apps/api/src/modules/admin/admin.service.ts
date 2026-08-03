@@ -1,11 +1,49 @@
 import { prisma } from "../../config/prisma";
 
-export async function obtenirStatistiquesPlateforme() {
+export interface FiltresStatistiques {
+  periode?: string; // mois | trimestre | annee | tout
+  ville?: string;
+  categorie?: string;
+}
+
+function construireFiltres(filtres?: FiltresStatistiques) {
   const maintenant = new Date();
   const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
   const debutSemaine = new Date(maintenant);
   debutSemaine.setDate(debutSemaine.getDate() - debutSemaine.getDay());
   debutSemaine.setHours(0, 0, 0, 0);
+
+  const filtrePrestataire: { ville?: string; categorie?: string } = {};
+  if (filtres?.ville) filtrePrestataire.ville = filtres.ville;
+  if (filtres?.categorie) filtrePrestataire.categorie = filtres.categorie;
+
+  const filtreActif = filtrePrestataire.ville !== undefined || filtrePrestataire.categorie !== undefined;
+  const wherePrestataire = filtreActif ? { prestataire: filtrePrestataire } : {};
+
+  let debutPeriode: Date | null = null;
+  const periode = filtres?.periode ?? "mois";
+  if (periode === "mois") debutPeriode = debutMois;
+  else if (periode === "trimestre") {
+    debutPeriode = new Date(maintenant);
+    debutPeriode.setDate(debutPeriode.getDate() - 90);
+    debutPeriode.setHours(0, 0, 0, 0);
+  } else if (periode === "annee") {
+    debutPeriode = new Date(maintenant.getFullYear(), 0, 1);
+  }
+
+  const filtreDates = debutPeriode ? { creeLe: { gte: debutPeriode } } : {};
+  const baseWhere = { ...wherePrestataire, ...filtreDates };
+  const libellePeriode =
+    periode === "mois" ? "Ce mois-ci"
+    : periode === "trimestre" ? "90 derniers jours"
+    : periode === "annee" ? "Cette année"
+    : "Toute la période";
+
+  return { maintenant, debutMois, debutSemaine, filtrePrestataire, wherePrestataire, filtreDates, baseWhere, libellePeriode };
+}
+
+export async function obtenirStatistiquesPlateforme(filtres?: FiltresStatistiques) {
+  const { maintenant, debutMois, debutSemaine, filtrePrestataire, wherePrestataire, filtreDates, baseWhere, libellePeriode } = construireFiltres(filtres);
 
   const [
     totalUtilisateurs,
@@ -20,18 +58,18 @@ export async function obtenirStatistiquesPlateforme() {
     utilisateursMois,
   ] = await Promise.all([
     prisma.utilisateur.count(),
-    prisma.prestataire.count(),
-    prisma.reservation.count(),
-    prisma.reservation.count({ where: { creeLe: { gte: debutMois } } }),
-    prisma.reservation.count({ where: { creeLe: { gte: debutSemaine } } }),
-    prisma.prestataire.count({ where: { statut: "EN_ATTENTE_VALIDATION" } }),
-    prisma.prestataire.count({ where: { statut: "APPROUVE" } }),
+    prisma.prestataire.count({ where: filtrePrestataire }),
+    prisma.reservation.count({ where: baseWhere }),
+    prisma.reservation.count({ where: { ...baseWhere, creeLe: { gte: debutMois } } }),
+    prisma.reservation.count({ where: { ...baseWhere, creeLe: { gte: debutSemaine } } }),
+    prisma.prestataire.count({ where: { ...filtrePrestataire, statut: "EN_ATTENTE_VALIDATION" } }),
+    prisma.prestataire.count({ where: { ...filtrePrestataire, statut: "APPROUVE" } }),
     prisma.reservation.aggregate({
-      where: { statutPaiement: "PAYE", creeLe: { gte: debutMois } },
+      where: { ...baseWhere, statutPaiement: "PAYE" },
       _sum: { montantPaye: true },
     }),
-    prisma.reservation.groupBy({ by: ["statut"], _count: true }),
-    prisma.utilisateur.count({ where: { creeLe: { gte: debutMois } } }),
+    prisma.reservation.groupBy({ by: ["statut"], where: baseWhere, _count: true }),
+    prisma.utilisateur.count({ where: filtreDates }),
   ]);
 
   const repartitionStatuts: Record<string, number> = {};
@@ -39,21 +77,20 @@ export async function obtenirStatistiquesPlateforme() {
     repartitionStatuts[groupe.statut] = groupe._count;
   }
 
+  const nbMois = (filtres?.periode ?? "mois") === "annee" ? 12 : 6;
   const evolution = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    d.setDate(1);
+  for (let i = nbMois - 1; i >= 0; i--) {
+    const d = new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1);
     d.setHours(0, 0, 0, 0);
     const fin = new Date(d);
     fin.setMonth(fin.getMonth() + 1);
     const stats = await prisma.reservation.aggregate({
-      where: { statutPaiement: "PAYE", creeLe: { gte: d, lt: fin } },
+      where: { ...wherePrestataire, statutPaiement: "PAYE", creeLe: { gte: d, lt: fin } },
       _sum: { montantPaye: true },
       _count: true,
     });
     const count = await prisma.reservation.count({
-      where: { creeLe: { gte: d, lt: fin } },
+      where: { ...wherePrestataire, creeLe: { gte: d, lt: fin } },
     });
     evolution.push({
       mois: d.toLocaleDateString("fr-FR", { month: "short", year: "numeric" }),
@@ -64,6 +101,7 @@ export async function obtenirStatistiquesPlateforme() {
   }
 
   return {
+    periode: libellePeriode,
     utilisateurs: {
       total: totalUtilisateurs,
       nouveauxCeMois: utilisateursMois,
@@ -277,4 +315,102 @@ export async function genererExportCSV(type: string, _query: any): Promise<strin
     case "utilisateurs": return exporterUtilisateursCSV();
     default: throw new Error("Type d'export invalide. Types supportés : reservations, prestataires, utilisateurs");
   }
+}
+
+/** Génère un rapport PDF des statistiques de la plateforme (filtrable par période, ville et catégorie) */
+export async function genererStatistiquesPdf(filtres?: FiltresStatistiques): Promise<Buffer> {
+  const stats = await obtenirStatistiquesPlateforme(filtres);
+
+  const PDFDocument = require("pdfkit");
+  const doc = new PDFDocument({ size: "A4", margin: 50 });
+  const buffers: Buffer[] = [];
+  doc.on("data", (chunk: Buffer) => buffers.push(chunk));
+
+  const bleu = "#1A56DB";
+  const gris = "#6B7280";
+  const deviseSymbole = "FC";
+
+  doc.font("Helvetica-Bold").fontSize(24).fillColor(bleu).text("RESERVA", { align: "center" });
+  doc.font("Helvetica").fontSize(10).fillColor(gris).text("Rapport de statistiques — Réservez. Sereinement.", { align: "center" });
+  doc.moveDown(0.3);
+  doc.fontSize(8).fillColor(gris).text(`Période : ${stats.periode} | Généré le ${new Date().toLocaleString("fr-FR")}`, { align: "center" });
+  if (filtres?.ville || filtres?.categorie) {
+    const libelleFiltres = [filtres?.categorie ? `Catégorie : ${filtres.categorie}` : "", filtres?.ville ? `Ville : ${filtres.ville}` : ""]
+      .filter(Boolean).join(" · ");
+    doc.fontSize(8).fillColor(gris).text(libelleFiltres, { align: "center" });
+  }
+  doc.moveDown(0.5);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor(bleu).lineWidth(2).stroke();
+  doc.moveDown(0.5);
+
+  const kpis: Array<[string, string]> = [
+    ["Utilisateurs", String(stats.utilisateurs.total)],
+    ["Prestataires", String(stats.prestataires.total)],
+    ["Réservations", String(stats.reservations.total)],
+    ["Revenus", `${Math.round(stats.revenus.ceMois)} ${deviseSymbole}`],
+  ];
+  const kpiTop = doc.y;
+  const kpiCols = [50, 170, 290, 410];
+  kpis.forEach((kpi, i) => {
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#0F2A5E").text(kpi[0], kpiCols[i], kpiTop);
+    doc.font("Helvetica").fontSize(16).fillColor(bleu).text(kpi[1], kpiCols[i], kpiTop + 16);
+  });
+  doc.moveDown(2.2);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#E5E7EB").lineWidth(1).stroke();
+  doc.moveDown(0.5);
+
+  doc.font("Helvetica-Bold").fontSize(12).fillColor("#0F2A5E").text("Évolution mensuelle");
+  doc.moveDown(0.3);
+  const cols = [50, 200, 350, 450];
+  const largeurs = [140, 140, 90, 90];
+  doc.font("Helvetica-Bold").fontSize(8).fillColor("#0F2A5E");
+  const yEnTete = doc.y;
+  ["Mois", "Réservations", "Réservations payées", "Revenus"].forEach((l, i) => doc.text(l, cols[i], yEnTete, { width: largeurs[i] }));
+  doc.moveDown(0.3);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#EBF2FF").lineWidth(1).stroke();
+  doc.moveDown(0.3);
+  for (const e of stats.evolution) {
+    if (doc.y > 740) {
+      doc.addPage();
+      doc.moveDown(0.5);
+    }
+    const y = doc.y;
+    doc.font("Helvetica").fontSize(9).fillColor("#1F2937");
+    doc.text(e.mois, cols[0], y, { width: largeurs[0] });
+    doc.text(String(e.reservations), cols[1], y, { width: largeurs[1] });
+    doc.text(String(e.reservationsPayees), cols[2], y, { width: largeurs[2] });
+    doc.text(`${Math.round(e.revenus)} ${deviseSymbole}`, cols[3], y, { width: largeurs[3] });
+    doc.moveDown(0.5);
+  }
+
+  doc.moveDown(1);
+  doc.font("Helvetica-Bold").fontSize(12).fillColor("#0F2A5E").text("Réservations par statut");
+  doc.moveDown(0.3);
+  const parStatut = Object.entries(stats.reservations.parStatut);
+  if (parStatut.length === 0) {
+    doc.font("Helvetica").fontSize(9).fillColor(gris).text("Aucune réservation.", 50, doc.y);
+  } else {
+    const yStatut = doc.y;
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#0F2A5E").text("Statut", cols[0], yStatut);
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#0F2A5E").text("Nombre", cols[1], yStatut);
+    doc.moveDown(0.5);
+    for (const [statut, nombre] of parStatut) {
+      const y = doc.y;
+      doc.font("Helvetica").fontSize(9).fillColor("#1F2937");
+      doc.text(statut, cols[0], y, { width: largeurs[0] });
+      doc.text(String(nombre), cols[1], y, { width: largeurs[1] });
+      doc.moveDown(0.5);
+    }
+  }
+
+  doc.moveDown(2);
+  doc.font("Helvetica").fontSize(8).fillColor("#9CA3AF").text(
+    `RESERVA RDC — Rapport généré automatiquement. Fait à Kinshasa, le ${new Date().toLocaleDateString("fr-FR")}.`,
+    { align: "center" }
+  );
+
+  doc.end();
+  return new Promise((resolve) => {
+    doc.on("end", () => resolve(Buffer.concat(buffers)));
+  });
 }

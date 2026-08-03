@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Building2, CalendarCheck, DollarSign, TrendingUp } from "lucide-react";
+import { Users, Building2, CalendarCheck, DollarSign, TrendingUp, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Carte } from "../../../components/Carte";
-import { toastErreur } from "../../../components/Toast";
+import { Bouton } from "../../../components/Bouton";
+import { toastSucces, toastErreur } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
-import { obtenirStatistiquesAdmin } from "../../../lib/api-paiements";
+import { obtenirStatistiquesAdmin, telechargerStatistiquesAdminPdf } from "../../../lib/api-paiements";
 import { useAuthStore } from "../../../lib/store-auth";
 import { formaterMontant } from "@reserva/shared";
 
@@ -18,11 +19,18 @@ interface EvolutionData {
 }
 
 interface StatistiquesAdmin {
+  periode: string;
   utilisateurs: { total: number; nouveauxCeMois: number };
   prestataires: { total: number; enAttente: number; approuves: number };
   reservations: { total: number; cetteSemaine: number; ceMois: number; parStatut: Record<string, number> };
   revenus: { ceMois: number };
   evolution: EvolutionData[];
+}
+
+interface FiltresAdmin {
+  periode: string;
+  ville: string;
+  categorie: string;
 }
 
 const COULEURS_STATUT = ["#F5A623", "#10B981", "#DC2626", "#6B7280", "#1A56DB", "#DC2626"];
@@ -34,25 +42,50 @@ const LIBELLES_STATUT_RESERVATION: Record<string, string> = {
   TERMINEE: "Terminée",
   ABSENCE: "Absence",
 };
+const CATEGORIES = ["HOTELLERIE", "RESTAURATION", "SANTE", "TRANSPORT"];
+const VILLES = ["Kinshasa", "Lubumbashi"];
 
 export default function PageAdminStatistiques() {
   const { utilisateur } = useAuthStore();
   const [stats, setStats] = useState<StatistiquesAdmin | null>(null);
   const [chargement, setChargement] = useState(true);
+  const [chargementExport, setChargementExport] = useState(false);
+  const [filtres, setFiltres] = useState<FiltresAdmin>({ periode: "mois", ville: "", categorie: "" });
 
   useEffect(() => {
     chargerStats();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtres]);
 
   async function chargerStats() {
     setChargement(true);
     try {
-      const resultat = await obtenirStatistiquesAdmin();
+      const resultat = await obtenirStatistiquesAdmin({
+        periode: filtres.periode || undefined,
+        ville: filtres.ville || undefined,
+        categorie: filtres.categorie || undefined,
+      });
       setStats(resultat);
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
     } finally {
       setChargement(false);
+    }
+  }
+
+  async function exporterPdf() {
+    setChargementExport(true);
+    try {
+      await telechargerStatistiquesAdminPdf({
+        periode: filtres.periode || undefined,
+        ville: filtres.ville || undefined,
+        categorie: filtres.categorie || undefined,
+      });
+      toastSucces("Rapport PDF téléchargé.");
+    } catch (erreur) {
+      toastErreur(extraireMessageErreur(erreur));
+    } finally {
+      setChargementExport(false);
     }
   }
 
@@ -73,9 +106,46 @@ export default function PageAdminStatistiques() {
     color: COULEURS_STATUT[i % COULEURS_STATUT.length],
   }));
 
+  const classeSelect = "h-[46px] rounded-champ border border-gray-300 bg-gray-50 px-4 text-base text-gray-900 focus:border-primaire focus:outline-none focus:ring-2 focus:ring-primaire/20";
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Statistiques</h1>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700">Période</label>
+          <select className={classeSelect} value={filtres.periode} onChange={(e) => setFiltres({ ...filtres, periode: e.target.value })}>
+            <option value="mois">Ce mois-ci</option>
+            <option value="trimestre">90 derniers jours</option>
+            <option value="annee">Cette année</option>
+            <option value="tout">Toute la période</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700">Catégorie</label>
+          <select className={classeSelect} value={filtres.categorie} onChange={(e) => setFiltres({ ...filtres, categorie: e.target.value })}>
+            <option value="">Toutes</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700">Ville</label>
+          <select className={classeSelect} value={filtres.ville} onChange={(e) => setFiltres({ ...filtres, ville: e.target.value })}>
+            <option value="">Toutes</option>
+            {VILLES.map((v) => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+        </div>
+        <Bouton variante="primaire" onClick={exporterPdf} chargement={chargementExport}>
+          <Download className="h-4 w-4" /> Rapport PDF
+        </Bouton>
+      </div>
+
+      <p className="text-sm text-gray-500">Période affichée : {stats.periode}</p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Carte>

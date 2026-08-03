@@ -6,6 +6,7 @@ export const routesAdmin = Router();
 
 // Toutes les routes admin sont protégées par le rôle ADMIN
 routesAdmin.get("/statistiques", authentifier, exigerRole("ADMIN"), adminController.statistiques);
+routesAdmin.get("/statistiques/pdf", authentifier, exigerRole("ADMIN"), adminController.statistiquesPdf);
 routesAdmin.get("/prestataires", authentifier, exigerRole("ADMIN"), adminController.listerPrestataires);
 routesAdmin.get("/utilisateurs", authentifier, exigerRole("ADMIN"), adminController.listerUtilisateurs);
 routesAdmin.post("/prestataires/:prestataireId/suspendre", authentifier, exigerRole("ADMIN"), adminController.suspendre);

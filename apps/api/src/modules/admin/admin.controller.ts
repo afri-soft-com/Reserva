@@ -2,10 +2,27 @@ import { Request, Response } from "express";
 import * as adminService from "./admin.service";
 import { envoyerSucces } from "../../utils/reponse";
 import { asyncHandler } from "../../middlewares/erreurs";
+import { ErreurNonAutorise } from "../../utils/erreurs";
 
-export const statistiques = asyncHandler(async (_req: Request, res: Response) => {
-  const resultat = await adminService.obtenirStatistiquesPlateforme();
+export const statistiques = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await adminService.obtenirStatistiquesPlateforme({
+    periode: req.query.periode as string | undefined,
+    ville: req.query.ville as string | undefined,
+    categorie: req.query.categorie as string | undefined,
+  });
   envoyerSucces(res, resultat);
+});
+
+export const statistiquesPdf = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const pdf = await adminService.genererStatistiquesPdf({
+    periode: req.query.periode as string | undefined,
+    ville: req.query.ville as string | undefined,
+    categorie: req.query.categorie as string | undefined,
+  });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="rapport-statistiques-${new Date().toISOString().slice(0, 10)}.pdf"`);
+  res.send(pdf);
 });
 
 export const listerPrestataires = asyncHandler(async (req: Request, res: Response) => {

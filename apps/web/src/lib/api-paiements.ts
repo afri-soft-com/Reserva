@@ -62,15 +62,33 @@ export async function telechargerRapportReservationsPdf(periode: "jour" | "semai
   URL.revokeObjectURL(url);
 }
 
-export async function obtenirStatistiquesAdmin() {
-  const { data } = await clientApi.get("/admin/statistiques");
+export async function obtenirStatistiquesAdmin(filtres?: { periode?: string; ville?: string; categorie?: string }) {
+  const { data } = await clientApi.get("/admin/statistiques", { params: filtres });
   return data.donnees as {
+    periode: string;
     utilisateurs: { total: number; nouveauxCeMois: number };
     prestataires: { total: number; enAttente: number; approuves: number };
     reservations: { total: number; cetteSemaine: number; ceMois: number; parStatut: Record<string, number> };
     revenus: { ceMois: number };
     evolution: Array<{ mois: string; revenus: number; reservations: number; reservationsPayees: number }>;
   };
+}
+
+export async function telechargerStatistiquesAdminPdf(filtres?: { periode?: string; ville?: string; categorie?: string }): Promise<void> {
+  const { default: axios } = await import("axios");
+  const token = localStorage.getItem("reserva_token");
+  const response = await axios.get(`${API_URL}/admin/statistiques/pdf`, {
+    params: filtres,
+    responseType: "arraybuffer",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  const blob = new Blob([response.data], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = window.document.createElement("a");
+  a.href = url;
+  a.download = `rapport-statistiques-${new Date().toISOString().slice(0, 10)}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function listerTousPrestatairesAdmin(page = 1, parPage = 20) {
