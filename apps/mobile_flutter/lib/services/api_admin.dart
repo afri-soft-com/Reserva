@@ -66,4 +66,8 @@ class ApiAdmin {
       if (motifRejet != null && motifRejet.isNotEmpty) 'motifRejet': motifRejet,
     });
   }
+
+  static Future<String> telechargerExportCsv(String type) async {
+    return ApiClient.getTexte('/admin/export/$type');
+  }
 }

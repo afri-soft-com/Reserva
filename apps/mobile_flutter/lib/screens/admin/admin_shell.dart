@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme.dart';
+import 'abonnements_screen.dart';
 import 'plans_screen.dart';
 import 'tarifications_screen.dart';
 import 'stats_screen.dart';
@@ -12,7 +13,7 @@ class AdminShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         backgroundColor: AppCouleurs.fond,
         appBar: AppBar(
@@ -27,6 +28,7 @@ class AdminShell extends StatelessWidget {
               Tab(icon: Icon(Icons.business), text: 'Prestataires'),
               Tab(icon: Icon(Icons.people), text: 'Utilisateurs'),
               Tab(icon: Icon(Icons.card_membership), text: 'Abonnements'),
+              Tab(icon: Icon(Icons.layers), text: 'Plans'),
               Tab(icon: Icon(Icons.price_change), text: 'Tarifs'),
             ],
           ),
@@ -36,6 +38,7 @@ class AdminShell extends StatelessWidget {
             StatsScreen(),
             PrestatairesListScreen(),
             UtilisateursListScreen(),
+            AbonnementsScreen(),
             PlansScreen(),
             TarificationsScreen(),
           ],

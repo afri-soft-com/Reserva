@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../theme.dart';
 import '../../services/api_admin.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/squelette.dart';
+import '../../widgets/toast.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -49,7 +51,22 @@ class _StatsScreenState extends State<StatsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('Plateforme', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Plateforme', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.ios_share, size: 20),
+                tooltip: 'Exporter',
+                onSelected: _exporter,
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'reservations', child: Text('Exporter réservations (CSV)')),
+                  PopupMenuItem(value: 'prestataires', child: Text('Exporter prestataires (CSV)')),
+                  PopupMenuItem(value: 'utilisateurs', child: Text('Exporter utilisateurs (CSV)')),
+                ],
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -98,6 +115,16 @@ class _StatsScreenState extends State<StatsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _exporter(String type) async {
+    try {
+      final csv = await ApiAdmin.telechargerExportCsv(type);
+      if (!mounted) return;
+      await Share.share(csv, subject: 'Export RESERVA - $type');
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    }
   }
 
   List<Widget> _buildRepartitionStatuts(Map<String, dynamic> parStatut) {
