@@ -107,6 +107,12 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> definir2FA(bool actif) async {
+    final data = await ApiAuth.definir2FA(actif);
+    _utilisateur = Utilisateur.fromJson(data['utilisateur'] as Map<String, dynamic>);
+    notifyListeners();
+  }
+
   Future<void> deconnecter() async {
     await ApiClient.deleteToken();
     await ApiClient.deleteBiometriePref();

@@ -355,7 +355,8 @@ export async function definir2FA(utilisateurId: string, active: boolean) {
   if (active && !utilisateur.telephoneVerifie) {
     throw new ErreurValidation("Le numéro de téléphone doit être vérifié avant d'activer la 2FA");
   }
-  return prisma.utilisateur.update({ where: { id: utilisateurId }, data: { deuxFAActif: active } });
+  const misAJour = await prisma.utilisateur.update({ where: { id: utilisateurId }, data: { deuxFAActif: active } });
+  return { utilisateur: formaterUtilisateurPublic(misAJour) };
 }
 
 /** Vérifie le code 2FA après connexion par PIN */
@@ -459,6 +460,7 @@ function formaterUtilisateurPublic(utilisateur: {
   langue: string;
   photoUrl: string | null;
   telephoneVerifie: boolean;
+  deuxFAActif: boolean;
   creeLe: Date;
 }) {
   return {
@@ -470,6 +472,7 @@ function formaterUtilisateurPublic(utilisateur: {
     langue: utilisateur.langue,
     photoUrl: utilisateur.photoUrl,
     telephoneVerifie: utilisateur.telephoneVerifie,
+    deuxFAActif: utilisateur.deuxFAActif,
     creeLe: utilisateur.creeLe.toISOString(),
   };
 }

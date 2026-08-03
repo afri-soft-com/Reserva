@@ -30,6 +30,10 @@ class ApiAuth {
     return (await ApiClient.post('/auth/2fa/verifier', body: {'telephone': telephone, 'code': code})) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> definir2FA(bool actif) async {
+    return (await ApiClient.post('/auth/2fa/definir', body: {'actif': actif})) as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> obtenirProfil() async {
     return (await ApiClient.get('/auth/profil')) as Map<String, dynamic>;
   }

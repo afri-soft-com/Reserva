@@ -96,6 +96,17 @@ class ProfilScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Carte(
               child: SwitchListTile(
+                title: const Text('Vérification en 2 étapes', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Un code SMS vous est demandé à chaque connexion'),
+                secondary: const Icon(Icons.verified_user, color: AppCouleurs.succes),
+                value: user?.deuxFAActif ?? false,
+                onChanged: (v) => _basculer2FA(context, v),
+                activeColor: AppCouleurs.succes,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Carte(
+              child: SwitchListTile(
                 title: const Text('Mode sombre', style: TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(context.watch<ThemeProvider>().estSombre ? 'Activé' : 'Désactivé'),
                 secondary: Icon(
@@ -257,6 +268,16 @@ class ProfilScreen extends StatelessWidget {
       case 'ln': return AppTraductions.t('lingala');
       case 'sw': return AppTraductions.t('kiswahili');
       default: return AppTraductions.t('francais');
+    }
+  }
+
+  Future<void> _basculer2FA(BuildContext context, bool actif) async {
+    final auth = context.read<AuthProvider>();
+    try {
+      await auth.definir2FA(actif);
+      if (context.mounted) ToastWidget.show(context, actif ? 'Vérification en 2 étapes activée' : 'Vérification en 2 étapes désactivée', type: 'succes');
+    } catch (e) {
+      if (context.mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     }
   }
 }
