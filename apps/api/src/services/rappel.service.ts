@@ -2,7 +2,7 @@ import { prisma } from "../config/prisma";
 
 const SEUILS_RAPPEL = [
   { label: "24h", heures: 24 },
-  { label: "2h", heures: 2 },
+  { label: "1h", heures: 1 },
 ];
 
 export async function genererRappels() {
