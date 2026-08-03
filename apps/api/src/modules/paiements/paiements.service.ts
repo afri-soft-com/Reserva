@@ -223,6 +223,125 @@ export async function genererRapportCsv(utilisateurId: string, dateDebut?: strin
   return lignes.join("\n");
 }
 
+/** Calcule la plage [debut, fin) correspondant à la période demandée (jour / semaine / mois) */
+function plagePeriode(periode: string): { debut: Date; fin: Date; libelle: string } {
+  const maintenant = new Date();
+  const debut = new Date(maintenant);
+  const fin = new Date(maintenant);
+  let libelle: string;
+
+  if (periode === "jour") {
+    debut.setHours(0, 0, 0, 0);
+    fin.setHours(0, 0, 0, 0);
+    fin.setDate(fin.getDate() + 1);
+    libelle = `Aujourd'hui (${debut.toLocaleDateString("fr-FR")})`;
+  } else if (periode === "semaine") {
+    const jour = debut.getDay();
+    const ecartLundi = jour === 0 ? -6 : 1 - jour;
+    debut.setHours(0, 0, 0, 0);
+    debut.setDate(debut.getDate() + ecartLundi);
+    fin.setTime(debut.getTime());
+    fin.setDate(fin.getDate() + 7);
+    libelle = `Semaine du ${debut.toLocaleDateString("fr-FR")} au ${new Date(fin.getTime() - 1).toLocaleDateString("fr-FR")}`;
+  } else {
+    debut.setDate(1);
+    debut.setHours(0, 0, 0, 0);
+    fin.setMonth(fin.getMonth() + 1, 1);
+    fin.setHours(0, 0, 0, 0);
+    libelle = `Mois de ${debut.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`;
+  }
+  return { debut, fin, libelle };
+}
+
+/** Génère un rapport PDF des réservations du prestataire (US-009 — export journalier, hebdomadaire ou mensuel) */
+export async function genererRapportPdf(utilisateurId: string, periode = "mois", serviceId?: string): Promise<Buffer> {
+  const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
+  if (!prestataire) {
+    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+  }
+
+  const plage = plagePeriode(periode);
+  const reservations = await prisma.reservation.findMany({
+    where: {
+      prestataireId: prestataire.id,
+      ...(serviceId ? { serviceId } : {}),
+      creneau: { debut: { gte: plage.debut, lt: plage.fin } },
+    },
+    include: { client: { select: { nom: true, telephone: true } }, service: true, creneau: true },
+    orderBy: { creneau: { debut: "asc" } },
+  });
+
+  const PDFDocument = require("pdfkit");
+  const doc = new PDFDocument({ size: "A4", margin: 50 });
+  const buffers: Buffer[] = [];
+  doc.on("data", (chunk: Buffer) => buffers.push(chunk));
+
+  const bleu = "#1A56DB";
+  const gris = "#6B7280";
+
+  doc.font("Helvetica-Bold").fontSize(24).fillColor(bleu).text("RESERVA", { align: "center" });
+  doc.font("Helvetica").fontSize(10).fillColor(gris).text("Rapport des réservations — Réservez. Sereinement.", { align: "center" });
+  doc.moveDown(0.3);
+  doc.fontSize(8).fillColor(gris).text(`Prestataire : ${prestataire.nomEntreprise} (${prestataire.ville})`, { align: "center" });
+  doc.fontSize(8).fillColor(gris).text(`${plage.libelle} | Généré le ${new Date().toLocaleString("fr-FR")}`, { align: "center" });
+  doc.moveDown(0.5);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor(bleu).lineWidth(2).stroke();
+  doc.moveDown(0.5);
+
+  const cols = [50, 160, 255, 325, 395, 470];
+  const largeurs = [100, 90, 60, 60, 60, 60];
+  const libelles = ["Date", "Client", "Téléphone", "Service", "Statut", "Montant"];
+  const yEnTete = doc.y;
+  doc.font("Helvetica-Bold").fontSize(8).fillColor("#0F2A5E");
+  libelles.forEach((l, i) => doc.text(l, cols[i], yEnTete, { width: largeurs[i] }));
+  doc.moveDown(0.3);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#EBF2FF").lineWidth(1).stroke();
+  doc.moveDown(0.3);
+
+  if (reservations.length === 0) {
+    doc.font("Helvetica").fontSize(9).fillColor(gris).text("Aucune réservation sur cette période.", 50, doc.y);
+  } else {
+    for (const r of reservations) {
+      if (doc.y > 740) {
+        doc.addPage();
+        doc.moveDown(0.5);
+      }
+      const y = doc.y;
+      doc.font("Helvetica").fontSize(9).fillColor("#1F2937");
+      doc.text(new Date(r.creneau.debut).toLocaleString("fr-FR"), cols[0], y, { width: largeurs[0] });
+      doc.text(r.client.nom, cols[1], y, { width: largeurs[1] });
+      doc.text(r.client.telephone, cols[2], y, { width: largeurs[2] });
+      doc.text(r.service.nom, cols[3], y, { width: largeurs[3] });
+      doc.text(r.statut, cols[4], y, { width: largeurs[4] });
+      doc.text(`${r.montantTotal} ${r.devise === "USD" ? "$" : "FC"}`, cols[5], y, { width: largeurs[5] });
+      doc.moveDown(0.5);
+    }
+  }
+
+  doc.moveDown(1);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#E5E7EB").lineWidth(1).stroke();
+  doc.moveDown(0.5);
+
+  const totalMontants = reservations.reduce((s, r) => s + r.montantTotal, 0);
+  const totalPaye = reservations.reduce((s, r) => s + r.montantPaye, 0);
+  const devise = reservations[0]?.devise === "USD" ? "$" : "FC";
+  doc.font("Helvetica-Bold").fontSize(11).fillColor("#0F2A5E").text(
+    `Total : ${reservations.length} réservation(s) | Montant global : ${totalMontants} ${devise} | Payé : ${totalPaye} ${devise}`,
+    { align: "right" }
+  );
+
+  doc.moveDown(2);
+  doc.font("Helvetica").fontSize(8).fillColor("#9CA3AF").text(
+    `RESERVA RDC — Rapport généré automatiquement. Fait à Kinshasa, le ${new Date().toLocaleDateString("fr-FR")}.`,
+    { align: "center" }
+  );
+
+  doc.end();
+  return new Promise((resolve) => {
+    doc.on("end", () => resolve(Buffer.concat(buffers)));
+  });
+}
+
 /** Génère un reçu PDF téléchargeable via PDFKit */
 export async function genererRecuPdf(utilisateurId: string, reservationId: string): Promise<Buffer> {
   const reservation = await prisma.reservation.findUnique({

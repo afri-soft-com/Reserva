@@ -39,6 +39,16 @@ export const rapportCsv = asyncHandler(async (req: Request, res: Response) => {
   res.send(csv);
 });
 
+export const rapportPdf = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const periode = req.query.periode as string | undefined;
+  const serviceId = req.query.serviceId as string | undefined;
+  const pdf = await paiementsService.genererRapportPdf(req.utilisateur.utilisateurId, periode, serviceId);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="rapport-reservations-${new Date().toISOString().slice(0, 10)}.pdf"`);
+  res.send(pdf);
+});
+
 export const recuPdf = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const pdf = await paiementsService.genererRecuPdf(req.utilisateur.utilisateurId, req.params.reservationId);

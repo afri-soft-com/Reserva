@@ -32,8 +32,8 @@ class _IndisponibilitesPrestataireScreenState extends State<IndisponibilitesPres
       ]);
       if (mounted) {
         setState(() {
-          _periodes = results[0] as List<dynamic>;
-          _services = results[1] as List<dynamic>;
+          _periodes = results[0];
+          _services = results[1];
         });
       }
     } catch (e) {

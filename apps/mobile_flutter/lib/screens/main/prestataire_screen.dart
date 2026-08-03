@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../theme.dart';
 import '../../models/models.dart';
 import '../../services/api_prestataire.dart';
@@ -170,6 +171,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Scanner un QR client',
             onPressed: _ouvrirScanner,
+          ),
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: 'Partager le rapport (CSV)',
+            onPressed: _partagerRapport,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -1452,5 +1458,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     ).then((_) {
       if (mounted) _charger();
     });
+  }
+
+  Future<void> _partagerRapport() async {
+    try {
+      final csv = await ApiPrestataire.telechargerRapportCsv();
+      if (!mounted) return;
+      await Share.share(csv, subject: 'Rapport des réservations RESERVA');
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    }
   }
 }

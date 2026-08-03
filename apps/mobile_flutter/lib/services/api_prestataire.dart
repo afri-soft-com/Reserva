@@ -309,4 +309,12 @@ class ApiPrestataire {
     if (ville != null) params['ville'] = ville;
     return (await ApiClient.get('/prestataires/proches', params: params)) as List<dynamic>;
   }
+
+  /// Télécharge le rapport CSV des réservations (export)
+  static Future<String> telechargerRapportCsv({String? dateDebut, String? dateFin}) async {
+    final params = <String, String>{};
+    if (dateDebut != null) params['dateDebut'] = dateDebut;
+    if (dateFin != null) params['dateFin'] = dateFin;
+    return ApiClient.getTexte('/paiements/rapport/csv', params: params);
+  }
 }

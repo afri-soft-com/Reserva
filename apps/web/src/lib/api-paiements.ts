@@ -45,6 +45,23 @@ export async function telechargerRapportCsv(dateDebut?: string, dateFin?: string
   return data as string;
 }
 
+export async function telechargerRapportReservationsPdf(periode: "jour" | "semaine" | "mois"): Promise<void> {
+  const { default: axios } = await import("axios");
+  const token = localStorage.getItem("reserva_token");
+  const response = await axios.get(`${API_URL}/paiements/rapport/pdf`, {
+    params: { periode },
+    responseType: "arraybuffer",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  const blob = new Blob([response.data], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = window.document.createElement("a");
+  a.href = url;
+  a.download = `rapport-reservations-${periode}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function obtenirStatistiquesAdmin() {
   const { data } = await clientApi.get("/admin/statistiques");
   return data.donnees as {

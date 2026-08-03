@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Calendar, Phone } from "lucide-react";
+import { Calendar, Phone, FileDown } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { BadgeStatutReservation } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
@@ -14,6 +14,7 @@ import {
   cloturerReservation,
   ReservationDetaillee,
 } from "../../../lib/api-reservations";
+import { telechargerRapportReservationsPdf } from "../../../lib/api-paiements";
 import { formaterMontant } from "@reserva/shared";
 
 function ContenuReservationsRecues() {
@@ -24,6 +25,19 @@ function ContenuReservationsRecues() {
   const [filtreStatut, setFiltreStatut] = useState<string | undefined>(statutInitial);
   const [chargement, setChargement] = useState(true);
   const [chargementAction, setChargementAction] = useState<string | null>(null);
+  const [chargementExport, setChargementExport] = useState<string | null>(null);
+
+  async function exporterPdf(periode: "jour" | "semaine" | "mois") {
+    setChargementExport(periode);
+    try {
+      await telechargerRapportReservationsPdf(periode);
+      toastSucces("Rapport PDF téléchargé.");
+    } catch (erreur) {
+      toastErreur(extraireMessageErreur(erreur));
+    } finally {
+      setChargementExport(null);
+    }
+  }
 
   useEffect(() => {
     charger();
@@ -93,6 +107,26 @@ function ContenuReservationsRecues() {
           </button>
         ))}
       </div>
+
+      <Carte className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-2 font-semibold text-gray-800">
+            <FileDown className="h-4 w-4 text-primaire-700" /> Exporter le rapport (PDF)
+          </p>
+          <p className="text-sm text-gray-500">Téléchargez la liste de vos réservations sur une période.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Bouton taille="sm" variante="secondaire" chargement={chargementExport === "jour"} onClick={() => exporterPdf("jour")}>
+            Aujourd'hui
+          </Bouton>
+          <Bouton taille="sm" variante="secondaire" chargement={chargementExport === "semaine"} onClick={() => exporterPdf("semaine")}>
+            Cette semaine
+          </Bouton>
+          <Bouton taille="sm" chargement={chargementExport === "mois"} onClick={() => exporterPdf("mois")}>
+            Ce mois
+          </Bouton>
+        </div>
+      </Carte>
 
       {chargement && <p className="text-gray-500">Chargement...</p>}
       {!chargement && reservations.length === 0 && <Carte className="text-center text-gray-500">Aucune réservation trouvée.</Carte>}

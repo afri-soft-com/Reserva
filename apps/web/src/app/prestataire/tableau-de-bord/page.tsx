@@ -2,19 +2,33 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, TrendingUp, Star, Clock, Package, CalendarX } from "lucide-react";
+import { Calendar, TrendingUp, Star, Clock, Package, CalendarX, FileDown } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { BadgeStatutReservation } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
-import { toastErreur } from "../../../components/Toast";
+import { toastErreur, toastSucces } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { obtenirTableauDeBord, obtenirMonProfilPrestataire, TableauDeBordReponse } from "../../../lib/api-prestataires";
+import { telechargerRapportReservationsPdf } from "../../../lib/api-paiements";
 import { formaterMontant } from "@reserva/shared";
 
 export default function PageTableauDeBordPrestataire() {
   const [donnees, setDonnees] = useState<TableauDeBordReponse | null>(null);
   const [statutPrestataire, setStatutPrestataire] = useState<string | null>(null);
   const [chargement, setChargement] = useState(true);
+  const [chargementExport, setChargementExport] = useState(false);
+
+  async function exporterPdfMois() {
+    setChargementExport(true);
+    try {
+      await telechargerRapportReservationsPdf("mois");
+      toastSucces("Rapport mensuel téléchargé.");
+    } catch (erreur) {
+      toastErreur(extraireMessageErreur(erreur));
+    } finally {
+      setChargementExport(false);
+    }
+  }
 
   useEffect(() => {
     charger();
@@ -91,6 +105,9 @@ export default function PageTableauDeBordPrestataire() {
               <Calendar className="h-4 w-4" /> Toutes les réservations
             </Bouton>
           </Link>
+          <Bouton variante="secondaire" chargement={chargementExport} onClick={exporterPdfMois}>
+            <FileDown className="h-4 w-4" /> Rapport PDF
+          </Bouton>
         </div>
       </div>
 

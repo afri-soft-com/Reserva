@@ -11,4 +11,5 @@ routesPaiements.get("/reservations/:reservationId/transactions", authentifier, p
 routesPaiements.get("/reservations/:reservationId/recu", authentifier, paiementsController.recu);
 routesPaiements.get("/reservations/:reservationId/recu/html", authentifier, paiementsController.recuHtml);
 routesPaiements.get("/rapport/csv", authentifier, exigerRole("PRESTATAIRE"), paiementsController.rapportCsv);
+routesPaiements.get("/rapport/pdf", authentifier, exigerRole("PRESTATAIRE"), paiementsController.rapportPdf);
 routesPaiements.get("/reservations/:reservationId/recu/pdf", authentifier, paiementsController.recuPdf);

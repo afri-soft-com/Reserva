@@ -93,6 +93,27 @@ class ApiClient {
   static Future<dynamic> get(String path, {Map<String, String>? params}) =>
       request('GET', path, params: params);
 
+  /// Récupère une réponse brute (texte) sans décodage JSON — pour les exports CSV
+  static Future<String> getTexte(String path, {Map<String, String>? params}) async {
+    final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: params);
+    final headers = <String, String>{};
+    final token = await getToken();
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final response = await http.get(uri, headers: headers).timeout(AppConfig.requeteTimeout);
+    if (response.statusCode >= 400) {
+      try {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final erreur = decoded['erreur'] as Map<String, dynamic>?;
+        throw Exception(erreur?['message'] as String? ?? 'Une erreur est survenue.');
+      } catch (_) {
+        throw Exception('Une erreur est survenue lors du téléchargement du rapport.');
+      }
+    }
+    return response.body;
+  }
+
   static Future<dynamic> post(String path, {Map<String, dynamic>? body}) =>
       request('POST', path, body: body);
 
