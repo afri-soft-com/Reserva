@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme.dart';
+import '../../i18n.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/langue_provider.dart';
 import '../../models/models.dart';
 import '../../services/api_reservations.dart';
 import '../../services/api_services.dart';
@@ -61,6 +63,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LangueProvider>();
     final user = context.watch<AuthProvider>().utilisateur;
 
     return Scaffold(
@@ -93,7 +96,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
               ],
               _buildStatsRow(),
               const SizedBox(height: 20),
-              const Text('Catégories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              Text(AppTraductions.t('categories'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               _categoriesGrid(context),
               if (_servicesRecents.isNotEmpty) ...[
@@ -101,10 +104,10 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Services populaires', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                    Text(AppTraductions.t('servicesPopulaires'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                     TextButton(
                       onPressed: () => context.go('/services'),
-                      child: const Text('Voir tout', style: TextStyle(fontSize: 13)),
+                      child: Text(AppTraductions.t('voirTout'), style: const TextStyle(fontSize: 13)),
                     ),
                   ],
                 ),
@@ -112,7 +115,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 _buildServicesRow(),
               ],
               const SizedBox(height: 24),
-              const Text('Prestataires à proximité', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              Text(AppTraductions.t('prestatairesProches'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               SizedBox(height: 300, child: CartePrestataires()),
               const SizedBox(height: 24),
@@ -134,21 +137,21 @@ class _AccueilScreenState extends State<AccueilScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Bonjour${user != null ? ' ${user.nom.split(' ').first}' : ''} 👋',
+          Text('${AppTraductions.t('bonjour')}${user != null ? ' ${user.nom.split(' ').first}' : ''} 👋',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 4),
-          const Text('Réservez. Sereinement.',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+          Text(AppTraductions.t('slogan'),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
           const SizedBox(height: 8),
-          const Text('Trouvez et réservez des services partout en RDCongo',
-            style: TextStyle(fontSize: 14, color: AppCouleurs.primaireClair)),
+          Text(AppTraductions.t('sousTitreAccueil'),
+            style: const TextStyle(fontSize: 14, color: AppCouleurs.primaireClair)),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => context.go('/services'),
               icon: const Icon(Icons.search),
-              label: const Text('Trouver un service'),
+              label: Text(AppTraductions.t('trouverService')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppCouleurs.accent,
                 foregroundColor: AppCouleurs.primaireFonce,
@@ -186,9 +189,9 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 children: [
                   Row(
                     children: [
-                      const Expanded(
-                        child: Text('Prochaine réservation',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
+                      Expanded(
+                        child: Text(AppTraductions.t('prochaineReservation'),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
                       ),
                       const SizedBox(width: 8),
                       BadgeStatut(statut: r.reservation.statut),
@@ -211,11 +214,11 @@ class _AccueilScreenState extends State<AccueilScreen> {
   Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(child: _miniCarte(Icons.calendar_month, 'Réservations', _prochaineResa != null ? '1 active' : 'Aucune', AppCouleurs.primaire)),
+        Expanded(child: _miniCarte(Icons.calendar_month, AppTraductions.t('reservations'), _prochaineResa != null ? AppTraductions.t('uneActive') : AppTraductions.t('aucune'), AppCouleurs.primaire)),
         const SizedBox(width: 8),
-        Expanded(child: _miniCarte(Icons.hourglass_bottom, 'En attente', _nbEnAttente.toString(), AppCouleurs.avertissement)),
+        Expanded(child: _miniCarte(Icons.hourglass_bottom, AppTraductions.t('enAttente'), _nbEnAttente.toString(), AppCouleurs.avertissement)),
         const SizedBox(width: 8),
-        Expanded(child: _miniCarte(Icons.star, 'Services', _servicesRecents.length.toString(), AppCouleurs.succes)),
+        Expanded(child: _miniCarte(Icons.star, AppTraductions.t('services'), _servicesRecents.length.toString(), AppCouleurs.succes)),
       ],
     );
   }
@@ -241,13 +244,13 @@ class _AccueilScreenState extends State<AccueilScreen> {
 
   Widget _categoriesGrid(BuildContext context) {
     final categories = [
-      ('Santé', Icons.local_hospital, 'SANTE'),
-      ('Transport', Icons.directions_bus, 'TRANSPORT'),
-      ('Hôtellerie', Icons.hotel, 'HOTELLERIE'),
-      ('Restauration', Icons.restaurant, 'RESTAURATION'),
-      ('Salle de réunion', Icons.meeting_room, 'SALLE_REUNION'),
-      ('Administratif', Icons.business, 'ADMINISTRATIF'),
-      ('Éducation', Icons.school, 'EDUCATION'),
+      (AppTraductions.t('sante'), Icons.local_hospital, 'SANTE'),
+      (AppTraductions.t('transport'), Icons.directions_bus, 'TRANSPORT'),
+      (AppTraductions.t('hotellerie'), Icons.hotel, 'HOTELLERIE'),
+      (AppTraductions.t('restauration'), Icons.restaurant, 'RESTAURATION'),
+      (AppTraductions.t('salleReunion'), Icons.meeting_room, 'SALLE_REUNION'),
+      (AppTraductions.t('administratif'), Icons.business, 'ADMINISTRATIF'),
+      (AppTraductions.t('education'), Icons.school, 'EDUCATION'),
     ];
 
     return GridView.builder(

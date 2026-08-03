@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme.dart';
+import '../../i18n.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/langue_provider.dart';
 import '../../widgets/connectivity_banner.dart';
 import '../../widgets/badge_notification.dart';
 import 'accueil_screen.dart';
@@ -18,6 +20,7 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LangueProvider>();
     final auth = context.watch<AuthProvider>();
     final montreMessages = auth.estConnecte && !auth.estAdmin;
     final montreReservations = !auth.estPrestataire;
@@ -48,15 +51,15 @@ class MainShell extends StatelessWidget {
           unselectedLabelColor: AppCouleurs.texteSecondaire,
           indicatorColor: AppCouleurs.primaire,
           tabs: [
-            Tab(icon: const Icon(Icons.home), text: 'Accueil'),
-            Tab(icon: const Icon(Icons.search), text: 'Rechercher'),
-            if (montreReservations) Tab(icon: const Icon(Icons.calendar_month), text: 'Réservations'),
+            Tab(icon: const Icon(Icons.home), text: AppTraductions.t('accueil')),
+            Tab(icon: const Icon(Icons.search), text: AppTraductions.t('recherche')),
+            if (montreReservations) Tab(icon: const Icon(Icons.calendar_month), text: AppTraductions.t('reservations')),
             Tab(
               icon: BadgeNotification(child: Icon(Icons.person)),
-              text: 'Profil',
+              text: AppTraductions.t('profil'),
             ),
-            if (montreMessages) Tab(icon: const Icon(Icons.chat), text: 'Messages'),
-            if (auth.estPrestataire) Tab(icon: const Icon(Icons.dashboard), text: 'Espace'),
+            if (montreMessages) Tab(icon: const Icon(Icons.chat), text: AppTraductions.t('messages')),
+            if (auth.estPrestataire) Tab(icon: const Icon(Icons.dashboard), text: AppTraductions.t('prestataire')),
             if (auth.estAdmin) Tab(icon: const Icon(Icons.admin_panel_settings), text: 'Admin'),
           ],
         ),

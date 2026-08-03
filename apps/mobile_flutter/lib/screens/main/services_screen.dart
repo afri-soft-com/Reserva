@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../theme.dart';
+import '../../i18n.dart';
+import '../../providers/langue_provider.dart';
 import '../../models/models.dart';
 import '../../services/api_services.dart';
 import '../../services/api_favoris.dart';
@@ -317,12 +320,13 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    context.watch<LangueProvider>();
     final triActif = _optionsTri.entries.firstWhere((e) => e.value == _tri, orElse: () => const MapEntry('Recommandés', null));
 
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
       appBar: AppBar(
-        title: Text(widget.categorie != null ? CategorieService.libelle(widget.categorie!) : 'Rechercher'),
+        title: Text(widget.categorie != null ? CategorieService.libelle(widget.categorie!) : AppTraductions.t('recherche')),
         actions: [
           IconButton(
             icon: Icon(_afficheCarte ? Icons.list : Icons.map_outlined, size: 20),
@@ -342,7 +346,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'Rechercher un service...',
+                hintText: AppTraductions.t('rechercherService'),
                 prefixIcon: const Icon(Icons.search, size: 20),
                 suffixIcon: _searchCtrl.text.isNotEmpty
                     ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { _searchCtrl.clear(); _page = 1; _charger(); })
@@ -360,7 +364,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               children: [
-                _villeChip(null, 'Toutes'),
+                _villeChip(null, AppTraductions.t('toutes')),
                 ..._villes.map((v) => _villeChip(v, v)),
               ],
             ),
@@ -506,8 +510,8 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                 : _services.isEmpty
                     ? EcranVide(
                         icone: Icons.search_off,
-                        message: _erreur ?? 'Aucun service trouvé',
-                        sousTitre: _searchCtrl.text.isNotEmpty ? 'Essayez un autre mot-clé' : 'Aucun service disponible dans cette catégorie',
+                        message: _erreur ?? AppTraductions.t('aucunServiceTrouve'),
+                        sousTitre: _searchCtrl.text.isNotEmpty ? AppTraductions.t('essayerAutreMotCle') : AppTraductions.t('aucunServiceCategorie'),
                       )
                     : RefreshIndicator(
                         onRefresh: _charger,
@@ -525,7 +529,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                                       : TextButton.icon(
                                           onPressed: _chargerPlus,
                                           icon: const Icon(Icons.expand_more, size: 18),
-                                          label: const Text('Charger plus'),
+                                          label: Text(AppTraductions.t('chargerPlus')),
                                         ),
                                 ),
                               );

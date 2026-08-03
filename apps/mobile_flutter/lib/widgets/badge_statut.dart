@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
+import '../i18n.dart';
 
 class BadgeStatut extends StatelessWidget {
   final String statut;
@@ -16,7 +17,7 @@ class BadgeStatut extends StatelessWidget {
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(AppRayons.pilule),
         ),
-        child: Text(statut, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+        child: Text(AppTraductions.statut(statut), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
       );
     }
     return Container(
@@ -26,22 +27,11 @@ class BadgeStatut extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRayons.pilule),
       ),
       child: Text(
-        statutLibelle(statut),
+        AppTraductions.statut(statut),
         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: palette.texte),
       ),
     );
   }
 
-  static String statutLibelle(String s) {
-    switch (s) {
-      case 'EN_ATTENTE': return 'En attente';
-      case 'CONFIRMEE': return 'Confirmée';
-      case 'EN_COURS': return 'En cours';
-      case 'REFUSEE': return 'Refusée';
-      case 'ANNULEE': return 'Annulée';
-      case 'TERMINEE': return 'Terminée';
-      case 'ABSENCE': return 'Absence';
-      default: return s;
-    }
-  }
+  static String statutLibelle(String s) => AppTraductions.statut(s);
 }

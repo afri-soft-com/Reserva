@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../theme.dart';
+import '../../i18n.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/langue_provider.dart';
 import '../../models/models.dart';
 import '../../services/api_prestataire.dart';
 import '../../widgets/carte.dart';
@@ -17,12 +19,13 @@ class ProfilScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LangueProvider>();
     final auth = context.watch<AuthProvider>();
     final user = auth.utilisateur;
 
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
-      appBar: AppBar(title: const Text('Profil')),
+      appBar: AppBar(title: Text(AppTraductions.t('profil'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -53,9 +56,28 @@ class ProfilScreen extends StatelessWidget {
                   _infoRow(Icons.phone, 'Téléphone', user?.telephone ?? ''),
                   const Divider(height: 24),
                   _infoRow(Icons.email, 'Email', user?.email ?? 'Non renseigné'),
-                  const Divider(height: 24),
-                  _infoRow(Icons.language, 'Langue', user?.langue == 'fr' ? 'Français' : user?.langue == 'ln' ? 'Lingála' : 'Kiswahili'),
                 ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Carte(
+              child: ListTile(
+                leading: const Icon(Icons.language, color: AppCouleurs.primaire),
+                title: Text(AppTraductions.t('langue'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(_libelleLangue(context.watch<LangueProvider>().langue)),
+                trailing: DropdownButton<String>(
+                  value: context.watch<LangueProvider>().langue,
+                  underline: const SizedBox(),
+                  icon: const Icon(Icons.arrow_drop_down),
+                  items: const [
+                    DropdownMenuItem(value: 'fr', child: Text('Français')),
+                    DropdownMenuItem(value: 'ln', child: Text('Lingála')),
+                    DropdownMenuItem(value: 'sw', child: Text('Kiswahili')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) context.read<LangueProvider>().definir(v);
+                  },
+                ),
               ),
             ),
             if (auth.biometrieDisponible) ...[
@@ -228,6 +250,14 @@ class ProfilScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _libelleLangue(String code) {
+    switch (code) {
+      case 'ln': return AppTraductions.t('lingala');
+      case 'sw': return AppTraductions.t('kiswahili');
+      default: return AppTraductions.t('francais');
+    }
   }
 }
 

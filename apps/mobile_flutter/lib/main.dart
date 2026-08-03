@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/langue_provider.dart';
 import 'router.dart';
 import 'theme.dart';
 import 'widgets/biometrie_lock.dart';
@@ -13,6 +14,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..initialiser()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()..initialiser()),
+        ChangeNotifierProvider(create: (_) => LangueProvider()..initialiser()),
       ],
       child: const ReservaApp(),
     ),

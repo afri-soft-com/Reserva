@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../theme.dart';
+import '../../i18n.dart';
+import '../../providers/langue_provider.dart';
 import '../../models/models.dart';
 import '../../services/api_reservations.dart';
 import '../../services/cache_hors_ligne.dart';
@@ -87,9 +90,10 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    context.watch<LangueProvider>();
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
-      appBar: AppBar(title: const Text('Mes réservations')),
+      appBar: AppBar(title: Text(AppTraductions.t('mesReservations'))),
       body: Column(
         children: [
           Container(
