@@ -78,6 +78,18 @@ export function initialiserSocket(serveur: HttpServer) {
       socket.to(`conv:${conversationId}`).emit("tape", { conversationId, utilisateurId: user.utilisateurId });
     });
 
+    socket.on("marquer-lu", async (conversationId: string) => {
+      await prisma.conversationParticipant.updateMany({
+        where: { conversationId, utilisateurId: user.utilisateurId },
+        data: { derniereLecture: new Date() },
+      });
+      await prisma.message.updateMany({
+        where: { conversationId, envoyeurId: { not: user.utilisateurId }, lu: false },
+        data: { lu: true, luLe: new Date() },
+      });
+      socket.to(`conv:${conversationId}`).emit("messages-lus", { conversationId, utilisateurId: user.utilisateurId });
+    });
+
     socket.on("disconnect", () => {
       console.log(`Socket déconnecté: ${user.telephone}`);
     });

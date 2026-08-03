@@ -9,10 +9,12 @@ class SocketService {
   final Set<String> _rooms = {};
   final _messageController = StreamController<Map<String, dynamic>>.broadcast();
   final _typingController = StreamController<Map<String, dynamic>>.broadcast();
+  final _messagesLusController = StreamController<Map<String, dynamic>>.broadcast();
   final _erreurController = StreamController<String>.broadcast();
 
   Stream<Map<String, dynamic>> get messages => _messageController.stream;
   Stream<Map<String, dynamic>> get typing => _typingController.stream;
+  Stream<Map<String, dynamic>> get messagesLus => _messagesLusController.stream;
   Stream<String> get erreurs => _erreurController.stream;
   bool get connecte => _connecte;
 
@@ -59,6 +61,10 @@ class SocketService {
       _typingController.add(data as Map<String, dynamic>);
     });
 
+    _socket!.on('messages-lus', (data) {
+      _messagesLusController.add(data as Map<String, dynamic>);
+    });
+
     _socket!.on('erreur', (msg) {
       _erreurController.add(msg as String);
     });
@@ -94,6 +100,11 @@ class SocketService {
     _socket!.emit('tape', {'conversationId': conversationId});
   }
 
+  void marquerLu(String conversationId) {
+    if (!_connecte) return;
+    _socket!.emit('marquer-lu', conversationId);
+  }
+
   void deconnecter() {
     _rooms.clear();
     _socket?.disconnect();
@@ -106,6 +117,7 @@ class SocketService {
     deconnecter();
     _messageController.close();
     _typingController.close();
+    _messagesLusController.close();
     _erreurController.close();
   }
 }

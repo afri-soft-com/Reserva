@@ -32,6 +32,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   Timer? _tapeTimer;
   StreamSubscription? _subMessage;
   StreamSubscription? _subTyping;
+  StreamSubscription? _subMessagesLus;
   StreamSubscription? _subErreur;
 
   @override
@@ -45,6 +46,17 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     _socket.rejoindreConversation(widget.conversationId);
     _subMessage = _socket.messages.listen(_onMessage);
     _subTyping = _socket.typing.listen(_onTyping);
+    _subMessagesLus = _socket.messagesLus.listen((data) {
+      if (!mounted) return;
+      setState(() {
+        for (final m in _messages) {
+          if (m['envoyeur'] is Map<String, dynamic> &&
+              (m['envoyeur'] as Map<String, dynamic>)['id'] != data['utilisateurId']) {
+            m['lu'] = true;
+          }
+        }
+      });
+    });
     _subErreur = _socket.erreurs.listen((msg) {
       if (mounted) ToastWidget.show(context, msg, type: 'erreur');
     });
@@ -58,6 +70,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     _socket.quitterConversation(widget.conversationId);
     _subMessage?.cancel();
     _subTyping?.cancel();
+    _subMessagesLus?.cancel();
     _subErreur?.cancel();
     _tapeTimer?.cancel();
     super.dispose();
@@ -92,6 +105,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
         setState(() => _messages = items);
         if (marquerLu) {
           await ApiChat.marquerLu(widget.conversationId);
+          _socket.marquerLu(widget.conversationId);
         }
         Future.delayed(const Duration(milliseconds: 100), _defilerVersBas);
       }
@@ -280,13 +294,28 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                                               color: estMoi ? AppCouleurs.blanc : AppCouleurs.texte,
                                             )),
                                       const SizedBox(height: 2),
-                                      Text(_formaterDate(date),
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: estMoi
-                                                ? AppCouleurs.blanc.withValues(alpha: 0.7)
-                                                : AppCouleurs.texteSecondaire,
-                                          )),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(_formaterDate(date),
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: estMoi
+                                                    ? AppCouleurs.blanc.withValues(alpha: 0.7)
+                                                    : AppCouleurs.texteSecondaire,
+                                              )),
+                                          if (estMoi) ...[
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              (m['lu'] as bool? ?? false) ? Icons.done_all : Icons.done,
+                                              size: 13,
+                                              color: estMoi
+                                                  ? ((m['lu'] as bool? ?? false) ? const Color(0xFFB7E3FA) : AppCouleurs.blanc.withValues(alpha: 0.6))
+                                                  : AppCouleurs.texteSecondaire,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ),
