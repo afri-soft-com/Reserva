@@ -120,6 +120,14 @@ class ProfilScreen extends StatelessWidget {
                   ],
                   const Divider(height: 1, indent: 56),
                   ListTile(
+                    leading: const Icon(Icons.account_balance_wallet, color: AppCouleurs.primaire),
+                    title: const Text('Mon portefeuille', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Avoirs, points, cartes cadeaux'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/portefeuille'),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
                     leading: const Icon(Icons.card_giftcard, color: AppCouleurs.accent),
                     title: const Text('Programme fidélité', style: TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),

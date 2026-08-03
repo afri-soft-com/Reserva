@@ -19,6 +19,7 @@ import 'screens/main/favoris_screen.dart';
 import 'screens/chat/conversations_screen.dart';
 import 'screens/chat/conversation_detail_screen.dart';
 import 'screens/fidelite/fidelite_screen.dart';
+import 'screens/portefeuille/portefeuille_screen.dart';
 import 'screens/cartes_cadeaux/cartes_cadeaux_screen.dart';
 import 'screens/cartes_cadeaux/acheter_carte_cadeau_screen.dart';
 import 'screens/cartes_cadeaux/detail_carte_cadeau_screen.dart';
@@ -115,6 +116,10 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(
         path: '/fidelite',
         builder: (ctx, state) => const FideliteScreen(),
+      ),
+      GoRoute(
+        path: '/portefeuille',
+        builder: (ctx, state) => const PortefeuilleScreen(),
       ),
       GoRoute(
         path: '/conversations',
