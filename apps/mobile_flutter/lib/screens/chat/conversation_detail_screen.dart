@@ -26,8 +26,11 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   final _picker = ImagePicker();
   List<Map<String, dynamic>> _messages = [];
   bool _chargement = true;
+  bool _chargementPlus = false;
   bool _envoi = false;
   bool _uploadImage = false;
+  int _page = 1;
+  int _total = 0;
   String? _tapeUserId;
   Timer? _tapeTimer;
   StreamSubscription? _subMessage;
@@ -95,23 +98,58 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     });
   }
 
-  Future<void> _chargerMessages({bool marquerLu = true}) async {
+  Future<void> _chargerMessages({bool marquerLu = true, bool plusAnciens = false}) async {
     try {
-      final data = await ApiChat.listerMessages(widget.conversationId);
+      final data = await ApiChat.listerMessages(widget.conversationId, page: plusAnciens ? _page + 1 : 1);
       final items = (data['items'] as List<dynamic>)
           .map((e) => e as Map<String, dynamic>)
           .toList();
       if (mounted) {
-        setState(() => _messages = items);
+        setState(() {
+          _total = data['total'] as int? ?? 0;
+          if (plusAnciens) {
+            _page += 1;
+            _messages = [...items, ..._messages];
+          } else {
+            _page = 1;
+            _messages = items;
+          }
+        });
         if (marquerLu) {
           await ApiChat.marquerLu(widget.conversationId);
           _socket.marquerLu(widget.conversationId);
         }
-        Future.delayed(const Duration(milliseconds: 100), _defilerVersBas);
+        if (plusAnciens) {
+          Future.delayed(const Duration(milliseconds: 50), _maintenirScroll);
+        } else {
+          Future.delayed(const Duration(milliseconds: 100), _defilerVersBas);
+        }
       }
     } catch (_) {
     } finally {
-      if (mounted && _chargement) setState(() => _chargement = false);
+      if (mounted) {
+        setState(() {
+          _chargementPlus = false;
+          if (_chargement) _chargement = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _chargerPlusAnciens() async {
+    if (_chargementPlus || _messages.length >= _total) return;
+    setState(() => _chargementPlus = true);
+    await _chargerMessages(marquerLu: false, plusAnciens: true);
+  }
+
+  void _maintenirScroll() {
+    if (_scrollCtrl.hasClients) {
+      final offsetAvant = _scrollCtrl.offset;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollCtrl.hasClients) {
+          _scrollCtrl.jumpTo(offsetAvant);
+        }
+      });
     }
   }
 
@@ -212,9 +250,25 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                     : ListView.builder(
                         controller: _scrollCtrl,
                         padding: const EdgeInsets.only(bottom: 8, left: 16, right: 16, top: 16),
-                        itemCount: _messages.length,
+                        itemCount: _messages.length + (_messages.length < _total ? 1 : 0),
                         itemBuilder: (_, i) {
-                          final m = _messages[i];
+                          if (i == 0 && _messages.length < _total) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: TextButton.icon(
+                                  onPressed: _chargementPlus ? null : _chargerPlusAnciens,
+                                  icon: _chargementPlus
+                                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                      : const Icon(Icons.keyboard_arrow_up, size: 16),
+                                  label: const Text('Messages plus anciens',
+                                      style: TextStyle(fontSize: 12)),
+                                ),
+                              ),
+                            );
+                          }
+                          final index = i - (_messages.length < _total ? 1 : 0);
+                          final m = _messages[index];
                           final envoyeur = m['envoyeur'] as Map<String, dynamic>? ?? {};
                           final estMoi = envoyeur['id'] == userId;
                           final contenu = m['contenu'] as String? ?? '';
