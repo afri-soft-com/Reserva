@@ -212,6 +212,10 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                   sousTitre: 'Les réservations du jour apparaîtront ici.'),
               ),
             ],
+            if (_ongletCourant == 0) ...[
+              const SizedBox(height: 20),
+              _buildProchainesReservations(),
+            ],
             if (_ongletCourant == 1) _buildReservationsTab(),
             if (_ongletCourant == 2) _buildServicesTab(),
             if (_ongletCourant == 3) _buildAvisTab(),
@@ -522,6 +526,68 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         )),
       ],
     );
+  }
+
+  Widget _buildProchainesReservations() {
+    final prochaines = _dashboard?.prochainesReservations ?? [];
+    if (prochaines.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('À venir (7 jours) — ${prochaines.length}',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 12),
+        ...prochaines.map((r) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Carte(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(r.reservation.numero,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    ),
+                    const SizedBox(width: 8),
+                    BadgeStatut(statut: r.reservation.statut),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(r.service.nom, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.person, size: 14, color: AppCouleurs.texteSecondaire),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(r.prestataire.nomEntreprise,
+                        style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.access_time, size: 14, color: AppCouleurs.texteSecondaire),
+                    const SizedBox(width: 4),
+                    Text('${_formaterJour(r.creneau.debut)} ${r.creneau.debut.substring(11, 16)} - ${r.creneau.fin.substring(11, 16)}',
+                      style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        )),
+      ],
+    );
+  }
+
+  String _formaterJour(String dateIso) {
+    try {
+      final d = DateTime.parse(dateIso);
+      final mois = const ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+      return '${d.day} ${mois[d.month - 1]}';
+    } catch (_) {
+      return dateIso.substring(0, 10);
+    }
   }
 
   Widget _buildReservationsTab() {

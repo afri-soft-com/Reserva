@@ -177,6 +177,10 @@ export async function obtenirTableauDeBord(utilisateurId: string) {
   const finJour = new Date();
   finJour.setHours(23, 59, 59, 999);
 
+  const finProchaines7Jours = new Date();
+  finProchaines7Jours.setDate(finProchaines7Jours.getDate() + 7);
+  finProchaines7Jours.setHours(23, 59, 59, 999);
+
   const debutSemaine = new Date();
   debutSemaine.setDate(debutSemaine.getDate() - debutSemaine.getDay());
   debutSemaine.setHours(0, 0, 0, 0);
@@ -191,7 +195,7 @@ export async function obtenirTableauDeBord(utilisateurId: string) {
 
   const [reservationsAujourdhui, totalSemaine, totalMois, revenusMois, enAttenteCount,
     reservationsParService, revenusParService, tousCreneauxMois, revenusAnnuels,
-    meilleurMois, revenusMoisPrecedent] = await Promise.all([
+    meilleurMois, revenusMoisPrecedent, prochainesReservations] = await Promise.all([
     prisma.reservation.findMany({
       where: { prestataireId: prestataire.id, creneau: { debut: { gte: debutJour, lte: finJour } } },
       include: { client: { select: { nom: true, telephone: true } }, service: true, creneau: true },
@@ -238,6 +242,15 @@ export async function obtenirTableauDeBord(utilisateurId: string) {
     prisma.reservation.aggregate({
       where: { prestataireId: prestataire.id, statutPaiement: "PAYE", creneau: { debut: { gte: debutMoisPrecedent(), lt: debutMois } } },
       _sum: { montantPaye: true },
+    }),
+    prisma.reservation.findMany({
+      where: {
+        prestataireId: prestataire.id,
+        creneau: { debut: { gt: finJour, lte: finProchaines7Jours } },
+        statut: { notIn: ["ANNULEE", "REFUSEE", "TERMINEE"] },
+      },
+      include: { client: { select: { nom: true, telephone: true } }, service: true, creneau: true },
+      orderBy: { creneau: { debut: "asc" } },
     }),
   ]);
 
@@ -290,6 +303,7 @@ export async function obtenirTableauDeBord(utilisateurId: string) {
 
   return {
     reservationsAujourdhui,
+    prochainesReservations,
     statistiques: {
       totalReservationsSemaine: totalSemaine,
       totalReservationsMois: totalMois,

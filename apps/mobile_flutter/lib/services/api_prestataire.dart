@@ -84,6 +84,7 @@ class RepartitionStatut {
 
 class DashboardData {
   final List<ReservationDetaillee> reservationsAujourdhui;
+  final List<ReservationDetaillee> prochainesReservations;
   final DashboardStats statistiques;
   final List<ServicePopulaire> servicesPopulaires;
   final List<RepartitionStatut> parStatut;
@@ -91,6 +92,7 @@ class DashboardData {
   DashboardData({
     required this.reservationsAujourdhui,
     required this.statistiques,
+    this.prochainesReservations = const [],
     this.servicesPopulaires = const [],
     this.parStatut = const [],
   });
@@ -157,7 +159,26 @@ class ApiPrestataire {
       cacheSauvegardeLe = await CacheHorsLigne.dateSauvegarde('dashboard_prestataire');
       data = cache['data'] as Map<String, dynamic>;
     }
-    final aujourdhui = (data['reservationsAujourdhui'] as List<dynamic>? ?? []).map((e) {
+    final aujourdhui = _parserReservationListe(data['reservationsAujourdhui']);
+    final prochaines = _parserReservationListe(data['prochainesReservations']);
+    final stats = DashboardStats.fromJson(data['statistiques'] as Map<String, dynamic>? ?? {});
+    final servicesPopulaires = (data['servicesPopulaires'] as List<dynamic>? ?? []).map((e) =>
+      ServicePopulaire.fromJson(e as Map<String, dynamic>)).toList();
+    final parStatut = (data['parStatut'] as List<dynamic>? ?? []).map((e) {
+      final m = e as Map<String, dynamic>;
+      return RepartitionStatut(statut: m['statut'] as String? ?? '', count: (m['_count'] as int?) ?? 0);
+    }).toList();
+    return DashboardData(
+      reservationsAujourdhui: aujourdhui,
+      prochainesReservations: prochaines,
+      statistiques: stats,
+      servicesPopulaires: servicesPopulaires,
+      parStatut: parStatut,
+    );
+  }
+
+  static List<ReservationDetaillee> _parserReservationListe(dynamic brut) {
+    return (brut as List<dynamic>? ?? []).map((e) {
       final r = e as Map<String, dynamic>;
       final service = ServiceOffert.fromJson(r['service'] as Map<String, dynamic>? ?? {});
       final client = r['client'] as Map<String, dynamic>? ?? {};
@@ -177,19 +198,6 @@ class ApiPrestataire {
         creneau: creneau,
       );
     }).toList();
-    final stats = DashboardStats.fromJson(data['statistiques'] as Map<String, dynamic>? ?? {});
-    final servicesPopulaires = (data['servicesPopulaires'] as List<dynamic>? ?? []).map((e) =>
-      ServicePopulaire.fromJson(e as Map<String, dynamic>)).toList();
-    final parStatut = (data['parStatut'] as List<dynamic>? ?? []).map((e) {
-      final m = e as Map<String, dynamic>;
-      return RepartitionStatut(statut: m['statut'] as String? ?? '', count: (m['_count'] as int?) ?? 0);
-    }).toList();
-    return DashboardData(
-      reservationsAujourdhui: aujourdhui,
-      statistiques: stats,
-      servicesPopulaires: servicesPopulaires,
-      parStatut: parStatut,
-    );
   }
 
   static Future<Map<String, dynamic>> obtenirProfil() async {
