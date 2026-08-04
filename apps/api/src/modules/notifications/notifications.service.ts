@@ -100,3 +100,29 @@ export async function envoyerRappelsAutomatiques() {
 
   return { rappelsEnvoyes: envoyes };
 }
+
+/**
+ * [ADMIN] Broadcast : crée une notification SYSTEME pour tous les utilisateurs
+ * (ou uniquement ceux du rôle ciblé). Retourne le nombre de notifications créées.
+ */
+export async function broadcastNotifications(input: { titre: string; message: string; role?: string }) {
+  const utilisateurs = await prisma.utilisateur.findMany({
+    where: input.role ? { role: input.role } : {},
+    select: { id: true },
+  });
+
+  if (utilisateurs.length === 0) {
+    return { envoyees: 0 };
+  }
+
+  await prisma.notification.createMany({
+    data: utilisateurs.map((u) => ({
+      utilisateurId: u.id,
+      titre: input.titre,
+      message: input.message,
+      type: "SYSTEME",
+    })),
+  });
+
+  return { envoyees: utilisateurs.length };
+}

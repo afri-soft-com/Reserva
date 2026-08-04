@@ -6,6 +6,7 @@ import 'tarifications_screen.dart';
 import 'stats_screen.dart';
 import 'prestataires_list_screen.dart';
 import 'utilisateurs_list_screen.dart';
+import 'broadcast_screen.dart';
 
 class AdminShell extends StatelessWidget {
   const AdminShell({super.key});
@@ -13,7 +14,7 @@ class AdminShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 6,
+      length: 7,
       child: Scaffold(
         backgroundColor: AppCouleurs.fond,
         appBar: AppBar(
@@ -30,6 +31,7 @@ class AdminShell extends StatelessWidget {
               Tab(icon: Icon(Icons.card_membership), text: 'Abonnements'),
               Tab(icon: Icon(Icons.layers), text: 'Plans'),
               Tab(icon: Icon(Icons.price_change), text: 'Tarifs'),
+              Tab(icon: Icon(Icons.campaign), text: 'Broadcast'),
             ],
           ),
         ),
@@ -41,6 +43,7 @@ class AdminShell extends StatelessWidget {
             AbonnementsScreen(),
             PlansScreen(),
             TarificationsScreen(),
+            BroadcastScreen(),
           ],
         ),
       ),

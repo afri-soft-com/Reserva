@@ -70,4 +70,12 @@ class ApiAdmin {
   static Future<String> telechargerExportCsv(String type) async {
     return ApiClient.getTexte('/admin/export/$type');
   }
+
+  static Future<Map<String, dynamic>> envoyerBroadcast({required String titre, required String message, String? role}) async {
+    return (await ApiClient.post('/admin/notifications/broadcast', body: {
+      'titre': titre,
+      'message': message,
+      if (role != null && role.isNotEmpty) 'role': role,
+    })) as Map<String, dynamic>;
+  }
 }
