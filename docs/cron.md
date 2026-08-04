@@ -34,6 +34,15 @@ En l'absence de `CRON_SECRET` côté serveur, les endpoints cron renvoient une e
   sous le nom `rapport-hebdomadaire-YYYY-MM-DD.pdf`.
 - **Réponse** : `{ fichier, chemin, tailleOctets, genereLe }`.
 
+### Expiration des abonnements prestataire
+
+- **URL** : `POST /admin/cron/expirer-abonnements`
+- **Fréquence recommandée** : quotidienne (ex. chaque nuit à 02h00)
+- **Rôle** : fait passer à `EXPIRE` tout abonnement prestataire `ACTIF` dont la
+  date de fin (`dateFin`) est dépassée. Le statut `EXPIRE` est ensuite géré dans
+  l'écran Abonnements de l'admin.
+- **Réponse** : `{ expires, traiteLe }`.
+
 ### Exemples (crontab)
 
 ```cron
@@ -42,6 +51,9 @@ En l'absence de `CRON_SECRET` côté serveur, les endpoints cron renvoient une e
 
 # Rapport hebdomadaire chaque lundi à 06h00
 0 6 * * 1 curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/admin/cron/rapport-hebdo
+
+# Expiration des abonnements chaque nuit à 02h00
+0 2 * * * curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/admin/cron/expirer-abonnements
 ```
 
 ## Rappels internes (autonomes)

@@ -442,3 +442,27 @@ export async function genererRapportHebdomadaire() {
     genereLe: maintenant.toISOString(),
   };
 }
+
+/**
+ * [CRON] Fait passer à "EXPIRE" tout abonnement dont la date de fin est dépassée.
+ * Retourne le nombre d'abonnements expirés pour journalisation du scheduler.
+ */
+export async function expirerAbonnements() {
+  const maintenant = new Date();
+
+  const abonnementsExpires = await prisma.abonnementPrestataire.updateMany({
+    where: { statut: "ACTIF", dateFin: { lt: maintenant } },
+    data: { statut: "EXPIRE" },
+  });
+
+  return {
+    expires: abonnementsExpires.count,
+    traiteLe: maintenant.toISOString(),
+  };
+}
+
+/** [ADMIN] Broadcast : délègue au service notifications (type SYSTEME) */
+export async function broadcastNotifications(input: { titre: string; message: string; role?: string }) {
+  const { broadcastNotifications: envoyer } = await import("../notifications/notifications.service");
+  return envoyer(input);
+}

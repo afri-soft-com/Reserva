@@ -113,3 +113,16 @@ export const rapportHebdomadaire = asyncHandler(async (_req: Request, res: Respo
   const resultat = await adminService.genererRapportHebdomadaire();
   envoyerSucces(res, resultat);
 });
+
+/** Endpoint déclenchable par un cron externe : expire les abonnements dont la date de fin est dépassée */
+export const expirerAbonnements = asyncHandler(async (_req: Request, res: Response) => {
+  const resultat = await adminService.expirerAbonnements();
+  envoyerSucces(res, resultat);
+});
+
+/** [ADMIN] Broadcast : envoie une notification SYSTEME à tous les utilisateurs (ou un rôle) */
+export const envoyerBroadcast = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await adminService.broadcastNotifications(req.body);
+  envoyerSucces(res, resultat);
+});
