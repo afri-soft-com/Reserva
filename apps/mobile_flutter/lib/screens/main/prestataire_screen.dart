@@ -916,8 +916,36 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                           Icon(Icons.reply, size: 14, color: AppCouleurs.primaire),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(a.reponsePrestataire!,
-                              style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(a.reponsePrestataire!,
+                                  style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    TextButton(
+                                      onPressed: () => _showRepondreAvisDialog(a, reponseExistante: a.reponsePrestataire),
+                                      style: TextButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        minimumSize: const Size(0, 32),
+                                      ),
+                                      child: const Text('Modifier', style: TextStyle(fontSize: 11, color: AppCouleurs.primaire)),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _supprimerReponseAvis(a),
+                                      style: TextButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        minimumSize: const Size(0, 32),
+                                      ),
+                                      child: const Text('Supprimer', style: TextStyle(fontSize: 11, color: AppCouleurs.alerte)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -1363,12 +1391,13 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     );
   }
 
-  void _showRepondreAvisDialog(AvisRecu avis) {
-    final repCtrl = TextEditingController();
+  void _showRepondreAvisDialog(AvisRecu avis, {String? reponseExistante}) {
+    final repCtrl = TextEditingController(text: reponseExistante ?? '');
+    final estModification = reponseExistante != null;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Répondre à l\'avis'),
+        title: Text(estModification ? 'Modifier la réponse' : 'Répondre à l\'avis'),
         content: TextField(
           controller: repCtrl,
           maxLines: 3,
@@ -1381,7 +1410,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             onPressed: () async {
               if (repCtrl.text.trim().isEmpty) return;
               try {
-                await ApiPrestataire.repondreAvis(avis.id, repCtrl.text.trim());
+                if (estModification) {
+                  await ApiPrestataire.modifierReponseAvis(avis.id, repCtrl.text.trim());
+                } else {
+                  await ApiPrestataire.repondreAvis(avis.id, repCtrl.text.trim());
+                }
                 if (ctx.mounted) Navigator.pop(ctx);
                 _charger();
                 if (mounted) ToastWidget.show(context, 'Réponse publiée', type: 'succes');
@@ -1394,6 +1427,31 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         ],
       ),
     );
+  }
+
+  Future<void> _supprimerReponseAvis(AvisRecu avis) async {
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer la réponse ?'),
+        content: const Text('Cette action retirera votre réponse publique à cet avis.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer', style: TextStyle(color: AppCouleurs.alerte)),
+          ),
+        ],
+      ),
+    );
+    if (confirme != true || !mounted) return;
+    try {
+      await ApiPrestataire.supprimerReponseAvis(avis.id);
+      _charger();
+      if (mounted) ToastWidget.show(context, 'Réponse supprimée', type: 'succes');
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    }
   }
 
   Future<void> _repondreReservation(String reservationId, bool approuver) async {

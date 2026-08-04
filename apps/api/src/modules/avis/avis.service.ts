@@ -1,6 +1,6 @@
 import { prisma } from "../../config/prisma";
 import { ErreurNonTrouve, ErreurValidation, ErreurInterdit } from "../../utils/erreurs";
-import { CreerAvisInput, ReponseAvisInput } from "@reserva/shared";
+import { CreerAvisInput, ReponseAvisInput, ModifierReponseAvisInput } from "@reserva/shared";
 
 /**
  * Crée un avis après une réservation TERMINEE. Recalcule la note moyenne du prestataire
@@ -86,6 +86,43 @@ export async function repondreAvis(utilisateurId: string, input: ReponseAvisInpu
   });
 
   return avisMisAJour;
+}
+
+/** [PRESTATAIRE] Modifie sa réponse publique à un avis */
+export async function modifierReponseAvis(utilisateurId: string, avisId: string, input: ModifierReponseAvisInput) {
+  const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
+  if (!prestataire) {
+    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+  }
+
+  const avis = await prisma.avis.findUnique({ where: { id: avisId } });
+  if (!avis || avis.prestataireId !== prestataire.id) {
+    throw new ErreurNonTrouve("Avis non trouvé");
+  }
+  if (!avis.reponsePrestataire) {
+    throw new ErreurValidation("Aucune réponse à modifier sur cet avis");
+  }
+
+  return prisma.avis.update({ where: { id: avisId }, data: { reponsePrestataire: input.reponse } });
+}
+
+/** [PRESTATAIRE] Supprime sa réponse publique à un avis */
+export async function supprimerReponseAvis(utilisateurId: string, avisId: string) {
+  const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
+  if (!prestataire) {
+    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+  }
+
+  const avis = await prisma.avis.findUnique({ where: { id: avisId } });
+  if (!avis || avis.prestataireId !== prestataire.id) {
+    throw new ErreurNonTrouve("Avis non trouvé");
+  }
+  if (!avis.reponsePrestataire) {
+    throw new ErreurValidation("Aucune réponse à supprimer sur cet avis");
+  }
+
+  await prisma.avis.update({ where: { id: avisId }, data: { reponsePrestataire: null } });
+  return { supprime: true };
 }
 
 /** Liste les avis laissés par le client connecté */

@@ -16,6 +16,18 @@ export const repondre = asyncHandler(async (req: Request, res: Response) => {
   envoyerSucces(res, resultat);
 });
 
+export const modifierReponse = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await avisService.modifierReponseAvis(req.utilisateur.utilisateurId, req.params.avisId, req.body);
+  envoyerSucces(res, resultat);
+});
+
+export const supprimerReponse = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await avisService.supprimerReponseAvis(req.utilisateur.utilisateurId, req.params.avisId);
+  envoyerSucces(res, resultat);
+});
+
 export const mesAvis = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const resultat = await avisService.listerMesAvis(req.utilisateur.utilisateurId);

@@ -92,3 +92,8 @@ export const schemaReponseAvis = z.object({
   reponse: z.string().trim().min(1).max(500),
 });
 export type ReponseAvisInput = z.infer<typeof schemaReponseAvis>;
+
+export const schemaModifierReponseAvis = z.object({
+  reponse: z.string().trim().min(1).max(500),
+});
+export type ModifierReponseAvisInput = z.infer<typeof schemaModifierReponseAvis>;

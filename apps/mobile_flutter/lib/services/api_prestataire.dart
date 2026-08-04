@@ -243,6 +243,14 @@ class ApiPrestataire {
     await ApiClient.post('/avis/repondre', body: {'avisId': avisId, 'reponse': reponse});
   }
 
+  static Future<void> modifierReponseAvis(String avisId, String reponse) async {
+    await ApiClient.patch('/avis/$avisId/reponse', body: {'reponse': reponse});
+  }
+
+  static Future<void> supprimerReponseAvis(String avisId) async {
+    await ApiClient.delete('/avis/$avisId/reponse');
+  }
+
   static Future<List<ReservationDetaillee>> listerReservationsPrestataire({String? statut}) async {
     final params = <String, String>{};
     if (statut != null) params['statut'] = statut;
