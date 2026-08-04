@@ -27,3 +27,9 @@ export const utiliser = asyncHandler(async (req: Request, res: Response) => {
   const resultat = await cartesCadeauxService.utiliserCarteCadeau(req.utilisateur.utilisateurId, req.body);
   envoyerSucces(res, resultat);
 });
+
+export const transferer = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await cartesCadeauxService.transfererCarteCadeau(req.utilisateur.utilisateurId, req.params.carteId, req.body);
+  envoyerSucces(res, resultat);
+});

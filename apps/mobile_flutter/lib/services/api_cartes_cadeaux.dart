@@ -22,6 +22,12 @@ class ApiCartesCadeaux {
     return (await ApiClient.get('/cartes-cadeaux/par-code/${Uri.encodeComponent(code)}')) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> transferer(String carteId, String beneficiaireTelephone) async {
+    return (await ApiClient.post('/cartes-cadeaux/$carteId/transferer', body: {
+      'beneficiaireTelephone': beneficiaireTelephone,
+    })) as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> utiliser({
     required String code,
     required String reservationId,

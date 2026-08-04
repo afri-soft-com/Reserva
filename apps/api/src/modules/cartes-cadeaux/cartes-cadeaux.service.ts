@@ -1,7 +1,7 @@
 import { prisma } from "../../config/prisma";
 import { ErreurValidation, ErreurNonTrouve, ErreurInterdit } from "../../utils/erreurs";
 import { normaliserTelephone } from "@reserva/shared";
-import { AcheterCarteCadeauInput, UtiliserCarteCadeauInput } from "./cartes-cadeaux.schema";
+import { AcheterCarteCadeauInput, UtiliserCarteCadeauInput, TransfererCarteCadeauInput } from "./cartes-cadeaux.schema";
 
 const DUREE_VALIDITE_DEFAUT_MOIS = 12;
 
@@ -66,8 +66,8 @@ export async function listerMesCartesCadeaux(utilisateurId: string) {
   const cartes = await prisma.carteCadeau.findMany({
     where: { OR: [{ acheteurId: utilisateurId }, { beneficiaireId: utilisateurId }] },
     include: {
-      acheteur: { select: { nom: true, telephone: true } },
-      beneficiaire: { select: { nom: true, telephone: true } },
+      acheteur: { select: { id: true, nom: true, telephone: true } },
+      beneficiaire: { select: { id: true, nom: true, telephone: true } },
     },
     orderBy: { creeLe: "desc" },
   });
@@ -84,8 +84,8 @@ export async function obtenirCarteParCode(code: string, utilisateurId: string) {
   const carte = await prisma.carteCadeau.findUnique({
     where: { code: code.toUpperCase().trim() },
     include: {
-      acheteur: { select: { nom: true, telephone: true } },
-      beneficiaire: { select: { nom: true, telephone: true } },
+      acheteur: { select: { id: true, nom: true, telephone: true } },
+      beneficiaire: { select: { id: true, nom: true, telephone: true } },
     },
   });
   if (!carte) {
@@ -101,6 +101,69 @@ export async function obtenirCarteParCode(code: string, utilisateurId: string) {
     valide: carte.actif && !expirée && carte.solde > 0,
     expirée,
   };
+}
+
+/**
+ * Transfère (offre) une carte cadeau à un autre utilisateur RESERVA.
+ * Seul l'acheteur peut transférer, et seulement une carte encore active.
+ */
+export async function transfererCarteCadeau(utilisateurId: string, carteId: string, input: TransfererCarteCadeauInput) {
+  const carte = await prisma.carteCadeau.findUnique({
+    where: { id: carteId },
+    include: { acheteur: { select: { nom: true, telephone: true } } },
+  });
+  if (!carte) {
+    throw new ErreurNonTrouve("Carte cadeau introuvable");
+  }
+  if (carte.acheteurId !== utilisateurId) {
+    throw new ErreurInterdit("Seul l'acheteur peut transférer cette carte cadeau");
+  }
+  if (!carte.actif) {
+    throw new ErreurValidation("Cette carte cadeau a été désactivée");
+  }
+  if (carte.dateExpiration && new Date() > carte.dateExpiration) {
+    throw new ErreurValidation("Cette carte cadeau a expiré");
+  }
+  if (carte.solde <= 0) {
+    throw new ErreurValidation("Le solde de cette carte cadeau est épuisé");
+  }
+
+  const telephone = normaliserTelephone(input.beneficiaireTelephone);
+  const beneficiaire = await prisma.utilisateur.findUnique({ where: { telephone } });
+  if (!beneficiaire) {
+    throw new ErreurValidation("Aucun compte RESERVA associé à ce numéro de téléphone");
+  }
+  if (beneficiaire.id === utilisateurId) {
+    throw new ErreurValidation("Vous ne pouvez pas vous offrir votre propre carte cadeau");
+  }
+
+  const carteMaj = await prisma.carteCadeau.update({
+    where: { id: carte.id },
+    data: { beneficiaireId: beneficiaire.id },
+    include: {
+      acheteur: { select: { nom: true, telephone: true } },
+      beneficiaire: { select: { nom: true, telephone: true } },
+    },
+  });
+
+  await prisma.notification.createMany({
+    data: [
+      {
+        utilisateurId: beneficiaire.id,
+        titre: "Carte cadeau reçue",
+        message: `${carte.acheteur.nom || "Un proche"} vous a offert une carte cadeau ${carte.code} d'un solde de ${carte.solde} ${carte.devise}.`,
+        type: "PAIEMENT",
+      },
+      {
+        utilisateurId: utilisateurId,
+        titre: "Carte cadeau offerte",
+        message: `Votre carte ${carte.code} a été transférée à ${beneficiaire.nom}.`,
+        type: "PAIEMENT",
+      },
+    ],
+  });
+
+  return carteMaj;
 }
 
 /**

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../theme.dart';
 import '../../services/api_cartes_cadeaux.dart';
 import '../../services/api_reservations.dart';
 import '../../models/models.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/toast.dart';
 
@@ -126,6 +128,8 @@ class _DetailCarteCadeauScreenState extends State<DetailCarteCadeauScreen> {
     final expiree = c['expiree'] as bool? ?? false;
     final acheteur = c['acheteur'] as Map<String, dynamic>? ?? {};
     final beneficiaire = c['beneficiaire'] as Map<String, dynamic>?;
+    final utilisateurId = context.read<AuthProvider>().utilisateur?.id;
+    final estAcheteur = acheteur['id'] == utilisateurId;
 
     return [
       Carte(
@@ -192,6 +196,22 @@ class _DetailCarteCadeauScreenState extends State<DetailCarteCadeauScreen> {
             ),
           ),
         ),
+        if (estAcheteur) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _envoi ? null : _offrir,
+              icon: const Icon(Icons.card_giftcard),
+              label: const Text('Offrir cette carte'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppCouleurs.primaire,
+                side: const BorderSide(color: AppCouleurs.primaire),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+        ],
       ],
       const SizedBox(height: 24),
       Center(
@@ -211,5 +231,65 @@ class _DetailCarteCadeauScreenState extends State<DetailCarteCadeauScreen> {
         Text(valeur, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       ],
     );
+  }
+
+  Future<void> _offrir() async {
+    if (_carte == null) return;
+    final c = _carte!;
+    final ctrl = TextEditingController();
+    bool envoi = false;
+    final nouveauBeneficiaire = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Offrir cette carte'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Code ${c['code']} — ${_formater((c['solde'] as num?)?.toDouble() ?? 0, c['devise'] as String? ?? 'CDF')}',
+                style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Téléphone du destinataire *',
+                  hintText: '+243...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: envoi ? null : () async {
+                if (ctrl.text.trim().isEmpty) {
+                  ToastWidget.show(ctx, 'Veuillez saisir le numéro du destinataire.', type: 'erreur');
+                  return;
+                }
+                setDialogState(() => envoi = true);
+                try {
+                  await ApiCartesCadeaux.transferer(c['id'] as String, ctrl.text.trim());
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx, 'ok');
+                    ToastWidget.show(ctx, 'Carte offerte avec succès !', type: 'succes');
+                  }
+                } catch (e) {
+                  if (ctx.mounted) ToastWidget.show(ctx, e.toString(), type: 'erreur');
+                } finally {
+                  if (ctx.mounted) setDialogState(() => envoi = false);
+                }
+              },
+              child: envoi
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Offrir'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (nouveauBeneficiaire == 'ok' && mounted) await _charger();
   }
 }
