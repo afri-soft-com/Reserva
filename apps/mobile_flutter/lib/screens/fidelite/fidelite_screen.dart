@@ -18,6 +18,9 @@ class _FideliteScreenState extends State<FideliteScreen> {
   List<PointTransaction> _transactions = [];
   Map<String, dynamic>? _avoirs;
   bool _chargement = true;
+  bool _chargementPlus = false;
+  int _page = 1;
+  int _total = 0;
 
   @override
   void initState() {
@@ -30,12 +33,14 @@ class _FideliteScreenState extends State<FideliteScreen> {
     try {
       final results = await Future.wait([
         ApiFidelite.obtenirSolde(),
-        ApiFidelite.obtenirHistorique(),
+        ApiFidelite.obtenirHistorique(page: 1, parPage: 20),
       ]);
       if (mounted) {
         setState(() {
           _solde = results[0] as Map<String, dynamic>;
           _transactions = (results[1] as ResultatPagine<PointTransaction>).items;
+          _page = 1;
+          _total = (results[1] as ResultatPagine<PointTransaction>).total;
         });
       }
     } catch (_) {
@@ -53,6 +58,25 @@ class _FideliteScreenState extends State<FideliteScreen> {
       if (mounted) setState(() => _avoirs = avoirs);
     } catch (_) {
       // Section avoirs silencieuse si l'appel échoue
+    }
+  }
+
+  Future<void> _chargerPlus() async {
+    if (_chargementPlus || _transactions.length >= _total) return;
+    setState(() => _chargementPlus = true);
+    try {
+      final resultat = await ApiFidelite.obtenirHistorique(page: _page + 1, parPage: 20);
+      if (mounted) {
+        setState(() {
+          _transactions = [..._transactions, ...resultat.items];
+          _total = resultat.total;
+          _page += 1;
+        });
+      }
+    } catch (_) {
+      // Silencieux
+    } finally {
+      if (mounted) setState(() => _chargementPlus = false);
     }
   }
 
@@ -86,11 +110,26 @@ class _FideliteScreenState extends State<FideliteScreen> {
                 if (_transactions.isEmpty)
                   EcranVide(icone: Icons.card_giftcard, message: 'Aucune transaction de points',
                     sousTitre: 'Gagnez des points à chaque réservation payée.')
-                else
+                else ...[
                   ..._transactions.map((t) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _buildTransactionCard(t),
                   )),
+                  if (_transactions.length < _total)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _chargementPlus ? null : _chargerPlus,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppCouleurs.primaire,
+                          side: const BorderSide(color: AppCouleurs.primaire),
+                        ),
+                        child: _chargementPlus
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('Afficher plus'),
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
