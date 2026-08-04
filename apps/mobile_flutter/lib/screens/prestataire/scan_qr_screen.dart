@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../theme.dart';
@@ -46,11 +47,25 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
       _reservation = null;
     });
     try {
-      // Le QR encode le numéro (RSV-...). Fallback : l'identifiant UUID de la réservation.
-      final estUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(valeur);
+      // Le QR encode un payload JSON enrichi (type RESERVA_RSV) ou un simple numéro (RSV-...).
+      final valeurPropre = valeur.trim();
+      String? idPayload;
+      String? numeroPayload;
+      try {
+        final decode = jsonDecode(valeurPropre);
+        if (decode is Map && decode['type'] == 'RESERVA_RSV') {
+          idPayload = decode['id'] as String?;
+          numeroPayload = decode['numero'] as String?;
+        }
+      } catch (_) {
+        // Pas du JSON : on retombe sur le numéro brut.
+      }
+
+      final estUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+          .hasMatch(idPayload ?? valeurPropre);
       final data = estUuid
-          ? await ApiPrestataire.obtenirDetailReservationParId(valeur)
-          : await ApiPrestataire.obtenirReservationParNumero(valeur);
+          ? await ApiPrestataire.obtenirDetailReservationParId(idPayload ?? valeurPropre)
+          : await ApiPrestataire.obtenirReservationParNumero(numeroPayload ?? valeurPropre);
       if (mounted) setState(() => _reservation = data);
     } catch (e) {
       if (mounted) setState(() => _erreur = e.toString());

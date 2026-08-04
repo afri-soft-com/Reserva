@@ -1,8 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../theme.dart';
 
-class QrCodeReservation extends StatelessWidget {
+class QrCodeReservation extends StatefulWidget {
   final String reservationId;
   final String numero;
   final String statut;
@@ -17,6 +18,32 @@ class QrCodeReservation extends StatelessWidget {
     required this.service,
     required this.prestataire,
   });
+
+  @override
+  State<QrCodeReservation> createState() => _QrCodeReservationState();
+}
+
+class _QrCodeReservationState extends State<QrCodeReservation> {
+  late final String _donnees;
+
+  @override
+  void initState() {
+    super.initState();
+    _donnees = jsonEncode({
+      'type': 'RESERVA_RSV',
+      'v': 1,
+      'id': widget.reservationId,
+      'numero': widget.numero,
+      'service': widget.service,
+      'prestataire': widget.prestataire,
+      'nonce': _genererNonce(),
+    });
+  }
+
+  String _genererNonce() {
+    final aleatoire = DateTime.now().microsecondsSinceEpoch;
+    return '${widget.reservationId.substring(0, 8)}-$aleatoire';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,20 +68,20 @@ class QrCodeReservation extends StatelessWidget {
                       color: AppCouleurs.primaireClair,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(statut, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppCouleurs.primaire)),
+                    child: Text(widget.statut, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppCouleurs.primaire)),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
               QrImageView(
-                data: numero,
+                data: _donnees,
                 version: QrVersions.auto,
                 size: 140,
                 eyeStyle: QrEyeStyle(color: AppCouleurs.primaireFonce),
                 dataModuleStyle: QrDataModuleStyle(color: AppCouleurs.primaireFonce),
               ),
               const SizedBox(height: 8),
-              Text(numero,
+              Text(widget.numero,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1)),
               const SizedBox(height: 4),
               Text('Tapez pour agrandir',
@@ -81,20 +108,20 @@ class QrCodeReservation extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 QrImageView(
-                  data: numero,
+                  data: _donnees,
                   version: QrVersions.auto,
                   size: 280,
                   eyeStyle: QrEyeStyle(color: AppCouleurs.primaireFonce),
                   dataModuleStyle: QrDataModuleStyle(color: AppCouleurs.primaireFonce),
                 ),
                 const SizedBox(height: 24),
-                Text(numero,
+                Text(widget.numero,
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 2)),
                 const SizedBox(height: 8),
-                Text(service,
+                Text(widget.service,
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
-                Text(prestataire,
+                Text(widget.prestataire,
                     style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
               ],
             ),
