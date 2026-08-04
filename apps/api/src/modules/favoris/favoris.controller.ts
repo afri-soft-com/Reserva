@@ -6,7 +6,9 @@ import { ErreurNonAutorise } from "../../utils/erreurs";
 
 export const listerFavoris = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
-  const resultat = await favorisService.listerFavoris(req.utilisateur.utilisateurId);
+  const page = parseInt(req.query.page as string) || 1;
+  const parPage = parseInt(req.query.parPage as string) || 20;
+  const resultat = await favorisService.listerFavoris(req.utilisateur.utilisateurId, page, parPage);
   envoyerSucces(res, resultat);
 });
 

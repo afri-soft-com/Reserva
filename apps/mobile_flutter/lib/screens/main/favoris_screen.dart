@@ -15,11 +15,17 @@ class FavorisScreen extends StatefulWidget {
 }
 
 class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveClientMixin {
+  static const _parPage = 20;
   List<ServiceAvecPrestataire> _favoris = [];
+  int _page = 1;
+  int _total = 0;
   bool _chargement = true;
+  bool _chargementPlus = false;
 
   @override
   bool get wantKeepAlive => true;
+
+  bool get _afficherPlus => _favoris.length < _total;
 
   @override
   void initState() {
@@ -30,12 +36,37 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
   Future<void> _charger() async {
     setState(() => _chargement = true);
     try {
-      final favoris = await ApiFavoris.listerFavoris();
-      if (mounted) setState(() => _favoris = favoris);
+      final resultat = await ApiFavoris.listerFavorisPage(page: 1, parPage: _parPage);
+      if (mounted) {
+        setState(() {
+          _favoris = resultat.services;
+          _total = resultat.total;
+          _page = 1;
+        });
+      }
     } catch (e) {
       if (mounted) ToastWidget.show(context, 'Erreur de chargement', type: 'erreur');
     } finally {
       if (mounted) setState(() => _chargement = false);
+    }
+  }
+
+  Future<void> _chargerPlus() async {
+    if (_chargementPlus || _favoris.length >= _total) return;
+    setState(() => _chargementPlus = true);
+    try {
+      final resultat = await ApiFavoris.listerFavorisPage(page: _page + 1, parPage: _parPage);
+      if (mounted) {
+        setState(() {
+          _favoris = [..._favoris, ...resultat.services];
+          _total = resultat.total;
+          _page += 1;
+        });
+      }
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, 'Erreur de chargement', type: 'erreur');
+    } finally {
+      if (mounted) setState(() => _chargementPlus = false);
     }
   }
 
@@ -85,8 +116,26 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
                   color: AppCouleurs.primaire,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _favoris.length,
+                    itemCount: _favoris.length + (_afficherPlus ? 1 : 0),
                     itemBuilder: (ctx, i) {
+                      if (i >= _favoris.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: _chargementPlus ? null : _chargerPlus,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppCouleurs.primaire,
+                                side: const BorderSide(color: AppCouleurs.primaire),
+                              ),
+                              child: _chargementPlus
+                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                  : const Text('Afficher plus'),
+                            ),
+                          ),
+                        );
+                      }
                       final s = _favoris[i];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),

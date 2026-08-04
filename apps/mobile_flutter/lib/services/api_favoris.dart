@@ -2,15 +2,18 @@ import 'api_client.dart';
 import '../models/models.dart';
 
 class ApiFavoris {
-  static Future<List<ServiceAvecPrestataire>> listerFavoris() async {
-    final data = await ApiClient.get('/favoris');
+  static Future<List<ServiceAvecPrestataire>> listerFavoris({int page = 1, int parPage = 20}) async {
+    final data = await ApiClient.get('/favoris?page=$page&parPage=$parPage');
     final List<dynamic> items;
     if (data is Map && data.containsKey('items')) {
       items = data['items'] as List<dynamic>? ?? [];
     } else if (data is List) {
       items = data;
     } else if (data is Map && data.containsKey('donnees')) {
-      items = data['donnees'] as List<dynamic>? ?? [];
+      final donnees = data['donnees'];
+      items = donnees is Map && donnees.containsKey('items')
+          ? donnees['items'] as List<dynamic>? ?? []
+          : donnees as List<dynamic>? ?? [];
     } else {
       items = [];
     }
@@ -21,6 +24,41 @@ class ApiFavoris {
           : e as Map<String, dynamic>;
       return ServiceAvecPrestataire.fromJson(serviceData);
     }).toList();
+  }
+
+  static Future<int> compterFavoris() async {
+    try {
+      final data = await ApiClient.get('/favoris?page=1&parPage=1');
+      if (data is Map && data.containsKey('donnees')) {
+        final donnees = data['donnees'];
+        if (donnees is Map && donnees.containsKey('total')) {
+          return (donnees['total'] as num).toInt();
+        }
+      }
+    } catch (_) {}
+    return 0;
+  }
+
+  static Future<ResultatPaginationFavoris> listerFavorisPage({int page = 1, int parPage = 20}) async {
+    final data = await ApiClient.get('/favoris?page=$page&parPage=$parPage');
+    final List<dynamic> items;
+    int total = 0;
+    if (data is Map && data.containsKey('items')) {
+      items = data['items'] as List<dynamic>? ?? [];
+      total = (data['total'] as num?)?.toInt() ?? items.length;
+    } else if (data is List) {
+      items = data;
+      total = items.length;
+    } else {
+      items = [];
+    }
+    final services = items.map((e) {
+      final serviceData = e is Map && e.containsKey('service')
+          ? e['service'] as Map<String, dynamic>
+          : e as Map<String, dynamic>;
+      return ServiceAvecPrestataire.fromJson(serviceData);
+    }).toList();
+    return ResultatPaginationFavoris(services: services, total: total);
   }
 
   static Future<Map<String, dynamic>> ajouterFavori(String serviceId) async {
@@ -39,4 +77,10 @@ class ApiFavoris {
       return {};
     }
   }
+}
+
+class ResultatPaginationFavoris {
+  final List<ServiceAvecPrestataire> services;
+  final int total;
+  ResultatPaginationFavoris({required this.services, required this.total});
 }

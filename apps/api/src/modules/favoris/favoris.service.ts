@@ -1,33 +1,40 @@
 import { prisma } from "../../config/prisma";
 import { ErreurNonTrouve, ErreurConflit } from "../../utils/erreurs";
 
-export async function listerFavoris(utilisateurId: string) {
-  return prisma.favori.findMany({
-    where: { utilisateurId },
-    include: {
-      service: {
-        include: {
-          prestataire: {
-            select: {
-              id: true,
-              nomEntreprise: true,
-              categorie: true,
-              ville: true,
-              quartier: true,
-              noteMoyenne: true,
-              nombreAvis: true,
+export async function listerFavoris(utilisateurId: string, page = 1, parPage = 20) {
+  const skip = (page - 1) * parPage;
+  const [items, total] = await Promise.all([
+    prisma.favori.findMany({
+      where: { utilisateurId },
+      skip,
+      take: parPage,
+      include: {
+        service: {
+          include: {
+            prestataire: {
+              select: {
+                id: true,
+                nomEntreprise: true,
+                categorie: true,
+                ville: true,
+                quartier: true,
+                noteMoyenne: true,
+                nombreAvis: true,
+              },
             },
-          },
-          creneaux: {
-            where: { debut: { gte: new Date() } },
-            orderBy: { debut: "asc" },
-            take: 1,
+            creneaux: {
+              where: { debut: { gte: new Date() } },
+              orderBy: { debut: "asc" },
+              take: 1,
+            },
           },
         },
       },
-    },
-    orderBy: { creeLe: "desc" },
-  });
+      orderBy: { creeLe: "desc" },
+    }),
+    prisma.favori.count({ where: { utilisateurId } }),
+  ]);
+  return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) };
 }
 
 export async function ajouterFavori(utilisateurId: string, serviceId: string) {
