@@ -90,23 +90,27 @@ export default function PagePortefeuille() {
           <p className="text-xs text-primaire-100">{donnees.avoirs.nombre} avoir(s) au total</p>
         </Carte>
 
-        <Carte className="bg-gradient-to-br from-accent to-amber-600 text-white">
-          <div className="flex items-center gap-2">
-            <Coins className="h-5 w-5" />
-            <p className="text-sm font-medium text-amber-100">Points fidélité</p>
-          </div>
-          <p className="mt-2 text-2xl font-bold">{donnees.fidelite.points} pts</p>
-          <p className="text-xs text-amber-100">≈ {formaterMontant(donnees.fidelite.valeurEnFC, "CDF")}</p>
-        </Carte>
+        <button onClick={() => router.push("/portefeuille/fidelite")} className="text-left">
+          <Carte className="h-full bg-gradient-to-br from-accent to-amber-600 text-white transition-transform hover:-translate-y-0.5">
+            <div className="flex items-center gap-2">
+              <Coins className="h-5 w-5" />
+              <p className="text-sm font-medium text-amber-100">Points fidélité</p>
+            </div>
+            <p className="mt-2 text-2xl font-bold">{donnees.fidelite.points} pts</p>
+            <p className="text-xs text-amber-100">≈ {formaterMontant(donnees.fidelite.valeurEnFC, "CDF")}</p>
+          </Carte>
+        </button>
 
-        <Carte className="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white">
-          <div className="flex items-center gap-2">
-            <Gift className="h-5 w-5" />
-            <p className="text-sm font-medium text-emerald-100">Cartes cadeaux</p>
-          </div>
-          <p className="mt-2 text-2xl font-bold">{formaterMontant(donnees.cartesCadeaux.solde, "CDF")}</p>
-          <p className="text-xs text-emerald-100">{donnees.cartesCadeaux.nombre} carte(s)</p>
-        </Carte>
+        <button onClick={() => router.push("/portefeuille/cartes-cadeaux")} className="text-left">
+          <Carte className="h-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white transition-transform hover:-translate-y-0.5">
+            <div className="flex items-center gap-2">
+              <Gift className="h-5 w-5" />
+              <p className="text-sm font-medium text-emerald-100">Cartes cadeaux</p>
+            </div>
+            <p className="mt-2 text-2xl font-bold">{formaterMontant(donnees.cartesCadeaux.solde, "CDF")}</p>
+            <p className="text-xs text-emerald-100">{donnees.cartesCadeaux.nombre} carte(s)</p>
+          </Carte>
+        </button>
       </div>
 
       <Carte>
