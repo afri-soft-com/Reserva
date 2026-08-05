@@ -3,13 +3,15 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Star, Search } from "lucide-react";
+import { MapPin, Star, Search, Heart } from "lucide-react";
 import { Carte } from "../../components/Carte";
 import { Champ } from "../../components/Champ";
 import { Bouton } from "../../components/Bouton";
 import { rechercherServices, ServiceAvecPrestataire } from "../../lib/api-services";
+import { obtenirIdsFavoris, ajouterFavori, supprimerFavori } from "../../lib/api-favoris";
 import { extraireMessageErreur } from "../../lib/api-client";
-import { toastErreur } from "../../components/Toast";
+import { toastErreur, toastSucces } from "../../components/Toast";
+import { useAuthStore } from "../../lib/store-auth";
 import { CATEGORIE_SERVICE, LIBELLES_CATEGORIE, CategorieService, formaterMontant } from "@reserva/shared";
 
 function ContenuRecherche() {
@@ -17,7 +19,9 @@ function ContenuRecherche() {
   const router = useRouter();
 
   const [resultats, setResultats] = useState<ServiceAvecPrestataire[]>([]);
+  const [favorisIds, setFavorisIds] = useState<Set<string>>(new Set());
   const [chargement, setChargement] = useState(true);
+  const { estConnecte } = useAuthStore();
   const [texte, setTexte] = useState(params.get("texte") || "");
   const [ville, setVille] = useState(params.get("ville") || "");
   const categorie = (params.get("categorie") as CategorieService | null) || undefined;
@@ -38,10 +42,37 @@ function ContenuRecherche() {
         parPage: 20,
       });
       setResultats(resultat.items);
+      if (estConnecte) {
+        setFavorisIds(await obtenirIdsFavoris());
+      }
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
     } finally {
       setChargement(false);
+    }
+  }
+
+  async function basculerFavori(serviceId: string) {
+    if (!estConnecte) {
+      toastErreur("Connectez-vous pour enregistrer des favoris.");
+      return;
+    }
+    try {
+      if (favorisIds.has(serviceId)) {
+        await supprimerFavori(serviceId);
+        setFavorisIds((precedents) => {
+          const nouveaux = new Set(precedents);
+          nouveaux.delete(serviceId);
+          return nouveaux;
+        });
+        toastSucces("Service retiré de vos favoris.");
+      } else {
+        await ajouterFavori(serviceId);
+        setFavorisIds((precedents) => new Set(precedents).add(serviceId));
+        toastSucces("Service ajouté à vos favoris !");
+      }
+    } catch (erreur) {
+      toastErreur(extraireMessageErreur(erreur));
     }
   }
 
@@ -104,8 +135,17 @@ function ContenuRecherche() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {resultats.map((service) => (
-          <Link key={service.id} href={`/services/${service.id}`}>
-            <Carte className="h-full transition-transform hover:-translate-y-1">
+          <Carte key={service.id} className="relative h-full transition-transform hover:-translate-y-1">
+            <button
+              onClick={() => basculerFavori(service.id)}
+              className={`absolute right-3 top-3 z-10 rounded-full p-1.5 transition-colors ${
+                favorisIds.has(service.id) ? "text-red-500" : "text-gray-300 hover:text-red-400"
+              }`}
+              title={favorisIds.has(service.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+            >
+              <Heart className={`h-5 w-5 ${favorisIds.has(service.id) ? "fill-red-500" : ""}`} />
+            </button>
+            <Link href={`/services/${service.id}`} className="block">
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-primaire">
                 {LIBELLES_CATEGORIE[service.prestataire.categorie]}
               </p>
@@ -127,8 +167,8 @@ function ContenuRecherche() {
                   Prochain créneau : {new Date(service.creneaux[0].debut).toLocaleString("fr-FR")}
                 </p>
               )}
-            </Carte>
-          </Link>
+            </Link>
+          </Carte>
         ))}
       </div>
     </div>

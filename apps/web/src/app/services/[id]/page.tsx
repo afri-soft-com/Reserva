@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { MapPin, Star, Clock, ArrowLeft } from "lucide-react";
+import { MapPin, Star, Clock, ArrowLeft, Heart } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { CarteMap } from "../../../components/CarteMap";
 import { Bouton } from "../../../components/Bouton";
@@ -11,6 +11,7 @@ import { NoteEtoiles } from "../../../components/NoteEtoiles";
 import { toastErreur, toastSucces } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { obtenirDetailService, listerAvisPrestataire } from "../../../lib/api-services";
+import { ajouterFavori, supprimerFavori, obtenirIdsFavoris } from "../../../lib/api-favoris";
 import { creerReservation } from "../../../lib/api-reservations";
 import { useAuthStore } from "../../../lib/store-auth";
 import { LIBELLES_CATEGORIE, formaterMontant, Avis, type CategorieService } from "@reserva/shared";
@@ -34,6 +35,8 @@ export default function PageDetailService() {
   const [creneauSelectionne, setCreneauSelectionne] = useState<CreneauAffiche | null>(null);
   const [chargement, setChargement] = useState(true);
   const [chargementReservation, setChargementReservation] = useState(false);
+  const [estFavori, setEstFavori] = useState(false);
+  const [chargementFavori, setChargementFavori] = useState(false);
   const [notes, setNotes] = useState("");
   const [reservePourTiers, setReservePourTiers] = useState(false);
   const [nomTiers, setNomTiers] = useState("");
@@ -51,10 +54,38 @@ export default function PageDetailService() {
       setService(detail);
       const avisCharges = await listerAvisPrestataire(detail.prestataire.id);
       setAvis(avisCharges);
+      if (estConnecte) {
+        const ids = await obtenirIdsFavoris();
+        setEstFavori(ids.has(params.id));
+      }
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
     } finally {
       setChargement(false);
+    }
+  }
+
+  async function gererFavori() {
+    if (!estConnecte) {
+      toastErreur("Connectez-vous pour enregistrer des favoris.");
+      router.push("/connexion");
+      return;
+    }
+    setChargementFavori(true);
+    try {
+      if (estFavori) {
+        await supprimerFavori(params.id);
+        setEstFavori(false);
+        toastSucces("Service retiré de vos favoris.");
+      } else {
+        await ajouterFavori(params.id);
+        setEstFavori(true);
+        toastSucces("Service ajouté à vos favoris !");
+      }
+    } catch (erreur) {
+      toastErreur(extraireMessageErreur(erreur));
+    } finally {
+      setChargementFavori(false);
     }
   }
 
@@ -106,11 +137,25 @@ export default function PageDetailService() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <Carte>
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-primaire">
-              {LIBELLES_CATEGORIE[service.prestataire.categorie as CategorieService]}
-            </p>
-            <h1 className="mb-1 text-2xl font-bold text-gray-900">{service.nom}</h1>
-            <p className="mb-3 text-gray-600">{service.prestataire.nomEntreprise}</p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-primaire">
+                  {LIBELLES_CATEGORIE[service.prestataire.categorie as CategorieService]}
+                </p>
+                <h1 className="mb-1 text-2xl font-bold text-gray-900">{service.nom}</h1>
+                <p className="mb-3 text-gray-600">{service.prestataire.nomEntreprise}</p>
+              </div>
+              <button
+                onClick={gererFavori}
+                disabled={chargementFavori}
+                className={`rounded-full border p-2.5 transition-colors ${
+                  estFavori ? "border-red-200 bg-red-50 text-red-500" : "border-gray-200 text-gray-400 hover:text-red-500"
+                }`}
+                title={estFavori ? "Retirer des favoris" : "Ajouter aux favoris"}
+              >
+                <Heart className={`h-5 w-5 ${estFavori ? "fill-red-500" : ""}`} />
+              </button>
+            </div>
 
             <div className="mb-3 flex flex-wrap gap-4 text-sm text-gray-600">
               <span className="flex items-center gap-1">
