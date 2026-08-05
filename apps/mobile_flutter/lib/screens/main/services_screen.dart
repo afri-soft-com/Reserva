@@ -317,6 +317,51 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
     return '${montant.toStringAsFixed(0)} FC';
   }
 
+  CreneauSimple? _prochainCreneau(ServiceAvecPrestataire s) {
+    final maintenant = DateTime.now();
+    final creneaux = s.creneaux.where((c) {
+      final debut = DateTime.tryParse(c.debut);
+      return debut != null && debut.isAfter(maintenant);
+    }).toList()
+      ..sort((a, b) => a.debut.compareTo(b.debut));
+    return creneaux.isNotEmpty ? creneaux.first : null;
+  }
+
+  Widget _ligneProchainCreneau(ServiceAvecPrestataire s) {
+    final c = _prochainCreneau(s);
+    if (c == null) return const SizedBox.shrink();
+    final places = c.capaciteTotale - c.capaciteReservee;
+    final date = c.debut.substring(0, 10);
+    final horaire = '${c.debut.substring(11, 16)} - ${c.fin.substring(11, 16)}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppCouleurs.primaire.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.schedule, size: 14, color: AppCouleurs.primaire),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Prochain créneau : $date à $horaire',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.primaire),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Icon(places > 0 ? Icons.event_available : Icons.event_busy, size: 14,
+              color: places > 0 ? AppCouleurs.succes : AppCouleurs.alerte),
+          const SizedBox(width: 4),
+          Text(
+            places > 0 ? '$places places' : 'Complet',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: places > 0 ? AppCouleurs.succes : AppCouleurs.alerte),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -584,6 +629,10 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                                           ),
                                         ],
                                       ),
+                                      if (_prochainCreneau(s) != null) ...[
+                                        const SizedBox(height: 8),
+                                        _ligneProchainCreneau(s),
+                                      ],
                                     ],
                                   ),
                                 ),
