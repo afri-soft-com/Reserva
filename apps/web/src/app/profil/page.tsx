@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, LogOut, Camera, Smartphone, Shield, Wallet, ChevronRight } from "lucide-react";
+import { User, LogOut, Camera, Smartphone, Shield, Wallet, Heart, Bell, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Carte } from "../../components/Carte";
 import { Bouton } from "../../components/Bouton";
@@ -130,6 +130,21 @@ export default function PageProfil() {
             <div>
               <p className="font-medium text-gray-900">Mon portefeuille</p>
               <p className="text-sm text-gray-500">Avoirs, points fidélité, cartes cadeaux</p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-gray-400" />
+        </Link>
+      </Carte>
+
+      <Carte>
+        <Link href="/favoris" className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-500">
+              <Heart className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="font-medium text-gray-900">Mes favoris</p>
+              <p className="text-sm text-gray-500">Services enregistrés</p>
             </div>
           </div>
           <ChevronRight className="h-5 w-5 text-gray-400" />
