@@ -152,6 +152,21 @@ export default function PageProfil() {
       </Carte>
 
       <Carte>
+        <Link href="/notifications" className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primaire-50 text-primaire">
+              <Bell className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="font-medium text-gray-900">Notifications</p>
+              <p className="text-sm text-gray-500">Suivi de vos réservations et alertes</p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-gray-400" />
+        </Link>
+      </Carte>
+
+      <Carte>
         <Bouton variante="destructif" onClick={gererDeconnexion} className="w-full">
           <LogOut className="h-4 w-4" /> Se déconnecter
         </Bouton>
