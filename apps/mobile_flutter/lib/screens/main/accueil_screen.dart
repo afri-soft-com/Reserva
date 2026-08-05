@@ -24,6 +24,7 @@ class AccueilScreen extends StatefulWidget {
 class _AccueilScreenState extends State<AccueilScreen> {
   ReservationDetaillee? _prochaineResa;
   List<ServiceAvecPrestataire> _servicesRecents = [];
+  List<ServiceAvecPrestataire> _recommandations = [];
   int _nbEnAttente = 0;
 
   @override
@@ -37,9 +38,11 @@ class _AccueilScreenState extends State<AccueilScreen> {
       final results = await Future.wait([
         ApiReservations.listerMesReservations(),
         ApiServices.rechercherServices(parPage: 6),
+        ApiServices.obtenirRecommandations(limite: 6),
       ]);
       final reservations = results[0] as List<ReservationDetaillee>;
       final services = results[1] as List<ServiceAvecPrestataire>;
+      final recommandations = results[2] as List<ServiceAvecPrestataire>;
       final prochaines = reservations.where((r) =>
         r.reservation.statut == 'CONFIRMEE' || r.reservation.statut == 'EN_ATTENTE'
       ).toList();
@@ -48,6 +51,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
         setState(() {
           _prochaineResa = prochaines.isNotEmpty ? prochaines.first : null;
           _servicesRecents = services;
+          _recommandations = recommandations;
           _nbEnAttente = reservations.where((r) => r.reservation.statut == 'EN_ATTENTE').length;
         });
       }
@@ -94,8 +98,23 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 _buildProchaineReservation(),
                 const SizedBox(height: 20),
               ],
-              _buildStatsRow(),
+                _buildStatsRow(),
               const SizedBox(height: 20),
+              if (_recommandations.isNotEmpty) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Recommandé pour vous', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                    TextButton(
+                      onPressed: () => context.go('/services'),
+                      child: Text(AppTraductions.t('voirTout'), style: const TextStyle(fontSize: 13)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _buildServicesRow(services: _recommandations),
+                const SizedBox(height: 24),
+              ],
               Text(AppTraductions.t('categories'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               _categoriesGrid(context),
@@ -112,7 +131,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                _buildServicesRow(),
+                _buildServicesRow(services: _servicesRecents),
               ],
               const SizedBox(height: 24),
               Text(AppTraductions.t('prestatairesProches'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
@@ -294,15 +313,15 @@ class _AccueilScreenState extends State<AccueilScreen> {
     );
   }
 
-  Widget _buildServicesRow() {
+  Widget _buildServicesRow({required List<ServiceAvecPrestataire> services}) {
     return SizedBox(
       height: 180,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _servicesRecents.length,
+        itemCount: services.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (ctx, i) {
-          final s = _servicesRecents[i];
+          final s = services[i];
           return GestureDetector(
             onTap: () => context.go('/service/${s.id}'),
             child: Container(

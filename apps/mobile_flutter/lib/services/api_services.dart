@@ -41,4 +41,12 @@ class ApiServices {
   static Future<Map<String, dynamic>> obtenirDetailService(String serviceId) async {
     return (await ApiClient.get('/services/$serviceId')) as Map<String, dynamic>;
   }
+
+  static Future<List<ServiceAvecPrestataire>> obtenirRecommandations({int limite = 6}) async {
+    final data = await ApiClient.get('/services/recommander/recommandations', params: {'limite': limite.toString()});
+    if (data is List) {
+      return data.map((e) => ServiceAvecPrestataire.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    return [];
+  }
 }
