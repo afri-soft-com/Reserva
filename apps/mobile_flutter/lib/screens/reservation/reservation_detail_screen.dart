@@ -104,6 +104,31 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     return '${montant.toStringAsFixed(0)} FC';
   }
 
+  String _texteEBillet(ReservationDetaillee r) {
+    return '🎫 E-BILLET RESERVA\n'
+        '============================\n'
+        'Réservation : ${r.reservation.numero}\n'
+        'Service : ${r.service.nom}\n'
+        'Prestataire : ${r.prestataire.nomEntreprise}\n'
+        'Date : ${r.creneau.debut.substring(0, 10)}\n'
+        'Horaire : ${r.creneau.debut.substring(11, 16)} - ${r.creneau.fin.substring(11, 16)}\n'
+        'Lieu : ${r.prestataire.ville}, ${r.prestataire.quartier}\n'
+        'Montant : ${_formaterMontant(r.reservation.montantTotal, r.reservation.devise)}\n'
+        'Payé : ${_formaterMontant(r.reservation.montantPaye, r.reservation.devise)}\n'
+        'Statut : ${BadgeStatut.statutLibelle(r.reservation.statut)}\n'
+        '============================\n'
+        'Présentez ce billet à l\'accueil.\n'
+        'Politique : annulation gratuite ${r.prestataire.delaiAnnulationGratuiteHeures} h avant le créneau.';
+  }
+
+  Future<void> _partagerEBillet(ReservationDetaillee r) async {
+    try {
+      await Share.share(_texteEBillet(r), subject: 'E-billet ${r.reservation.numero} — RESERVA');
+    } catch (_) {
+      // Ignorer si le partage est annulé
+    }
+  }
+
   Future<void> _contacter(String participantId, String nom) async {
     try {
       final conv = await ApiChat.creerConversation(participantId);
@@ -129,17 +154,8 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () {
-              final texte = 'RESERVA — Réservation ${r.reservation.numero}\n'
-                  'Service: ${r.service.nom}\n'
-                  'Prestataire: ${r.prestataire.nomEntreprise}\n'
-                  'Date: ${r.creneau.debut.substring(0, 10)}\n'
-                  'Horaire: ${r.creneau.debut.substring(11, 16)} - ${r.creneau.fin.substring(11, 16)}\n'
-                  'Lieu: ${r.prestataire.ville}, ${r.prestataire.quartier}\n'
-                  'Montant: ${_formaterMontant(r.reservation.montantTotal, r.reservation.devise)}\n'
-                  'Statut: ${BadgeStatut.statutLibelle(r.reservation.statut)}';
-              Share.share(texte, subject: 'Réservation RESERVA');
-            },
+            onPressed: () => _partagerEBillet(r),
+            tooltip: 'Partager l\'e-billet',
           ),
         ],
       ),
@@ -250,6 +266,15 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                   estClient ? r.prestataire.utilisateurId : r.reservation.clientId,
                   estClient ? r.prestataire.nomEntreprise : 'le client',
                 ),
+              ),
+            ],
+            ...[
+              const SizedBox(height: 8),
+              Bouton(
+                titre: 'Partager l\'e-billet (WhatsApp)',
+                variante: 'secondaire',
+                icone: Icons.ios_share,
+                onPressed: () => _partagerEBillet(r),
               ),
             ],
             ...[
