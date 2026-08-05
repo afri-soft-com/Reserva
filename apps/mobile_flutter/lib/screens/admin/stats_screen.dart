@@ -16,6 +16,11 @@ class StatsScreen extends StatefulWidget {
 class _StatsScreenState extends State<StatsScreen> {
   Map<String, dynamic>? _stats;
   bool _chargement = true;
+  String _periode = 'mois';
+  String _ville = '';
+  String _categorie = '';
+  final List<String> _villes = ['Kinshasa', 'Lubumbashi'];
+  final List<String> _categories = ['HOTELLERIE', 'RESTAURATION', 'SANTE', 'TRANSPORT'];
 
   @override
   void initState() {
@@ -26,7 +31,7 @@ class _StatsScreenState extends State<StatsScreen> {
   Future<void> _charger() async {
     setState(() => _chargement = true);
     try {
-      final data = await ApiAdmin.obtenirStatistiques();
+      final data = await ApiAdmin.obtenirStatistiques(periode: _periode, ville: _ville, categorie: _categorie);
       if (mounted) setState(() => _stats = data);
     } catch (_) {
       if (mounted) setState(() => _stats = {});
@@ -64,6 +69,45 @@ class _StatsScreenState extends State<StatsScreen> {
                   PopupMenuItem(value: 'prestataires', child: Text('Exporter prestataires (CSV)')),
                   PopupMenuItem(value: 'utilisateurs', child: Text('Exporter utilisateurs (CSV)')),
                 ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _filtreDropdown('Période', _periode, ['mois', 'semaine', 'trimestre', 'annee', 'tout'], {
+                'mois': 'Ce mois', 'semaine': 'Cette semaine', 'trimestre': '90 jours', 'annee': 'Cette année', 'tout': 'Toute la période',
+              }, (v) {
+                setState(() => _periode = v);
+                _charger();
+              })),
+              const SizedBox(width: 8),
+              Expanded(child: _filtreDropdown('Ville', _ville, ['', ..._villes], {
+                '': 'Toutes', 'Kinshasa': 'Kinshasa', 'Lubumbashi': 'Lubumbashi',
+              }, (v) {
+                setState(() => _ville = v);
+                _charger();
+              })),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _filtreDropdown('Catégorie', _categorie, ['', ..._categories], {
+                '': 'Toutes', 'HOTELLERIE': 'Hôtellerie', 'RESTAURATION': 'Restauration', 'SANTE': 'Santé', 'TRANSPORT': 'Transport',
+              }, (v) {
+                setState(() => _categorie = v);
+                _charger();
+              })),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  child: Text(
+                    _libellePeriode(_periode),
+                    style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire, fontWeight: FontWeight.w600),
+                  ),
+                ),
               ),
             ],
           ),
@@ -165,5 +209,41 @@ class _StatsScreenState extends State<StatsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _filtreDropdown(String label, String valeur, List<String> options, Map<String, String> libelles, ValueChanged<String> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
+        const SizedBox(height: 4),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppCouleurs.primaireClair),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: options.contains(valeur) ? valeur : options.first,
+              isExpanded: true,
+              icon: const Icon(Icons.arrow_drop_down, color: AppCouleurs.primaire),
+              items: options.map((o) => DropdownMenuItem(value: o, child: Text(libelles[o] ?? o, style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (v) {
+                if (v != null) onChanged(v);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _libellePeriode(String periode) {
+    return periode == 'mois' ? 'Affichage : ce mois-ci'
+      : periode == 'semaine' ? 'Affichage : cette semaine'
+      : periode == 'trimestre' ? 'Affichage : 90 derniers jours'
+      : periode == 'annee' ? 'Affichage : cette année'
+      : 'Affichage : toute la période';
   }
 }
