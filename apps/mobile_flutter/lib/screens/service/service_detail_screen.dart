@@ -290,8 +290,48 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             const SizedBox(height: 12),
             Text(service.description!, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
           ],
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.event_available, size: 18, color: AppCouleurs.primaire),
+              const SizedBox(width: 8),
+              const Text('Politique d\'annulation', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _lignePolitique(
+            'Annulation gratuite',
+            '${prestataire.delaiAnnulationGratuiteHeures} h avant le créneau',
+          ),
+          const SizedBox(height: 6),
+          _lignePolitique(
+            'Après ce délai',
+            'Frais de ${prestataire.fraisAnnulationTardivePourcent} % du montant',
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _lignePolitique(String titre, String valeur) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.check_circle_outline, size: 16, color: AppCouleurs.texteSecondaire),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: '$titre : ', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                TextSpan(text: valeur, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
