@@ -91,3 +91,10 @@ export async function validerPrestataireAdmin(input: {
   const { data } = await clientApi.post("/prestataires/admin/valider", input);
   return data.donnees;
 }
+
+// ---- Broadcast notifications ----
+
+export async function envoyerBroadcastAdmin(input: { titre: string; message: string; role?: string }) {
+  const { data } = await clientApi.post("/admin/notifications/broadcast", input);
+  return data.donnees as { envoyees: number };
+}
