@@ -24,6 +24,7 @@ export default function PageDetailReservation() {
   const [afficherPaiement, setAfficherPaiement] = useState(false);
   const [operateur, setOperateur] = useState<OperateurMobileMoney>("MPESA");
   const [telephonePaiement, setTelephonePaiement] = useState("");
+  const [acompteUniquement, setAcompteUniquement] = useState(false);
   const [chargementAction, setChargementAction] = useState(false);
   const [noteAvis, setNoteAvis] = useState(5);
   const [commentaireAvis, setCommentaireAvis] = useState("");
@@ -52,12 +53,13 @@ export default function PageDetailReservation() {
     setChargementAction(true);
     try {
       const montantRestant = reservation.montantTotal - reservation.montantPaye;
+      const montant = acompteUniquement ? montantRestant * 0.3 : montantRestant;
       const resultat = await initierPaiement({
         reservationId: reservation.id,
         operateur,
         telephonePaiement: operateur !== "ESPECES" ? telephonePaiement : undefined,
-        montant: montantRestant,
-        acompteUniquement: false,
+        montant,
+        acompteUniquement,
       });
 
       if (resultat.statutOperateur === "PAYE") {
@@ -268,6 +270,14 @@ export default function PageDetailReservation() {
               className="mb-4"
             />
           )}
+          <label className="mb-4 flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={acompteUniquement}
+              onChange={(e) => setAcompteUniquement(e.target.checked)}
+            />
+            Payer un acompte (30%) — {formaterMontant(montantRestant * 0.3, reservation.devise)}
+          </label>
           <div className="flex gap-3">
             <Bouton chargement={chargementAction} onClick={gererPaiement}>
               Confirmer le paiement
