@@ -53,6 +53,7 @@ export async function supprimerNotification(utilisateurId: string, notificationI
 /**
  * Tâche planifiée : envoie les rappels SMS pour les réservations confirmées dans les
  * prochaines 24h et 1h. Conçu pour être appelé par un cron job (voir docs/cron.md).
+ * Dé-dupliqué : chaque réservation ne reçoit qu'un seul rappel par horizon (24h / 1h).
  */
 export async function envoyerRappelsAutomatiques() {
   const { envoyerRappelReservation } = await import("../notifications/sms.adapter");
@@ -61,6 +62,8 @@ export async function envoyerRappelsAutomatiques() {
   const dans24h = new Date(maintenant.getTime() + 24 * 60 * 60 * 1000);
   const dans1h = new Date(maintenant.getTime() + 60 * 60 * 1000);
   const fenetreToleranceMs = 5 * 60 * 1000; // fenêtre de 5 min pour matcher l'exécution du cron
+  const fenetreDedup24hMs = 25 * 60 * 60 * 1000; // ne renvoie pas le rappel 24h plus d'une fois par jour
+  const fenetreDedup1hMs = 2 * 60 * 60 * 1000; // idem pour le rappel 1h
 
   const reservationsA24h = await prisma.reservation.findMany({
     where: {
@@ -79,7 +82,42 @@ export async function envoyerRappelsAutomatiques() {
   });
 
   let envoyes = 0;
-  for (const reservation of [...reservationsA24h, ...reservationsA1h]) {
+  for (const reservation of reservationsA24h) {
+    const dejaRappele = await prisma.notification.findFirst({
+      where: {
+        reservationId: reservation.id,
+        type: "RAPPEL",
+        creeLe: { gte: new Date(maintenant.getTime() - fenetreDedup24hMs) },
+      },
+    });
+    if (dejaRappele) continue;
+    await envoyerRappelReservation({
+      telephone: reservation.client.telephone,
+      numeroReservation: reservation.numero,
+      nomPrestataire: reservation.prestataire.nomEntreprise,
+      dateHeure: reservation.creneau.debut.toLocaleString("fr-FR"),
+    });
+    await prisma.notification.create({
+      data: {
+        utilisateurId: reservation.clientId,
+        reservationId: reservation.id,
+        titre: "Rappel de rendez-vous",
+        message: `N'oubliez pas votre rendez-vous chez ${reservation.prestataire.nomEntreprise} (réf. ${reservation.numero})`,
+        type: "RAPPEL",
+      },
+    });
+    envoyes++;
+  }
+
+  for (const reservation of reservationsA1h) {
+    const dejaRappele = await prisma.notification.findFirst({
+      where: {
+        reservationId: reservation.id,
+        type: "RAPPEL",
+        creeLe: { gte: new Date(maintenant.getTime() - fenetreDedup1hMs) },
+      },
+    });
+    if (dejaRappele) continue;
     await envoyerRappelReservation({
       telephone: reservation.client.telephone,
       numeroReservation: reservation.numero,
