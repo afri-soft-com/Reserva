@@ -14,6 +14,7 @@ import '../prestataire/packages_screen.dart';
 import '../prestataire/calendrier_prestataire_screen.dart';
 import '../prestataire/statistiques_prestataire_screen.dart';
 import '../prestataire/indisponibilites_prestataire_screen.dart';
+import '../prestataire/politique_annulation_screen.dart';
 
 class PrestataireScreen extends StatefulWidget {
   const PrestataireScreen({super.key});
@@ -177,6 +178,13 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             icon: const Icon(Icons.ios_share),
             tooltip: 'Partager le rapport (CSV)',
             onPressed: _partagerRapport,
+          ),
+          IconButton(
+            icon: const Icon(Icons.event_repeat),
+            tooltip: 'Politique d\'annulation',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PolitiqueAnnulationScreen()),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),

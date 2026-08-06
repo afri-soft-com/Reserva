@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, TrendingUp, Star, Clock, Package, CalendarX, FileDown } from "lucide-react";
+import { Calendar, TrendingUp, Star, Clock, Package, CalendarX, CalendarClock, FileDown } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { BadgeStatutReservation } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
@@ -93,6 +93,11 @@ export default function PageTableauDeBordPrestataire() {
           <Link href="/prestataire/indisponibilites">
             <Bouton variante="secondaire">
               <CalendarX className="h-4 w-4" /> Jours bloqués
+            </Bouton>
+          </Link>
+          <Link href="/prestataire/politique-annulation">
+            <Bouton variante="secondaire">
+              <CalendarClock className="h-4 w-4" /> Politique d'annulation
             </Bouton>
           </Link>
           <Link href="/prestataire/services">

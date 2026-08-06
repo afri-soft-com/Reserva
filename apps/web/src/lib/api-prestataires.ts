@@ -22,6 +22,14 @@ export async function obtenirMonProfilPrestataire() {
   return data.donnees as Prestataire & { services: ServiceOffert[] };
 }
 
+export async function modifierProfilPrestataire(input: {
+  delaiAnnulationGratuiteHeures?: number;
+  fraisAnnulationTardivePourcent?: number;
+}) {
+  const { data } = await clientApi.patch("/prestataires/moi", input);
+  return data.donnees as Prestataire;
+}
+
 export interface TableauDeBordReponse {
   reservationsAujourdhui: any[];
   statistiques: {
