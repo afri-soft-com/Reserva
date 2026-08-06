@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../theme.dart';
 import '../../models/models.dart';
 import '../../services/api_reservations.dart';
+import '../../services/api_client.dart';
 import '../../services/api_chat.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/carte.dart';
@@ -126,6 +128,17 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
       await Share.share(_texteEBillet(r), subject: 'E-billet ${r.reservation.numero} — RESERVA');
     } catch (_) {
       // Ignorer si le partage est annulé
+    }
+  }
+
+  Future<void> _partagerRecuPdf(ReservationDetaillee r) async {
+    try {
+      final octets = await ApiClient.getOctets('/paiements/reservations/${widget.reservationId}/recu/pdf');
+      final fichier = File('${Directory.systemTemp.path}/recu-${r.reservation.numero}.pdf');
+      await fichier.writeAsBytes(octets, flush: true);
+      await Share.shareXFiles([XFile(fichier.path)], subject: 'Reçu ${r.reservation.numero} — RESERVA');
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     }
   }
 
@@ -275,6 +288,16 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                 variante: 'secondaire',
                 icone: Icons.ios_share,
                 onPressed: () => _partagerEBillet(r),
+              ),
+            ],
+            if (r.reservation.statutPaiement == StatutPaiement.paye ||
+                r.reservation.statutPaiement == StatutPaiement.partiel) ...[
+              const SizedBox(height: 8),
+              Bouton(
+                titre: 'Télécharger le reçu (PDF)',
+                variante: 'secondaire',
+                icone: Icons.receipt_long,
+                onPressed: () => _partagerRecuPdf(r),
               ),
             ],
             ...[

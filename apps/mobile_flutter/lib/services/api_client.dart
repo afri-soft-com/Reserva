@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config.dart';
@@ -111,8 +112,7 @@ class ApiClient {
       request('GET', path, params: params);
 
   /// Récupère une réponse brute (texte) sans décodage JSON — pour les exports CSV
-  static Future<String> getTexte(String path, {Map<String, String>? params}) async {
-    final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: params);
+  static Future<String> getTexte(String path, {Map<String, String>? params}) async {    final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: params);
     final headers = <String, String>{};
     final token = await getToken();
     if (token != null) {
@@ -129,6 +129,27 @@ class ApiClient {
       }
     }
     return response.body;
+  }
+
+  /// Récupère des octets bruts (fichiers binaires, PDF) sans décodage JSON
+  static Future<Uint8List> getOctets(String path, {Map<String, String>? params}) async {
+    final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: params);
+    final headers = <String, String>{};
+    final token = await getToken();
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final response = await http.get(uri, headers: headers).timeout(AppConfig.requeteTimeout);
+    if (response.statusCode >= 400) {
+      try {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final erreur = decoded['erreur'] as Map<String, dynamic>?;
+        throw Exception(erreur?['message'] as String? ?? 'Une erreur est survenue.');
+      } catch (_) {
+        throw Exception('Une erreur est survenue lors du téléchargement du document.');
+      }
+    }
+    return response.bodyBytes;
   }
 
   static Future<dynamic> post(String path, {Map<String, dynamic>? body}) =>
