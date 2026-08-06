@@ -39,6 +39,9 @@ export interface TableauDeBordReponse {
     reservationsEnAttenteAction: number;
     noteMoyenne: number;
     nombreAvis: number;
+    tauxOccupation: number;
+    revenusAnnuels: number;
+    meilleurMois: number;
   };
 }
 

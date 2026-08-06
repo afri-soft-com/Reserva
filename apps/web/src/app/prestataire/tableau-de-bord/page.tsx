@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, TrendingUp, Star, Clock, Package, CalendarX, CalendarClock, FileDown } from "lucide-react";
+import { Calendar, TrendingUp, Star, Clock, Package, CalendarX, CalendarClock, Gauge, FileDown } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { BadgeStatutReservation } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
@@ -141,6 +141,24 @@ export default function PageTableauDeBordPrestataire() {
           </p>
         </Carte>
       </div>
+
+      <Carte>
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-1 text-sm font-semibold text-gray-700">
+            <Gauge className="h-4 w-4 text-primaire" /> Taux d'occupation ce mois
+          </p>
+          <p className="text-2xl font-bold text-primaire-700">{donnees.statistiques.tauxOccupation.toFixed(1)}%</p>
+        </div>
+        <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-gray-100">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-primaire to-accent"
+            style={{ width: `${Math.min(100, donnees.statistiques.tauxOccupation)}%` }}
+          />
+        </div>
+        <p className="mt-2 text-xs text-gray-500">
+          Part des capacités réservées sur l'ensemble des créneaux du mois (services actifs).
+        </p>
+      </Carte>
 
       {donnees.statistiques.reservationsEnAttenteAction > 0 && (
         <Carte className="border-2 border-amber-300 bg-amber-50">
