@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../theme.dart';
@@ -178,6 +179,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             icon: const Icon(Icons.ios_share),
             tooltip: 'Partager le rapport (CSV)',
             onPressed: _partagerRapport,
+          ),
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            tooltip: 'Partager le rapport (PDF)',
+            onPressed: _partagerRapportPdf,
           ),
           IconButton(
             icon: const Icon(Icons.event_repeat),
@@ -1602,6 +1608,18 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
       final csv = await ApiPrestataire.telechargerRapportCsv();
       if (!mounted) return;
       await Share.share(csv, subject: 'Rapport des réservations RESERVA');
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    }
+  }
+
+  Future<void> _partagerRapportPdf() async {
+    try {
+      final octets = await ApiPrestataire.telechargerRapportPdf(periode: 'mois');
+      if (!mounted) return;
+      final fichier = File('${Directory.systemTemp.path}/rapport-reservations-${DateTime.now().toIso8601String().substring(0, 10)}.pdf');
+      await fichier.writeAsBytes(octets, flush: true);
+      await Share.shareXFiles([XFile(fichier.path)], subject: 'Rapport des réservations RESERVA (PDF)');
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     }

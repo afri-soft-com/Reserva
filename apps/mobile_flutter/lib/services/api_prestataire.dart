@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'api_client.dart';
 import 'cache_hors_ligne.dart';
 import '../models/models.dart';
@@ -347,5 +348,11 @@ class ApiPrestataire {
     if (dateDebut != null) params['dateDebut'] = dateDebut;
     if (dateFin != null) params['dateFin'] = dateFin;
     return ApiClient.getTexte('/paiements/rapport/csv', params: params);
+  }
+
+  static Future<Uint8List> telechargerRapportPdf({String? periode}) async {
+    final params = <String, String>{};
+    if (periode != null) params['periode'] = periode;
+    return ApiClient.getOctets('/paiements/rapport/pdf', params: params);
   }
 }
