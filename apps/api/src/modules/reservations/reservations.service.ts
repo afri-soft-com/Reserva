@@ -109,6 +109,7 @@ export async function creerReservation(clientId: string, input: CreerReservation
         service: true,
         prestataire: true,
         creneau: true,
+        client: { select: { nom: true } },
       },
     });
   });
@@ -118,6 +119,14 @@ export async function creerReservation(clientId: string, input: CreerReservation
     reservationId: reservation.id,
     titre: "Réservation créée",
     message: `Votre réservation ${reservation.numero} chez ${reservation.prestataire.nomEntreprise} est en attente de confirmation.`,
+    type: "CONFIRMATION",
+  });
+
+  await creerNotification({
+    utilisateurId: reservation.prestataire.utilisateurId,
+    reservationId: reservation.id,
+    titre: "Nouvelle réservation",
+    message: `${reservation.client.nom} a réservé ${reservation.service.nom} le ${reservation.creneau.debut.toLocaleDateString("fr-FR")} à ${reservation.creneau.debut.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} (${reservation.numero}).`,
     type: "CONFIRMATION",
   });
 
@@ -260,7 +269,7 @@ export async function repondreReservation(utilisateurId: string, reservationId: 
 export async function annulerReservation(utilisateurId: string, input: AnnulerReservationInput) {
   const reservation = await prisma.reservation.findUnique({
     where: { id: input.reservationId },
-    include: { prestataire: true, creneau: true, client: true, transactions: true },
+    include: { prestataire: true, creneau: true, service: true, client: true, transactions: true },
   });
 
   if (!reservation) {
@@ -352,6 +361,14 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
           ? `Votre réservation ${reservation.numero} a été annulée. Un avoir de ${montantRembourse + avoirsRestitues} ${reservation.devise} a été crédité sur votre compte.`
           : `Votre réservation ${reservation.numero} a été annulée. Remboursement de ${montantRembourse} ${reservation.devise} en cours.`)
       : `Votre réservation ${reservation.numero} a été annulée.`,
+    type: "ANNULATION",
+  });
+
+  await creerNotification({
+    utilisateurId: reservation.prestataire.utilisateurId,
+    reservationId: reservation.id,
+    titre: "Réservation annulée",
+    message: `${reservation.client.nom} a annulé ${reservation.service.nom} du ${reservation.creneau.debut.toLocaleDateString("fr-FR")} à ${reservation.creneau.debut.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} (${reservation.numero}).`,
     type: "ANNULATION",
   });
 
