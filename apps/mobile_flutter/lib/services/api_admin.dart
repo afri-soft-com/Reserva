@@ -20,7 +20,7 @@ class ApiAdmin {
   }
 
   static Future<Map<String, dynamic>> modifierPlan(String id, Map<String, dynamic> body) async {
-    return (await ApiClient.patch('/admin/plans/$id', body: body)) as Map<String, dynamic>;
+    return (await ApiClient.put('/admin/plans/$id', body: body)) as Map<String, dynamic>;
   }
 
   static Future<void> supprimerPlan(String id) async {

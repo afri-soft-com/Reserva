@@ -152,49 +152,78 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
           IconButton(
             icon: const Icon(Icons.calendar_month),
             tooltip: 'Calendrier',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const CalendrierPrestataireScreen()),
-            ),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CalendrierPrestataireScreen()),
+              );
+              if (mounted) _charger();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.bar_chart),
             tooltip: 'Statistiques',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const StatistiquesPrestataireScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.event_busy),
-            tooltip: 'Jours bloqués',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const IndisponibilitesPrestataireScreen()),
-            ),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const StatistiquesPrestataireScreen()),
+              );
+              if (mounted) _charger();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Scanner un QR client',
             onPressed: _ouvrirScanner,
           ),
-          IconButton(
-            icon: const Icon(Icons.ios_share),
-            tooltip: 'Partager le rapport (CSV)',
-            onPressed: _partagerRapport,
-          ),
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            tooltip: 'Partager le rapport (PDF)',
-            onPressed: _partagerRapportPdf,
-          ),
-          IconButton(
-            icon: const Icon(Icons.event_repeat),
-            tooltip: 'Politique d\'annulation',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PolitiqueAnnulationScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _charger,
+          PopupMenuButton<String>(
+            tooltip: 'Plus d\'actions',
+            onSelected: _gererActionMenu,
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'indisponibilites',
+                child: ListTile(
+                  leading: Icon(Icons.event_busy),
+                  title: Text('Jours bloqués'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'rapport_csv',
+                child: ListTile(
+                  leading: Icon(Icons.ios_share),
+                  title: Text('Rapport (CSV)'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'rapport_pdf',
+                child: ListTile(
+                  leading: Icon(Icons.picture_as_pdf),
+                  title: Text('Rapport (PDF)'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'politique_annulation',
+                child: ListTile(
+                  leading: Icon(Icons.event_repeat),
+                  title: Text('Politique d\'annulation'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'actualiser',
+                child: ListTile(
+                  leading: Icon(Icons.refresh),
+                  title: Text('Actualiser'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1592,6 +1621,32 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
       }
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+    }
+  }
+
+  Future<void> _gererActionMenu(String valeur) async {
+    switch (valeur) {
+      case 'indisponibilites':
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const IndisponibilitesPrestataireScreen()),
+        );
+        if (mounted) _charger();
+        break;
+      case 'rapport_csv':
+        await _partagerRapport();
+        break;
+      case 'rapport_pdf':
+        await _partagerRapportPdf();
+        break;
+      case 'politique_annulation':
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PolitiqueAnnulationScreen()),
+        );
+        if (mounted) _charger();
+        break;
+      case 'actualiser':
+        _charger();
+        break;
     }
   }
 

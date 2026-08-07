@@ -29,11 +29,9 @@ class ApiFavoris {
   static Future<int> compterFavoris() async {
     try {
       final data = await ApiClient.get('/favoris?page=1&parPage=1');
-      if (data is Map && data.containsKey('donnees')) {
-        final donnees = data['donnees'];
-        if (donnees is Map && donnees.containsKey('total')) {
-          return (donnees['total'] as num).toInt();
-        }
+      if (data is Map) {
+        final total = data['total'];
+        if (total is num) return total.toInt();
       }
     } catch (_) {}
     return 0;

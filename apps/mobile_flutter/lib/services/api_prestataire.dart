@@ -292,10 +292,9 @@ class ApiPrestataire {
     await ApiClient.delete('/indisponibilites/$periodeId');
   }
 
-  static Future<void> repondreReservation(String reservationId, bool approuver) async {
-    await ApiClient.post('/reservations/repondre', body: {
-      'reservationId': reservationId,
-      'approuver': approuver,
+  static Future<void> repondreReservation(String reservationId, bool accepter) async {
+    await ApiClient.post('/reservations/$reservationId/repondre', body: {
+      'accepter': accepter,
     });
   }
 

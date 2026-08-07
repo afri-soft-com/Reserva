@@ -84,6 +84,9 @@ class ApiClient {
         case 'PATCH':
           response = await http.patch(uri, headers: headers, body: body != null ? jsonEncode(body) : null).timeout(AppConfig.requeteTimeout);
           break;
+        case 'PUT':
+          response = await http.put(uri, headers: headers, body: body != null ? jsonEncode(body) : null).timeout(AppConfig.requeteTimeout);
+          break;
         case 'DELETE':
           response = await http.delete(uri, headers: headers).timeout(AppConfig.requeteTimeout);
           break;
@@ -157,6 +160,9 @@ class ApiClient {
 
   static Future<dynamic> patch(String path, {Map<String, dynamic>? body}) =>
       request('PATCH', path, body: body);
+
+  static Future<dynamic> put(String path, {Map<String, dynamic>? body}) =>
+      request('PUT', path, body: body);
 
   static Future<dynamic> delete(String path) =>
       request('DELETE', path);

@@ -19,6 +19,10 @@ class ApiCodesPromos {
 
   static Future<List<dynamic>> listerDisponibles() async {
     final data = await ApiClient.get('/codes-promos/disponibles/publics');
-    return (data as Map<String, dynamic>)['items'] as List<dynamic>? ?? data as List<dynamic>;
+    if (data is List) return data;
+    if (data is Map && data.containsKey('items')) {
+      return data['items'] as List<dynamic>? ?? [];
+    }
+    return [];
   }
 }
