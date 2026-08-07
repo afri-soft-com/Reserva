@@ -52,9 +52,7 @@ export default function PageFidelite() {
 
   async function chargerPlus() {
     setChargement(true);
-    const prochainePage = page + 1;
-    setPage(prochainePage);
-    await charger(true, prochainePage);
+    setPage((p) => p + 1);
   }
 
   return (

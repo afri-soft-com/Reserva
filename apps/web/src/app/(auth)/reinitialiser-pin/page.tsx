@@ -37,6 +37,15 @@ export default function PageReinitialiserPin() {
     }
   }
 
+  async function gererCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (code.trim().length !== 6) {
+      toastErreur("Entrez le code complet à 6 chiffres.");
+      return;
+    }
+    setEtape("PIN");
+  }
+
   async function gererReinitialisation(e: React.FormEvent) {
     e.preventDefault();
     if (nouveauPin !== confirmationPin) {
@@ -82,7 +91,7 @@ export default function PageReinitialiserPin() {
         )}
 
         {etape === "OTP" && (
-          <form onSubmit={gererReinitialisation} className="space-y-4">
+          <form onSubmit={gererCode} className="space-y-4">
             <Champ
               libelle="Code de réinitialisation"
               placeholder="123456"

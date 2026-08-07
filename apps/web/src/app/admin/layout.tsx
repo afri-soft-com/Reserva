@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Building2, Users, CreditCard, Settings, Package, Megaphone, MessageCircle, Tags, BellRing } from "lucide-react";
+import { BarChart3, Building2, Users, CreditCard, Package, Megaphone, MessageCircle, Tags, BellRing } from "lucide-react";
 import { useAuthStore } from "../../lib/store-auth";
 import clsx from "clsx";
 
@@ -17,7 +17,6 @@ const NAV_ADMIN = [
   { href: "/admin/notifications", label: "Notifications", icon: BellRing },
   { href: "/admin/codes-promos", label: "Codes Promo", icon: Tags },
   { href: "/admin/tarifications", label: "Tarifications", icon: CreditCard },
-  { href: "/profil", label: "Paramètres", icon: Settings },
 ];
 
 export default function LayoutAdmin({ children }: { children: ReactNode }) {

@@ -5,7 +5,7 @@ import { Plus, X, Pencil, Trash2, ExternalLink, Image, Camera, Upload } from "lu
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur, toastSucces } from "../../../components/Toast";
-import { extraireMessageErreur } from "../../../lib/api-client";
+import { extraireMessageErreur, API_HOST } from "../../../lib/api-client";
 import { useAuthStore } from "../../../lib/store-auth";
 import {
   listerPublicitesAdmin,
@@ -38,12 +38,11 @@ const FORMULAIRE_VIDE: Formulaire = {
 };
 
 const CIBLES = ["TOUS", "CLIENT", "PRESTATAIRE", "ADMIN"];
-const API_BASE = "http://localhost:4000";
 
 function urlImage(val: string): string {
   if (!val) return "";
   if (val.startsWith("http://") || val.startsWith("https://")) return val;
-  return `${API_BASE}${val}`;
+  return `${API_HOST}${val}`;
 }
 
 export default function PageAdminPublicites() {

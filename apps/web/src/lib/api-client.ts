@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from "axios";
 import { ReponseApi } from "@reserva/shared";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+export const API_HOST = API_URL.replace(/\/api\/?$/, "");
 
 /** Clé localStorage utilisée pour stocker le token JWT côté navigateur */
 const CLE_TOKEN = "reserva_token";
