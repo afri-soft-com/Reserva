@@ -85,3 +85,9 @@ export function masquerTelephone(telephone: string): string {
 export function calculerOffset(page: number, parPage: number): number {
   return (Math.max(1, page) - 1) * parPage;
 }
+
+/** Pagination : borne la taille d'une page à une valeur maximale (protection contre les abus) */
+export function bornerParPage(parPage: number, max = 100): number {
+  if (!Number.isFinite(parPage) || parPage <= 0) return 20;
+  return Math.min(parPage, max);
+}

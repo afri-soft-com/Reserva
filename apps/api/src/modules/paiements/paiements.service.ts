@@ -4,6 +4,16 @@ import { InitierPaiementInput } from "@reserva/shared";
 import { initierPaiementMobileMoney } from "./mobilemoney.adapter";
 import { ajouterPointsGain } from "../fidelite/fidelite.service";
 
+/** Échappe les caractères HTML pour éviter toute injection dans les documents générés */
+function echapperHtml(valeur: string | null | undefined): string {
+  return String(valeur ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /**
  * Initie le paiement d'une réservation. Supporte le paiement intégral ou un acompte partiel
  * (US-005 du cahier des charges — acompte de 30% pour les hôtels par exemple).
@@ -121,13 +131,19 @@ export async function genererRecuHtml(utilisateurId: string, reservationId: stri
   const montantPaye = reservation.devise === "USD"
     ? `$${reservation.montantPaye.toFixed(2)}`
     : `${reservation.montantPaye.toLocaleString("fr-FR")} FC`;
+  const numero = echapperHtml(reservation.numero);
+  const nomClient = echapperHtml(reservation.client.nom);
+  const telephoneClient = echapperHtml(reservation.client.telephone);
+  const nomEntreprise = echapperHtml(reservation.prestataire.nomEntreprise);
+  const adressePrestataire = `${echapperHtml(reservation.prestataire.ville)}, ${echapperHtml(reservation.prestataire.quartier)}`;
+  const nomService = echapperHtml(reservation.service.nom);
   const transactionsHtml = reservation.transactions.map((t) =>
-    `<tr><td>${new Date(t.creeLe).toLocaleDateString("fr-FR")}</td><td>${t.operateur}</td><td>${t.montant}</td><td>${t.statut}</td></tr>`
+    `<tr><td>${new Date(t.creeLe).toLocaleDateString("fr-FR")}</td><td>${echapperHtml(t.operateur)}</td><td>${t.montant}</td><td>${t.statut}</td></tr>`
   ).join("");
 
   return `<!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><title>Reçu RESERVA - ${reservation.numero}</title>
+<head><meta charset="UTF-8"><title>Reçu RESERVA - ${numero}</title>
 <style>
   body { font-family: 'Inter', Arial, sans-serif; margin: 0; padding: 20px; color: #1F2937; }
   .en-tete { text-align: center; border-bottom: 2px solid #1A56DB; padding-bottom: 16px; margin-bottom: 20px; }
@@ -149,24 +165,24 @@ export async function genererRecuHtml(utilisateurId: string, reservationId: stri
   <div class="en-tete">
     <h1>RESERVA</h1>
     <p>Reçu de paiement — Réservez. Sereinement.</p>
-    <p class="ref">Réf. ${reservation.numero} | Émis le ${dateEmission}</p>
+    <p class="ref">Réf. ${numero} | Émis le ${dateEmission}</p>
   </div>
   <div class="grille">
     <div class="bloc">
       <h3>Client</h3>
-      <p>${reservation.client.nom}</p>
-      <p>${reservation.client.telephone}</p>
+      <p>${nomClient}</p>
+      <p>${telephoneClient}</p>
     </div>
     <div class="bloc">
       <h3>Prestataire</h3>
-      <p>${reservation.prestataire.nomEntreprise}</p>
-      <p>${reservation.prestataire.ville}, ${reservation.prestataire.quartier}</p>
+      <p>${nomEntreprise}</p>
+      <p>${adressePrestataire}</p>
     </div>
   </div>
   <div class="grille">
     <div class="bloc">
       <h3>Service</h3>
-      <p>${reservation.service.nom}</p>
+      <p>${nomService}</p>
     </div>
     <div class="bloc">
       <h3>Date du service</h3>
