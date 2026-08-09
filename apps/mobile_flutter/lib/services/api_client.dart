@@ -22,6 +22,9 @@ class ApiClient {
   static Future<void> saveJson(String cle, Map<String, dynamic> donnees) =>
       _storage.write(key: cle, value: jsonEncode(donnees));
 
+  /// Supprime une entrée locale du stockage sécurisé
+  static Future<void> deleteFromStorage(String cle) => _storage.delete(key: cle);
+
   /// Lit une structure JSON stockée localement (ou null si absente)
   static Future<Map<String, dynamic>?> readJson(String cle) async {
     final brut = await _storage.read(key: cle);

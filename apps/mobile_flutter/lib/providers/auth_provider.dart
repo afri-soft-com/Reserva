@@ -5,6 +5,7 @@ import '../services/api_auth.dart';
 import '../services/jwt_decoder.dart';
 import '../services/biometrie_service.dart';
 import '../services/service_cache.dart';
+import '../services/cache_hors_ligne.dart';
 import '../services/socket_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -42,6 +43,7 @@ class AuthProvider extends ChangeNotifier {
     if (token == null || JwtDecoder.estExpire(token)) {
       if (token != null) await ApiClient.deleteToken();
       await ServiceCache.vider();
+      await CacheHorsLigne.vider();
       _chargementInitial = false;
       notifyListeners();
       return;
@@ -117,6 +119,7 @@ class AuthProvider extends ChangeNotifier {
     await ApiClient.deleteToken();
     await ApiClient.deleteBiometriePref();
     await ServiceCache.vider();
+    await CacheHorsLigne.vider();
     SocketService().deconnecter();
     _utilisateur = null;
     _prestataire = null;

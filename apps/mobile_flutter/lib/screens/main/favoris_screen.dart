@@ -140,7 +140,10 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: GestureDetector(
-                          onTap: () => context.go('/service/${s.id}'),
+                          onTap: () async {
+                            await context.push('/service/${s.id}');
+                            if (mounted) _charger();
+                          },
                           child: Carte(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

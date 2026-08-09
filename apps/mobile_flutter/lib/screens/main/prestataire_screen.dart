@@ -1566,6 +1566,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
   Future<void> _repondreReservation(String reservationId, bool approuver) async {
     try {
       await ApiPrestataire.repondreReservation(reservationId, approuver);
+      await ApiPrestataire.invaliderCacheDashboard();
       _charger();
       if (mounted) ToastWidget.show(context, approuver ? 'Réservation acceptée' : 'Réservation refusée', type: 'succes');
     } catch (e) {
@@ -1615,6 +1616,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     if (statut == null || !mounted) return;
     try {
       await ApiPrestataire.cloturerReservation(reservationId, statut: statut);
+      await ApiPrestataire.invaliderCacheDashboard();
       _charger();
       if (mounted) {
         ToastWidget.show(context, statut == 'TERMINEE' ? 'Réservation terminée' : 'Marquée comme absence', type: 'succes');

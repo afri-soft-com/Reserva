@@ -155,7 +155,10 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                           itemBuilder: (ctx, i) {
                             final r = _reservations[i];
                             return GestureDetector(
-                              onTap: () => context.go('/reservation/${r.reservation.id}'),
+                              onTap: () async {
+                                await context.push('/reservation/${r.reservation.id}');
+                                if (mounted) _charger();
+                              },
                               child: Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: Carte(

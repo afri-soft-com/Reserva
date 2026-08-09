@@ -34,23 +34,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _marquerLue(String id) async {
-    await ApiNotifications.marquerLue(id);
-    setState(() {
-      _notifications = _notifications.map((n) => n.id == id ? NotificationItem(
-        id: n.id, titre: n.titre, message: n.message, type: n.type,
-        lu: true, reservationId: n.reservationId, creeLe: n.creeLe,
-      ) : n).toList();
-    });
+    try {
+      await ApiNotifications.marquerLue(id);
+      if (!mounted) return;
+      setState(() {
+        _notifications = _notifications.map((n) => n.id == id ? NotificationItem(
+          id: n.id, titre: n.titre, message: n.message, type: n.type,
+          lu: true, reservationId: n.reservationId, creeLe: n.creeLe,
+        ) : n).toList();
+      });
+    } catch (_) {
+      if (mounted) _charger();
+    }
   }
 
   Future<void> _marquerToutesLues() async {
-    await ApiNotifications.marquerToutesLues();
-    setState(() {
-      _notifications = _notifications.map((n) => NotificationItem(
-        id: n.id, titre: n.titre, message: n.message, type: n.type,
-        lu: true, reservationId: n.reservationId, creeLe: n.creeLe,
-      )).toList();
-    });
+    try {
+      await ApiNotifications.marquerToutesLues();
+      if (!mounted) return;
+      setState(() {
+        _notifications = _notifications.map((n) => NotificationItem(
+          id: n.id, titre: n.titre, message: n.message, type: n.type,
+          lu: true, reservationId: n.reservationId, creeLe: n.creeLe,
+        )).toList();
+      });
+    } catch (_) {
+      if (mounted) _charger();
+    }
   }
 
   IconData _iconeType(String type) {
@@ -132,11 +142,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       borderRadius: BorderRadius.circular(AppRayons.carte),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(AppRayons.carte),
-                        onTap: () {
-                          if (!n.lu) _marquerLue(n.id);
-                          if (n.reservationId != null) {
-                            context.push('/reservation/${n.reservationId}');
-                          }
+                        onTap: () async {
+                          if (!n.lu) await _marquerLue(n.id);
+                          final reservationId = n.reservationId;
+                          if (reservationId == null) return;
+                          if (!context.mounted) return;
+                          await context.push('/reservation/$reservationId');
+                          if (mounted) _charger();
                         },
                         child: Padding(
                           padding: const EdgeInsets.all(14),

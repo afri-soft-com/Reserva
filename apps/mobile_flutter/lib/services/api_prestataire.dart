@@ -147,6 +147,11 @@ class ApiPrestataire {
   static bool horsLigne = false;
   static DateTime? cacheSauvegardeLe;
 
+  /// Invalide le cache hors ligne du tableau de bord après une mutation
+  static Future<void> invaliderCacheDashboard() async {
+    await CacheHorsLigne.supprimer('dashboard_prestataire');
+  }
+
   static Future<DashboardData> obtenirTableauDeBord() async {
     late final Map<String, dynamic> data;
     try {
