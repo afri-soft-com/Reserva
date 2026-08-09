@@ -83,7 +83,7 @@ export default function PageDetailReservation() {
     setChargementAction(true);
     try {
       const resultat = await annulerReservation({ reservationId: reservation.id, modeRemboursement });
-      const montantRestitue = resultat.montantRembourse + (resultat as any).avoirsRestitues;
+      const montantRestitue = resultat.montantRembourse + ((resultat as any).avoirsRestitues ?? 0);
       if (montantRestitue > 0) {
         toastSucces(
           modeRemboursement === "AVOIR"
