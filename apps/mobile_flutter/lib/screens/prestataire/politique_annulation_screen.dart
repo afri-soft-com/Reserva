@@ -16,6 +16,7 @@ class _PolitiqueAnnulationScreenState extends State<PolitiqueAnnulationScreen> {
   late TextEditingController _fraisCtrl;
   bool _chargement = true;
   bool _sauvegarde = false;
+  String? _erreur;
 
   @override
   void initState() {
@@ -33,19 +34,24 @@ class _PolitiqueAnnulationScreenState extends State<PolitiqueAnnulationScreen> {
   }
 
   Future<void> _charger() async {
+    setState(() {
+      _chargement = true;
+      _erreur = null;
+    });
     try {
       final profil = await ApiPrestataire.obtenirProfil();
       if (!mounted) return;
       _delaiCtrl.text = (profil['delaiAnnulationGratuiteHeures'] as num?)?.toInt().toString() ?? '24';
       _fraisCtrl.text = (profil['fraisAnnulationTardivePourcent'] as num?)?.toInt().toString() ?? '50';
     } catch (_) {
-      // Valeurs par défaut conservées si le profil ne charge pas
+      if (mounted) setState(() => _erreur = 'Impossible de charger la politique d\'annulation actuelle.');
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
   }
 
   Future<void> _sauvegarder() async {
+    if (_erreur != null) return;
     final delai = int.tryParse(_delaiCtrl.text.trim());
     final frais = int.tryParse(_fraisCtrl.text.trim());
     if (delai == null || delai < 0 || delai > 168) {
@@ -77,7 +83,32 @@ class _PolitiqueAnnulationScreenState extends State<PolitiqueAnnulationScreen> {
       appBar: AppBar(title: const Text('Politique d\'annulation')),
       body: _chargement
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+          : _erreur != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: AppCouleurs.alerte),
+                        const SizedBox(height: 12),
+                        Text(_erreur!, textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _charger,
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text('Réessayer'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppCouleurs.primaire,
+                            foregroundColor: AppCouleurs.blanc,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
