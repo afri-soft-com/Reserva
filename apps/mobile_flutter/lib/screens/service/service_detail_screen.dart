@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme.dart';
+import '../../i18n.dart';
 import '../../models/models.dart';
 import '../../services/api_services.dart';
 import '../../services/api_reservations.dart';
@@ -9,6 +10,7 @@ import '../../services/api_packages.dart';
 import '../../services/api_alertes.dart';
 import '../../services/api_attentes.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/langue_provider.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/bouton.dart';
 import '../../widgets/toast.dart';
@@ -69,12 +71,12 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
   Future<void> _reserver() async {
     if (_selectedCreneauId == null) {
-      ToastWidget.show(context, 'Veuillez sélectionner un créneau.', type: 'erreur');
+      ToastWidget.show(context, AppTraductions.t('selectionnerCreneau'), type: 'erreur');
       return;
     }
     final auth = context.read<AuthProvider>();
     if (auth.estPrestataire) {
-      ToastWidget.show(context, 'Seuls les clients peuvent effectuer une réservation.', type: 'erreur');
+      ToastWidget.show(context, AppTraductions.t('clientsSeulsReservation'), type: 'erreur');
       return;
     }
     setState(() => _reservationEnCours = true);
@@ -91,8 +93,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           ToastWidget.show(
             context,
             creees < souhaitees
-                ? 'Série créée : $creees réservation(s) sur $souhaitees planifiée(s).'
-                : 'Série créée : $creees réservation(s).',
+                ? AppTraductions.t('serieCreeePartielle')
+                    .replaceFirst('%s', '$creees')
+                    .replaceFirst('%s', '$souhaitees')
+                : AppTraductions.t('serieCreee').replaceAll('%s', '$creees'),
             type: 'succes',
           );
           context.go('/reservations');
@@ -103,7 +107,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           creneauId: _selectedCreneauId!,
         );
         if (mounted) {
-          ToastWidget.show(context, 'Réservation effectuée !', type: 'succes');
+          ToastWidget.show(context, AppTraductions.t('reservationEffectuee'), type: 'succes');
           context.go('/reservations');
         }
       }
@@ -120,14 +124,14 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   Future<void> _creerAlerte() async {
     final auth = context.read<AuthProvider>();
     if (auth.estPrestataire) {
-      ToastWidget.show(context, 'Seuls les clients peuvent créer une alerte.', type: 'erreur');
+      ToastWidget.show(context, AppTraductions.t('clientsSeulsAlerte'), type: 'erreur');
       return;
     }
     setState(() => _alerteEnCours = true);
     try {
       await ApiAlertes.creerAlerte(widget.serviceId);
       if (mounted) {
-        ToastWidget.show(context, 'Alerte créée. Vous serez prévenu dès qu\'un créneau se libère.', type: 'succes');
+        ToastWidget.show(context, AppTraductions.t('alerteCreee'), type: 'succes');
       }
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
@@ -139,14 +143,14 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   Future<void> _inscrireAttente(Creneau creneau) async {
     final auth = context.read<AuthProvider>();
     if (auth.estPrestataire) {
-      ToastWidget.show(context, 'Seuls les clients peuvent s\'inscrire en file d\'attente.', type: 'erreur');
+      ToastWidget.show(context, AppTraductions.t('clientsSeulsAttente'), type: 'erreur');
       return;
     }
     setState(() => _attenteEnCours = true);
     try {
       await ApiAttentes.inscrire(serviceId: widget.serviceId, creneauId: creneau.id);
       if (mounted) {
-        ToastWidget.show(context, 'Inscrit en file d\'attente. Vous serez réservé automatiquement si une place se libère.', type: 'succes');
+        ToastWidget.show(context, AppTraductions.t('inscritAttente'), type: 'succes');
       }
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
@@ -182,8 +186,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     if (_data == null) {
       return Scaffold(
         backgroundColor: AppCouleurs.fond,
-        appBar: AppBar(title: const Text('Service')),
-        body: const Center(child: Text('Service non trouvé')),
+        appBar: AppBar(title: Text(AppTraductions.t('service'))),
+        body: Center(child: Text(AppTraductions.t('serviceNonTrouve'))),
       );
     }
 
@@ -193,6 +197,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     final avisList = (_data!['avis'] as List<dynamic>?) ?? [];
     final repartitionNotes = _data!['repartitionNotes'] as Map<String, dynamic>? ?? {};
     final similaires = (_data!['servicesSimilaires'] as List<dynamic>?) ?? [];
+    context.watch<LangueProvider>();
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
@@ -223,19 +228,20 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                   children: [
                     const Icon(Icons.repeat, size: 20, color: AppCouleurs.primaire),
                     const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text('Répéter chaque semaine', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    Expanded(
+                      child: Text(AppTraductions.t('repetirChaqueSemaine'),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     ),
                     DropdownButton<int>(
                       value: _occurrences,
                       isDense: true,
                       underline: const SizedBox(),
-                      items: const [
-                        DropdownMenuItem(value: 1, child: Text('Ponctuelle')),
-                        DropdownMenuItem(value: 2, child: Text('2 semaines')),
-                        DropdownMenuItem(value: 4, child: Text('4 semaines')),
-                        DropdownMenuItem(value: 8, child: Text('8 semaines')),
-                        DropdownMenuItem(value: 12, child: Text('12 semaines')),
+                      items: [
+                        DropdownMenuItem(value: 1, child: Text(AppTraductions.t('ponctuelle'))),
+                        DropdownMenuItem(value: 2, child: Text(AppTraductions.t('semaines2'))),
+                        DropdownMenuItem(value: 4, child: Text(AppTraductions.t('semaines4'))),
+                        DropdownMenuItem(value: 8, child: Text(AppTraductions.t('semaines8'))),
+                        DropdownMenuItem(value: 12, child: Text(AppTraductions.t('semaines12'))),
                       ],
                       onChanged: (v) => setState(() => _occurrences = v ?? 1),
                     ),
@@ -243,7 +249,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Bouton(titre: 'Réserver ce service', onPressed: _reserver, chargement: _reservationEnCours),
+              Bouton(titre: AppTraductions.t('reserverService'), onPressed: _reserver, chargement: _reservationEnCours),
             ],
             const SizedBox(height: 24),
           ],
@@ -279,7 +285,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             children: [
               const Icon(Icons.star, size: 20, color: AppCouleurs.accent),
               const SizedBox(width: 4),
-              Text('${prestataire.noteMoyenne.toStringAsFixed(1)} (${prestataire.nombreAvis} avis)',
+              Text('${prestataire.noteMoyenne.toStringAsFixed(1)} (${prestataire.nombreAvis} ${AppTraductions.t('avis')})',
                 style: const TextStyle(fontSize: 14)),
             ],
           ),
@@ -297,18 +303,18 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             children: [
               const Icon(Icons.event_available, size: 18, color: AppCouleurs.primaire),
               const SizedBox(width: 8),
-              const Text('Politique d\'annulation', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              Text(AppTraductions.t('politiqueAnnulation'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             ],
           ),
           const SizedBox(height: 8),
           _lignePolitique(
-            'Annulation gratuite',
-            '${prestataire.delaiAnnulationGratuiteHeures} h avant le créneau',
+            AppTraductions.t('annulationGratuite'),
+            AppTraductions.t('heuresAvantCreneau').replaceAll('%s', '${prestataire.delaiAnnulationGratuiteHeures}'),
           ),
           const SizedBox(height: 6),
           _lignePolitique(
-            'Après ce délai',
-            'Frais de ${prestataire.fraisAnnulationTardivePourcent} % du montant',
+            AppTraductions.t('apresCeDelai'),
+            AppTraductions.t('fraisMontant').replaceAll('%s', '${prestataire.fraisAnnulationTardivePourcent}'),
           ),
         ],
       ),
@@ -341,14 +347,14 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Packages du prestataire', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        Text(AppTraductions.t('packagesPrestataire'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         ..._packages.map((p) {
           final pack = p as Map<String, dynamic>;
           final services = (pack['services'] as List<dynamic>? ?? [])
               .map((s) => (s as Map<String, dynamic>)['service'] as Map<String, dynamic>? ?? {})
               .toList();
-          final nom = pack['nom'] as String? ?? 'Package';
+          final nom = pack['nom'] as String? ?? AppTraductions.t('package');
           final prix = (pack['prix'] as num?)?.toDouble() ?? 0;
           final devise = pack['devise'] as String? ?? 'CDF';
           final description = pack['description'] as String?;
@@ -383,8 +389,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                               style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                           ],
                           const SizedBox(height: 2),
-                          Text('${services.length} service(s) inclus',
-                            style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+          Text(AppTraductions.t('servicesInclus').replaceAll('%s', '${services.length}'),
+            style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                         ],
                       ),
                     ),
@@ -394,8 +400,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                         Text(_formaterMontant(prix, devise),
                           style: const TextStyle(fontWeight: FontWeight.w800, color: AppCouleurs.primaire, fontSize: 15)),
                         const SizedBox(height: 4),
-                        const Text('Voir', style: TextStyle(fontSize: 12, color: AppCouleurs.primaire)),
-                      ],
+                        Text(AppTraductions.t('voir'), style: const TextStyle(fontSize: 12, color: AppCouleurs.primaire)),                      ],
                     ),
                   ],
                 ),
@@ -416,7 +421,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Créneaux disponibles', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        Text(AppTraductions.t('creneauxDisponibles'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         if (disponibles.isEmpty && estClient)
           Padding(
@@ -427,11 +432,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Aucun créneau disponible pour le moment',
-                      style: TextStyle(color: AppCouleurs.texteSecondaire)),
+                    Text(AppTraductions.t('aucunCreneauDisponible'),
+                      style: const TextStyle(color: AppCouleurs.texteSecondaire)),
                     const SizedBox(height: 12),
                     Bouton(
-                      titre: 'Me prévenir quand un créneau se libère',
+                      titre: AppTraductions.t('prevenirCreneau'),
                       chargement: _alerteEnCours,
                       onPressed: _creerAlerte,
                     ),
@@ -441,10 +446,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             ),
           )
         else if (disponibles.isEmpty)
-          const Carte(child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Aucun créneau disponible pour le moment',
-              style: TextStyle(color: AppCouleurs.texteSecondaire)),
+          Carte(child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(AppTraductions.t('aucunCreneauDisponible'),
+              style: const TextStyle(color: AppCouleurs.texteSecondaire)),
           ))
         else
           ...disponibles.map((c) => Padding(
@@ -476,7 +481,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text('${c.capaciteTotale - c.capaciteReservee} places',
+                          Text('${c.capaciteTotale - c.capaciteReservee} ${AppTraductions.t('places')}',
                             style: TextStyle(fontSize: 13,
                               color: c.capaciteTotale - c.capaciteReservee <= 2 ? AppCouleurs.alerte : AppCouleurs.succes)),
                         ],
@@ -489,7 +494,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           )),
         if (complets.isNotEmpty) ...[
           const SizedBox(height: 12),
-          const Text('Créneaux complets', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text(AppTraductions.t('creneauxComplets'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           ...complets.map((c) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -502,7 +507,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                       children: [
                         Text('${c.debut.substring(11, 16)} - ${c.fin.substring(11, 16)}',
                           style: const TextStyle(fontWeight: FontWeight.w600)),
-                        Text('${c.debut.substring(0, 10)} • Complet',
+                        Text('${c.debut.substring(0, 10)} • ${AppTraductions.t('complet')}',
                           style: const TextStyle(fontSize: 13, color: AppCouleurs.alerte)),
                       ],
                     ),
@@ -511,7 +516,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     SizedBox(
                       width: 130,
                       child: Bouton(
-                        titre: 'File d\'attente',
+                        titre: AppTraductions.t('fileAttente'),
                         chargement: _attenteEnCours,
                         onPressed: () => _inscrireAttente(c),
                       ),
@@ -525,7 +530,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         ],
         if (bloques.isNotEmpty) ...[
           const SizedBox(height: 12),
-          const Text('Créneaux indisponibles', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text(AppTraductions.t('creneauxIndisponibles'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           ...bloques.map((c) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -540,7 +545,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                       children: [
                         Text('${c.debut.substring(11, 16)} - ${c.fin.substring(11, 16)}',
                           style: const TextStyle(fontWeight: FontWeight.w600)),
-                        Text('${c.debut.substring(0, 10)} • Bloqué par le prestataire',
+                        Text('${c.debut.substring(0, 10)} • ${AppTraductions.t('bloqueParPrestataire')}',
                           style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                       ],
                     ),
@@ -563,7 +568,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Avis clients', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text(AppTraductions.t('avisClients'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -578,7 +583,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                       size: 16, color: AppCouleurs.accent,
                     )),
                   ),
-                  Text('${prestataire.nombreAvis} avis',
+                  Text('${prestataire.nombreAvis} ${AppTraductions.t('avis')}',
                     style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                 ],
               ),
@@ -632,11 +637,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       children: [
         Row(
           children: [
-            const Text('Derniers avis', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(AppTraductions.t('derniersAvis'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             const Spacer(),
             TextButton(
               onPressed: () => _showAllAvis(context, avisList),
-              child: const Text('Voir tout', style: TextStyle(fontSize: 13)),
+              child: Text(AppTraductions.t('voirTout'), style: const TextStyle(fontSize: 13)),
             ),
           ],
         ),
@@ -689,7 +694,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Autres services du prestataire', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        Text(AppTraductions.t('autresServicesPrestataire'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         ...similairesList.map((s) {
           final sim = ServiceAvecPrestataire.fromJson(s as Map<String, dynamic>);
@@ -734,7 +739,7 @@ void _showDetailPackage(BuildContext context, Map<String, dynamic> pack) {
   final services = (pack['services'] as List<dynamic>? ?? [])
       .map((s) => (s as Map<String, dynamic>)['service'] as Map<String, dynamic>? ?? {})
       .toList();
-  final nom = pack['nom'] as String? ?? 'Package';
+  final nom = pack['nom'] as String? ?? AppTraductions.t('package');
   final description = pack['description'] as String?;
   final prix = (pack['prix'] as num?)?.toDouble() ?? 0;
   final devise = pack['devise'] as String? ?? 'CDF';
@@ -770,7 +775,8 @@ void _showDetailPackage(BuildContext context, Map<String, dynamic> pack) {
               Text(description, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
             ],
             const SizedBox(height: 16),
-            Text('Services inclus (${services.length})', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            Text(AppTraductions.t('servicesInclusTitre').replaceAll('%s', '${services.length}'),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
             const SizedBox(height: 8),
             Flexible(
               child: ListView.separated(
@@ -786,7 +792,7 @@ void _showDetailPackage(BuildContext context, Map<String, dynamic> pack) {
                       decoration: BoxDecoration(color: AppCouleurs.primaireClair, borderRadius: BorderRadius.circular(10)),
                       child: const Icon(Icons.miscellaneous_services, color: AppCouleurs.primaire, size: 18),
                     ),
-                    title: Text(s['nom'] as String? ?? 'Service', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    title: Text(s['nom'] as String? ?? AppTraductions.t('service'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                     trailing: Text(formater((s['prix'] as num?)?.toDouble() ?? 0, s['devise'] as String? ?? 'CDF'),
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppCouleurs.primaire)),
                   );
@@ -794,11 +800,11 @@ void _showDetailPackage(BuildContext context, Map<String, dynamic> pack) {
               ),
             ),
             const SizedBox(height: 12),
-            const Text('Forfait groupant plusieurs services de ce prestataire. Réservez chaque service individuellement via sa fiche.',
-              style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+            Text(AppTraductions.t('forfaitInfo'),
+              style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 16),
             Bouton(
-              titre: 'Réserver ce package',
+              titre: AppTraductions.t('reserverPackage'),
               onPressed: () {
                 Navigator.of(ctx).pop();
                 context.push('/package/${pack['id']}');
@@ -832,7 +838,7 @@ void _showAllAvis(BuildContext context, List<dynamic> avisList) {
               color: AppCouleurs.bordure, borderRadius: BorderRadius.circular(2),
             ))),
             const SizedBox(height: 16),
-            Text('Tous les avis (${avisList.length})',
+            Text(AppTraductions.t('tousLesAvis').replaceAll('%s', '${avisList.length}'),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             Expanded(
