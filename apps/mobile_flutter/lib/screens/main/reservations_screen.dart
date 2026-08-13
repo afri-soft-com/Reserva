@@ -25,7 +25,13 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
   String? _erreur;
   int _ongletActif = 0;
 
-  static const _onglets = ['Toutes', 'En attente', 'Confirmées', 'Terminées', 'Annulées'];
+  List<String> get _onglets => [
+    AppTraductions.t('toutes'),
+    AppTraductions.statut('EN_ATTENTE'),
+    AppTraductions.statut('CONFIRMEE'),
+    AppTraductions.statut('TERMINEE'),
+    AppTraductions.statut('ANNULEE'),
+  ];
 
   String? get _filtreStatut {
     switch (_ongletActif) {
@@ -53,7 +59,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
       if (mounted) setState(() => _reservations = reservations);
     } catch (e) {
       if (mounted) setState(() => _erreur = e.toString());
-      if (mounted) ToastWidget.show(context, 'Impossible de charger les réservations', type: 'erreur');
+      if (mounted) ToastWidget.show(context, AppTraductions.t('impossibleChargerReservations'), type: 'erreur');
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -67,8 +73,8 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
   Widget _buildBandeauHorsLigne() {
     final date = ApiReservations.cacheSauvegardeLe;
     final texte = date != null
-        ? 'Mode hors ligne — données du ${CacheHorsLigne.formaterDate(date)}'
-        : 'Mode hors ligne — données enregistrées';
+        ? AppTraductions.t('horsLigneDonneesDu').replaceAll('%s', CacheHorsLigne.formaterDate(date))
+        : AppTraductions.t('horsLigneDonneesEnregistrees');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -137,12 +143,12 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                 : _reservations.isEmpty
                     ? EcranVide(
                         icone: Icons.calendar_today,
-                        message: _erreur ?? 'Aucune réservation',
-                        sousTitre: _erreur != null ? 'Tirez pour réessayer' : 'Aucune réservation dans cette catégorie.',
+                        message: _erreur ?? AppTraductions.t('aucuneReservation'),
+                        sousTitre: _erreur != null ? AppTraductions.t('tirezPourReessayer') : AppTraductions.t('aucuneReservationCategorie'),
                         action: _erreur != null ? null : ElevatedButton.icon(
                           onPressed: () => context.go('/services'),
                           icon: const Icon(Icons.search, size: 18),
-                          label: const Text('Parcourir les services'),
+                          label: Text(AppTraductions.t('parcourirServices')),
                           style: ElevatedButton.styleFrom(backgroundColor: AppCouleurs.primaire, foregroundColor: AppCouleurs.blanc),
                         ),
                       )
@@ -190,7 +196,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                                       Text(r.prestataire.nomEntreprise, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                                       const SizedBox(height: 4),
                                       Text(
-                                        '${_formaterMontant(r.reservation.montantTotal, r.reservation.devise)} · ${r.reservation.montantPaye > 0 ? "Payé: ${_formaterMontant(r.reservation.montantPaye, r.reservation.devise)}" : "Non payé"}',
+                                        '${_formaterMontant(r.reservation.montantTotal, r.reservation.devise)} · ${r.reservation.montantPaye > 0 ? "${AppTraductions.t('paye')}: ${_formaterMontant(r.reservation.montantPaye, r.reservation.devise)}" : AppTraductions.t('nonPaye')}',
                                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppCouleurs.primaire),
                                         maxLines: 1, overflow: TextOverflow.ellipsis,
                                       ),
