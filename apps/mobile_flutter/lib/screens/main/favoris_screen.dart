@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme.dart';
+import '../../i18n.dart';
 import '../../models/models.dart';
 import '../../services/api_favoris.dart';
 import '../../widgets/carte.dart';
@@ -45,7 +46,7 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
         });
       }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, 'Erreur de chargement', type: 'erreur');
+      if (mounted) ToastWidget.show(context, AppTraductions.t('erreurChargement'), type: 'erreur');
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -64,7 +65,7 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
         });
       }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, 'Erreur de chargement', type: 'erreur');
+      if (mounted) ToastWidget.show(context, AppTraductions.t('erreurChargement'), type: 'erreur');
     } finally {
       if (mounted) setState(() => _chargementPlus = false);
     }
@@ -80,10 +81,10 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
       await ApiFavoris.supprimerFavori(serviceId);
       if (!mounted) return;
       setState(() => _favoris.removeWhere((s) => s.id == serviceId));
-      ToastWidget.show(context, 'Retiré des favoris');
+      ToastWidget.show(context, AppTraductions.t('retireDesFavoris'));
     } catch (e) {
       if (!mounted) return;
-      ToastWidget.show(context, 'Erreur', type: 'erreur');
+      ToastWidget.show(context, AppTraductions.t('erreur'), type: 'erreur');
     }
   }
 
@@ -92,7 +93,7 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
     super.build(context);
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
-      appBar: AppBar(title: const Text('Mes favoris')),
+      appBar: AppBar(title: Text(AppTraductions.t('mesFavoris'))),
       body: _chargement
           ? ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -102,12 +103,12 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
           : _favoris.isEmpty
               ? EcranVide(
                   icone: Icons.favorite_border,
-                  message: 'Aucun favori',
-                  sousTitre: 'Ajoutez des services à vos favoris pour les retrouver facilement.',
+                  message: AppTraductions.t('aucunFavori'),
+                  sousTitre: AppTraductions.t('aucunFavoriSousTitre'),
                   action: ElevatedButton.icon(
                     onPressed: () => context.go('/services'),
                     icon: const Icon(Icons.search, size: 18),
-                    label: const Text('Découvrir des services'),
+                    label: Text(AppTraductions.t('decouvrirServices')),
                     style: ElevatedButton.styleFrom(backgroundColor: AppCouleurs.primaire, foregroundColor: AppCouleurs.blanc),
                   ),
                 )
@@ -131,7 +132,7 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
                               ),
                               child: _chargementPlus
                                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                                  : const Text('Afficher plus'),
+                                  : Text(AppTraductions.t('afficherPlus')),
                             ),
                           ),
                         );

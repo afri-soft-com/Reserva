@@ -16,6 +16,7 @@ class _IndisponibilitesPrestataireScreenState extends State<IndisponibilitesPres
   List<dynamic> _periodes = [];
   List<dynamic> _services = [];
   bool _chargement = true;
+  String? _erreur;
 
   @override
   void initState() {
@@ -34,10 +35,14 @@ class _IndisponibilitesPrestataireScreenState extends State<IndisponibilitesPres
         setState(() {
           _periodes = results[0];
           _services = results[1];
+          _erreur = null;
         });
       }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      if (mounted) {
+        setState(() => _erreur = e.toString());
+        ToastWidget.show(context, e.toString(), type: 'erreur');
+      }
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -202,7 +207,31 @@ class _IndisponibilitesPrestataireScreenState extends State<IndisponibilitesPres
                     style: TextStyle(color: AppCouleurs.texteSecondaire, fontSize: 13),
                   ),
                   const SizedBox(height: 16),
-                  if (_periodes.isEmpty)
+                  if (_erreur != null && _periodes.isEmpty)
+                    Carte(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.error_outline, size: 48, color: AppCouleurs.alerte),
+                            const SizedBox(height: 12),
+                            const Text('Impossible de charger les périodes',
+                              style: TextStyle(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 4),
+                            const Text('Vérifiez votre connexion puis réessayez.',
+                              style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: _charger,
+                              icon: const Icon(Icons.refresh, size: 18),
+                              label: const Text('Réessayer'),
+                              style: ElevatedButton.styleFrom(backgroundColor: AppCouleurs.primaire, foregroundColor: AppCouleurs.blanc),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (_periodes.isEmpty)
                     Carte(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),

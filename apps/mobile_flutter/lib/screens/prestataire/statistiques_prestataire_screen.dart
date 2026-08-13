@@ -3,7 +3,6 @@ import '../../theme.dart';
 import '../../services/api_prestataire.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/squelette.dart';
-import '../../widgets/toast.dart';
 
 class StatistiquesPrestataireScreen extends StatefulWidget {
   const StatistiquesPrestataireScreen({super.key});
@@ -15,6 +14,7 @@ class StatistiquesPrestataireScreen extends StatefulWidget {
 class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireScreen> {
   Map<String, dynamic>? _donnees;
   bool _chargement = true;
+  bool _erreur = false;
 
   @override
   void initState() {
@@ -26,9 +26,14 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
     setState(() => _chargement = true);
     try {
       final donnees = await ApiPrestataire.obtenirStatistiques();
-      if (mounted) setState(() => _donnees = donnees);
+      if (mounted) {
+        setState(() {
+          _donnees = donnees;
+          _erreur = false;
+        });
+      }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      if (mounted) setState(() => _erreur = true);
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -81,7 +86,22 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
         child: _chargement
             ? const Padding(padding: EdgeInsets.all(16), child: Squelette())
             : _donnees == null
-                ? const Padding(padding: EdgeInsets.all(32), child: EcranVide(icone: Icons.bar_chart, message: 'Aucune donnée disponible'))
+                ? Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: _erreur
+                        ? EcranVide(
+                            icone: Icons.error_outline,
+                            message: 'Impossible de charger les statistiques',
+                            sousTitre: 'Vérifiez votre connexion puis réessayez.',
+                            action: ElevatedButton.icon(
+                              onPressed: _charger,
+                              icon: const Icon(Icons.refresh, size: 18),
+                              label: const Text('Réessayer'),
+                              style: ElevatedButton.styleFrom(backgroundColor: AppCouleurs.primaire, foregroundColor: AppCouleurs.blanc),
+                            ),
+                          )
+                        : const EcranVide(icone: Icons.bar_chart, message: 'Aucune donnée disponible'),
+                  )
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [

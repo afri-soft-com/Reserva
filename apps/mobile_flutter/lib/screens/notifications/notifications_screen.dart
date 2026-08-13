@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme.dart';
+import '../../i18n.dart';
 import '../../services/api_notifications.dart';
 import '../../widgets/squelette.dart';
 
@@ -87,10 +88,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _tempsDepuis(String iso) {
     final diff = DateTime.now().difference(DateTime.parse(iso));
-    if (diff.inMinutes < 1) return 'À l\'instant';
-    if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
-    return 'Il y a ${diff.inDays}j';
+    String patron;
+    if (diff.inMinutes < 1) {
+      return AppTraductions.t('tempsInstant');
+    } else if (diff.inMinutes < 60) {
+      patron = AppTraductions.t('tempsMinutes');
+      return patron.replaceAll('%s', '${diff.inMinutes}');
+    } else if (diff.inHours < 24) {
+      patron = AppTraductions.t('tempsHeures');
+      return patron.replaceAll('%s', '${diff.inHours}');
+    }
+    patron = AppTraductions.t('tempsJours');
+    return patron.replaceAll('%s', '${diff.inDays}');
   }
 
   @override
@@ -98,10 +107,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(AppTraductions.t('notifications')),
         actions: [
           if (_notifications.any((n) => !n.lu))
-            TextButton(onPressed: _marquerToutesLues, child: const Text('Tout lire', style: TextStyle(fontSize: 13))),
+            TextButton(onPressed: _marquerToutesLues, child: Text(AppTraductions.t('toutLire'), style: const TextStyle(fontSize: 13))),
         ],
       ),
       body: _chargement
@@ -109,8 +118,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         : _notifications.isEmpty
           ? EcranVide(
               icone: Icons.notifications_off,
-              message: 'Aucune notification',
-              sousTitre: 'Vous serez notifié lors des réservations et paiements.',
+              message: AppTraductions.t('aucuneNotification'),
+              sousTitre: AppTraductions.t('aucuneNotificationSousTitre'),
             )
           : RefreshIndicator(
               onRefresh: _charger,
