@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme.dart';
+import '../../i18n.dart';
+import '../../providers/langue_provider.dart';
 import '../../services/api_portefeuille.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/squelette.dart';
@@ -44,10 +47,11 @@ class _PortefeuilleScreenState extends State<PortefeuilleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LangueProvider>();
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
       appBar: AppBar(
-        title: const Text('Mon portefeuille'),
+        title: Text(AppTraductions.t('monPortefeuille')),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _charger),
         ],
@@ -64,18 +68,18 @@ class _PortefeuilleScreenState extends State<PortefeuilleScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildStatCard(Icons.account_balance_wallet, 'Avoirs', _formaterMontant(_donnees?.soldeAvoirs.toDouble() ?? 0, _donnees?.deviseAvoirs ?? 'CDF'), AppCouleurs.primaire)),
+                    Expanded(child: _buildStatCard(Icons.account_balance_wallet, AppTraductions.t('avoirs'), _formaterMontant(_donnees?.soldeAvoirs.toDouble() ?? 0, _donnees?.deviseAvoirs ?? 'CDF'), AppCouleurs.primaire)),
                     const SizedBox(width: 8),
-                    Expanded(child: _buildStatCard(Icons.card_giftcard, 'Points', '${_donnees?.pointsFidelite ?? 0}', AppCouleurs.accent)),
+                    Expanded(child: _buildStatCard(Icons.card_giftcard, AppTraductions.t('points'), '${_donnees?.pointsFidelite ?? 0}', AppCouleurs.accent)),
                     const SizedBox(width: 8),
-                    Expanded(child: _buildStatCard(Icons.redeem, 'Cartes', _formaterMontant(_donnees?.soldeCartesCadeaux ?? 0, 'CDF'), AppCouleurs.succes)),
+                    Expanded(child: _buildStatCard(Icons.redeem, AppTraductions.t('cartes'), _formaterMontant(_donnees?.soldeCartesCadeaux ?? 0, 'CDF'), AppCouleurs.succes)),
                   ],
                 ),
                 const SizedBox(height: 20),
-                const Text('Historique récent', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(AppTraductions.t('historiqueRecent'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
                 if (_donnees?.historique.isEmpty ?? true)
-                  EcranVide(icone: Icons.receipt_long, message: 'Aucune transaction enregistrée')
+                  EcranVide(icone: Icons.receipt_long, message: AppTraductions.t('aucuneTransaction'))
                 else
                   ..._donnees!.historique.map((l) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -105,7 +109,7 @@ class _PortefeuilleScreenState extends State<PortefeuilleScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Valeur totale du portefeuille', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            Text(AppTraductions.t('valeurTotalePortefeuille'), style: const TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 6),
             Text(
               _formaterMontant(total, 'CDF'),
@@ -113,7 +117,9 @@ class _PortefeuilleScreenState extends State<PortefeuilleScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              '${_donnees?.pointsFidelite ?? 0} points de fidélité valent ${_formaterMontant(_donnees?.valeurPointsFC ?? 0, 'CDF')}',
+              AppTraductions.t('pointsValent')
+                  .replaceFirst('%s', '${_donnees?.pointsFidelite ?? 0}')
+                  .replaceFirst('%s', _formaterMontant(_donnees?.valeurPointsFC ?? 0, 'CDF')),
               style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
