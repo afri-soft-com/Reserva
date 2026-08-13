@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../i18n.dart';
+import '../../providers/langue_provider.dart';
 import '../../services/api_auth.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/models.dart';
@@ -40,14 +42,14 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
       final data = await ApiAuth.connecter(_telephoneCtrl.text.trim(), _pinCtrl.text.trim());
       if (data.containsKey('deuxfaRequis') && data['deuxfaRequis'] == true) {
         if (mounted) setState(() => _afficher2FA = true);
-        if (mounted) ToastWidget.show(context, 'Code 2FA envoyé par SMS.', type: 'succes');
+        if (mounted) ToastWidget.show(context, AppTraductions.t('code2FAEnvoye'), type: 'succes');
         return;
       }
       final token = data['token'] as String;
       final utilisateur = Utilisateur.fromJson(data['utilisateur'] as Map<String, dynamic>);
       await auth.connecterStore(token, utilisateur);
       if (mounted) {
-        ToastWidget.show(context, 'Bon retour, ${utilisateur.nom} !', type: 'succes');
+        ToastWidget.show(context, AppTraductions.t('bonRetourNom').replaceAll('%s', utilisateur.nom), type: 'succes');
         context.go('/accueil');
       }
     } catch (e) {
@@ -66,7 +68,7 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
       final utilisateur = Utilisateur.fromJson(data['utilisateur'] as Map<String, dynamic>);
       await auth.connecterStore(token, utilisateur);
       if (mounted) {
-        ToastWidget.show(context, 'Authentification 2FA réussie !', type: 'succes');
+        ToastWidget.show(context, AppTraductions.t('auth2FAReussie'), type: 'succes');
         context.go('/accueil');
       }
     } catch (e) {
@@ -78,17 +80,18 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LangueProvider>();
     return Scaffold(
       backgroundColor: AppCouleurs.blanc,
-      appBar: AppBar(title: const Text('Connexion')),
+      appBar: AppBar(title: Text(AppTraductions.t('connexion'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Bon retour !', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppCouleurs.primaireFonce)),
+            Text(AppTraductions.t('bonRetour'), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppCouleurs.primaireFonce)),
             const SizedBox(height: 4),
-            const Text('Connectez-vous à votre compte RESERVA', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+            Text(AppTraductions.t('connectezVousCompte'), style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 24),
             Form(
               key: _formKey,
@@ -105,29 +108,29 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Champ(
-          libelle: 'Numéro de téléphone',
+          libelle: AppTraductions.t('telephone'),
           placeholder: 'Ex: 0991234567',
           controller: _telephoneCtrl,
           keyboardType: TextInputType.phone,
-          validator: (v) => v == null || v.trim().isEmpty ? 'Téléphone requis' : null,
+          validator: (v) => v == null || v.trim().isEmpty ? AppTraductions.t('telephoneRequis') : null,
         ),
         const SizedBox(height: 12),
         Champ(
-          libelle: 'Code PIN',
+          libelle: AppTraductions.t('codePin'),
           placeholder: '••••',
           controller: _pinCtrl,
           obscureText: true,
           keyboardType: TextInputType.number,
           maxLength: 4,
-          validator: (v) => v == null || v.trim().length != 4 ? 'Le PIN doit contenir 4 chiffres' : null,
+          validator: (v) => v == null || v.trim().length != 4 ? AppTraductions.t('pin4Chiffres') : null,
         ),
         const SizedBox(height: 8),
-        Bouton(titre: 'Se connecter', onPressed: _connecter, chargement: _chargement),
+        Bouton(titre: AppTraductions.t('seConnecter'), onPressed: _connecter, chargement: _chargement),
         const SizedBox(height: 12),
         Center(
           child: TextButton(
             onPressed: () => context.go('/reinitialiser-pin'),
-            child: const Text('Mot de passe oublié ?', style: TextStyle(color: AppCouleurs.primaire, fontWeight: FontWeight.w600)),
+            child: Text(AppTraductions.t('motDePasseOublie'), style: const TextStyle(color: AppCouleurs.primaire, fontWeight: FontWeight.w600)),
           ),
         ),
         const SizedBox(height: 16),
@@ -135,10 +138,10 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text("Pas encore de compte ? ", style: TextStyle(color: AppCouleurs.texteSecondaire)),
+              Text(AppTraductions.t('pasEncoreCompte'), style: const TextStyle(color: AppCouleurs.texteSecondaire)),
               GestureDetector(
                 onTap: () => context.go('/inscription'),
-                child: const Text("Inscrivez-vous", style: TextStyle(color: AppCouleurs.primaire, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
+                child: Text(AppTraductions.t('inscrivezVous'), style: const TextStyle(color: AppCouleurs.primaire, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
               ),
             ],
           ),
@@ -151,18 +154,18 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Authentification à deux facteurs', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+        Text(AppTraductions.t('authDeuxFacteurs'), style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
         const SizedBox(height: 4),
-        const Text('Un code de vérification a été envoyé par SMS.', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+        Text(AppTraductions.t('codeEnvoyeSMS'), style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
         const SizedBox(height: 12),
         Champ(
-          libelle: 'Code 2FA',
+          libelle: AppTraductions.t('code2FA'),
           controller: _code2FACtrl,
           keyboardType: TextInputType.number,
           maxLength: 6,
         ),
         const SizedBox(height: 8),
-        Bouton(titre: 'Vérifier', onPressed: _verifier2FA, chargement: _chargement),
+        Bouton(titre: AppTraductions.t('verifier'), onPressed: _verifier2FA, chargement: _chargement),
       ],
     );
   }
