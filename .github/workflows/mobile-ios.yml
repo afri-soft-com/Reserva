@@ -1,0 +1,88 @@
+name: Mobile iOS
+
+# Compile iOS sur les runners macOS GitHub (pas besoin de Mac local).
+# Produit un Runner.app non signé en artéfact.
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "apps/mobile_flutter/**"
+      - ".github/workflows/mobile-ios.yml"
+  pull_request:
+    paths:
+      - "apps/mobile_flutter/**"
+      - ".github/workflows/mobile-ios.yml"
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "API_URL embarquée (ex: https://api.reserva.cd/api)"
+        required: false
+        default: "https://api.reserva.example/api"
+
+concurrency:
+  group: mobile-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile_flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze lib/
+
+  build-ios:
+    name: Build iOS (macOS GitHub)
+    needs: analyze
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: apps/mobile_flutter
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: CocoaPods install
+        working-directory: apps/mobile_flutter/ios
+        run: pod install --repo-update
+
+      - name: Build iOS (unsigned)
+        env:
+          API_URL: ${{ github.event.inputs.api_url || 'https://api.reserva.example/api' }}
+        run: |
+          flutter build ios --release --no-codesign \
+            --dart-define=API_URL="$API_URL"
+
+      - name: Package Runner.app
+        run: |
+          mkdir -p artifacts
+          (
+            cd build/ios/iphoneos
+            ditto -c -k --sequesterRsrc --keepParent Runner.app \
+              ../../../artifacts/RESERVA-ios-unsigned.zip
+          )
+          ls -lh artifacts/
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RESERVA-ios-unsigned-${{ github.sha }}
+          path: apps/mobile_flutter/artifacts/RESERVA-ios-unsigned.zip
+          if-no-files-found: error
+          retention-days: 14

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Reserva</string>
+	<string>RESERVA</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -45,5 +45,20 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>RESERVA utilise la caméra pour scanner les QR codes de réservation.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>RESERVA utilise votre position pour afficher les prestataires proches.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>RESERVA utilise Face ID pour déverrouiller l'application.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>RESERVA accède à vos photos pour votre profil.</string>
 </dict>
 </plist>
