@@ -5,8 +5,8 @@ const CLIENT_TEL = "+243991234567";
 const ADMIN_TEL = "+243900000001";
 const PIN_VALIDE = "1234";
 
-test.describe("Connexion", () => {
-  test("affiche le formulaire de connexion", async ({ page }) => {
+test.describe("Connexion admin", () => {
+  test("affiche le formulaire de connexion administrateur", async ({ page }) => {
     const connexion = new ConnexionPage(page);
     await connexion.aller();
 
@@ -14,33 +14,29 @@ test.describe("Connexion", () => {
     await expect(connexion.champTelephone).toBeVisible();
     await expect(connexion.champPin).toBeVisible();
     await expect(connexion.boutonSeConnecter).toBeVisible();
-    await expect(connexion.lienInscription).toBeVisible();
     await expect(connexion.lienMotDePasseOublie).toBeVisible();
   });
 
-  test("se connecte avec un compte client valide", async ({ page }) => {
+  test("refuse un compte client", async ({ page }) => {
     const connexion = new ConnexionPage(page);
     await connexion.aller();
     await connexion.connecter(CLIENT_TEL, PIN_VALIDE);
-
-    await page.waitForFunction(() => window.location.pathname === "/services", {}, { timeout: 20000 });
-    await expect(page).toHaveURL("/services");
+    await expect(page.getByText(/réservée aux administrateurs/i)).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL(/\/connexion/);
   });
 
-  test("se connecte avec un compte admin valide", async ({ page }) => {
+  test("connecte un admin vers le pilotage", async ({ page }) => {
     const connexion = new ConnexionPage(page);
     await connexion.aller();
     await connexion.connecter(ADMIN_TEL, PIN_VALIDE);
-
-    await page.waitForFunction(() => window.location.pathname === "/services", {}, { timeout: 20000 });
-    await expect(page).toHaveURL("/services");
+    await page.waitForURL("**/admin/pilotage", { timeout: 20000 });
+    await expect(page).toHaveURL(/\/admin\/pilotage/);
   });
 
   test("affiche une erreur avec un mauvais PIN", async ({ page }) => {
     const connexion = new ConnexionPage(page);
     await connexion.aller();
     await connexion.connecter(CLIENT_TEL, "0000");
-
     await expect(page.getByText(/Identifiants invalides/i)).toBeVisible({ timeout: 15000 });
   });
 
@@ -48,7 +44,6 @@ test.describe("Connexion", () => {
     const connexion = new ConnexionPage(page);
     await connexion.aller();
     await connexion.connecter("+243990000000", PIN_VALIDE);
-
     await expect(page.getByText(/Identifiants invalides/i)).toBeVisible({ timeout: 15000 });
   });
 });

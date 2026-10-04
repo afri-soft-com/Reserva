@@ -45,6 +45,24 @@ export const suspendre = asyncHandler(async (req: Request, res: Response) => {
   envoyerSucces(res, resultat);
 });
 
+export const listerReservations = asyncHandler(async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const parPage = bornerParPage(parseInt(req.query.parPage as string) || 20);
+  const resultat = await adminService.listerReservationsAdmin({
+    page,
+    parPage,
+    statut: req.query.statut as string | undefined,
+    statutPaiement: req.query.statutPaiement as string | undefined,
+    recherche: req.query.recherche as string | undefined,
+  });
+  envoyerSucces(res, resultat);
+});
+
+export const pilotage = asyncHandler(async (_req: Request, res: Response) => {
+  const resultat = await adminService.obtenirPilotageAdmin();
+  envoyerSucces(res, resultat);
+});
+
 // ---- Plans d'abonnement ----
 
 export const listerPlans = asyncHandler(async (req: Request, res: Response) => {

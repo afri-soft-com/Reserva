@@ -6,6 +6,8 @@ import '../../i18n.dart';
 import '../../providers/langue_provider.dart';
 import '../../models/models.dart';
 import '../../services/api_reservations.dart';
+import '../../services/api_hotels.dart';
+import '../../services/api_transport.dart';
 import '../../services/cache_hors_ligne.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/badge_statut.dart';
@@ -21,6 +23,8 @@ class ReservationsScreen extends StatefulWidget {
 
 class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticKeepAliveClientMixin {
   List<ReservationDetaillee> _reservations = [];
+  List<dynamic> _sejours = [];
+  List<dynamic> _billets = [];
   bool _chargement = true;
   String? _erreur;
   int _ongletActif = 0;
@@ -55,8 +59,18 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
   Future<void> _charger() async {
     setState(() { _chargement = true; _erreur = null; });
     try {
-      final reservations = await ApiReservations.listerMesReservations(statut: _filtreStatut);
-      if (mounted) setState(() => _reservations = reservations);
+      final results = await Future.wait([
+        ApiReservations.listerMesReservations(statut: _filtreStatut),
+        ApiHotels.mesSejours(),
+        ApiTransport.mesBillets(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _reservations = results[0] as List<ReservationDetaillee>;
+          _sejours = results[1];
+          _billets = results[2];
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _erreur = e.toString());
       if (mounted) ToastWidget.show(context, AppTraductions.t('impossibleChargerReservations'), type: 'erreur');
@@ -140,7 +154,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                     itemCount: 4,
                     itemBuilder: (_, __) => const CarteSquelette(),
                   )
-                : _reservations.isEmpty
+                : _reservations.isEmpty && _sejours.isEmpty && _billets.isEmpty
                     ? EcranVide(
                         icone: Icons.calendar_today,
                         message: _erreur ?? AppTraductions.t('aucuneReservation'),
@@ -157,9 +171,50 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                         color: AppCouleurs.primaire,
                         child: ListView.builder(
                           padding: const EdgeInsets.all(16),
-                          itemCount: _reservations.length,
+                          itemCount: _billets.length + _sejours.length + _reservations.length,
                           itemBuilder: (ctx, i) {
-                            final r = _reservations[i];
+                            if (i < _billets.length) {
+                              final b = _billets[i] as Map<String, dynamic>;
+                              return GestureDetector(
+                                onTap: () => context.push('/transport/billet/${b['id']}'),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Carte(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('${b['numero']} · BUS', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                        Text('${b['origine']} → ${b['destination']}', style: const TextStyle(fontSize: 15)),
+                                        Text('${b['dateDepart']} ${b['heureDepart']} · ${b['statut']}',
+                                          style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            final j = i - _billets.length;
+                            if (j < _sejours.length) {
+                              final s = _sejours[j] as Map<String, dynamic>;
+                              return GestureDetector(
+                                onTap: () => context.push('/hotels/sejour/${s['id']}'),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Carte(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('${s['numero']} · HÔTEL', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                        Text('${s['hotelNom']}', style: const TextStyle(fontSize: 15)),
+                                        Text('${s['arrivee']} → ${s['depart']} · ${s['statut']}',
+                                          style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            final r = _reservations[j - _sejours.length];
                             return GestureDetector(
                               onTap: () async {
                                 await context.push('/reservation/${r.reservation.id}');

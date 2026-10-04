@@ -1,4 +1,5 @@
 import { genererRappels } from "./rappel.service";
+import { expirerAbonnements } from "../modules/admin/admin.service";
 
 let intervalle: ReturnType<typeof setInterval> | null = null;
 
@@ -16,6 +17,14 @@ export function initialiserRappels() {
   }).catch((e) => {
     console.error("  Erreur génération rappels (démarrage):", e.message);
   });
+
+  expirerAbonnements()
+    .then((r) => {
+      if (r.expires > 0) console.log(`  Abonnements expirés au démarrage : ${r.expires}`);
+    })
+    .catch((e) => {
+      console.error("  Erreur expiration abonnements (démarrage):", e.message);
+    });
 
   intervalle = setInterval(async () => {
     try {

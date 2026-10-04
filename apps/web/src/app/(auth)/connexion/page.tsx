@@ -14,6 +14,7 @@ import { useAuthStore } from "../../../lib/store-auth";
 export default function PageConnexion() {
   const router = useRouter();
   const connecterStore = useAuthStore((etat) => etat.connecter);
+  const deconnecterStore = useAuthStore((etat) => etat.deconnecter);
 
   const [telephone, setTelephone] = useState("");
   const [pin, setPin] = useState("");
@@ -32,9 +33,14 @@ export default function PageConnexion() {
         setMessage2FA(resultat.message);
         toastSucces(resultat.message);
       } else {
+        if (resultat.utilisateur.role !== "ADMIN") {
+          deconnecterStore();
+          toastErreur("La console web est réservée aux administrateurs. Utilisez l'application mobile.");
+          return;
+        }
         connecterStore(resultat.token, resultat.utilisateur);
         toastSucces(`Bon retour, ${resultat.utilisateur.nom} !`);
-        router.push("/services");
+        router.push("/admin/pilotage");
       }
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
@@ -48,9 +54,14 @@ export default function PageConnexion() {
     setChargement(true);
     try {
       const resultat = await verifier2FA({ telephone, code: code2FA });
+      if (resultat.utilisateur.role !== "ADMIN") {
+        deconnecterStore();
+        toastErreur("La console web est réservée aux administrateurs. Utilisez l'application mobile.");
+        return;
+      }
       connecterStore(resultat.token, resultat.utilisateur);
       toastSucces(`Bon retour, ${resultat.utilisateur.nom} !`);
-      router.push("/services");
+      router.push("/admin/pilotage");
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
     } finally {
@@ -60,7 +71,7 @@ export default function PageConnexion() {
 
   if (deuxfaRequis) {
     return (
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto max-w-md px-4 py-8">
         <Carte>
           <h1 className="mb-1 text-2xl font-bold text-primaire-700">Vérification en deux étapes</h1>
           <p className="mb-6 text-sm text-gray-500">{message2FA}</p>
@@ -85,10 +96,10 @@ export default function PageConnexion() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-md px-4 py-8">
       <Carte>
-        <h1 className="mb-1 text-2xl font-bold text-primaire-700">Connexion</h1>
-        <p className="mb-6 text-sm text-gray-500">Accédez à votre compte RESERVA.</p>
+        <h1 className="mb-1 text-2xl font-bold text-primaire-700">Connexion administrateur</h1>
+        <p className="mb-6 text-sm text-gray-500">Console web réservée à l&apos;équipe RESERVA. Clients et prestataires passent par l&apos;app mobile.</p>
 
         <form onSubmit={gererSoumission} className="space-y-4">
           <Champ
@@ -120,10 +131,7 @@ export default function PageConnexion() {
         </p>
 
         <p className="mt-4 text-center text-sm text-gray-500">
-          Pas encore de compte ?{" "}
-          <Link href="/inscription" className="font-semibold text-primaire hover:underline">
-            Inscrivez-vous
-          </Link>
+          Compte client ou prestataire ? Installez RESERVA sur Android ou iOS.
         </p>
       </Carte>
     </div>

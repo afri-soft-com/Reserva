@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { EnTete } from "../components/EnTete";
+import { PiedDePage } from "../components/PiedDePage";
 import { ConteneurToasts } from "../components/Toast";
 import { InitialiseurAuth } from "../components/InitialiseurAuth";
+import { GardeConsole } from "../components/GardeConsole";
 
 export const metadata: Metadata = {
-  title: "RESERVA — Réservez. Sereinement.",
-  description: "Réservez vos services à l'avance en RDCongo : santé, transport, hôtellerie et plus.",
+  title: "RESERVA — Console d'administration",
+  description: "Console d'administration RESERVA. Clients et prestataires utilisent l'application mobile.",
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",
@@ -32,7 +34,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
         <InitialiseurAuth>
           <EnTete />
-          <main className="mx-auto max-w-6xl px-4 py-8 animate-fade-in-up">{children}</main>
+          <main className="animate-fade-in-up">
+            <GardeConsole>{children}</GardeConsole>
+          </main>
+          <PiedDePage />
           <ConteneurToasts />
         </InitialiseurAuth>
         <script

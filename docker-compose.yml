@@ -1,30 +1,153 @@
+# Stack locale Docker (optionnel). Préférer `npm run dev:platform` pour le quotidien.
 services:
-  api:
+  core:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     ports:
-      - "4000:4000"
+      - "4101:4101"
     environment:
       - NODE_ENV=production
+      - PORT=4101
       - DATABASE_URL=file:./dev.db
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - JWT_EXPIRATION=7d
-      - WEB_URL=http://localhost:3009
+      - WEB_URL=http://localhost:3001
       - CRON_SECRET=${CRON_SECRET:-change-me}
+      - MODE_PAIEMENT=${MODE_PAIEMENT:-simulation}
+      - MODE_SMS=${MODE_SMS:-simulation}
     volumes:
-      - ./apps/api/prisma/dev.db:/app/apps/api/prisma/dev.db
+      - reserva-db:/app/apps/api/prisma
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4101/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
+  hotels:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run db:push --workspace=@reserva/hotels && npm run db:seed --workspace=@reserva/hotels && npm run dev --workspace=@reserva/hotels"
     ports:
-      - "3009:3009"
+      - "4102:4102"
+    environment:
+      - PORT=4102
+      - NODE_ENV=development
+      - DATABASE_URL=file:./hotels.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - WEB_URL=http://localhost:3001
+      - SERVICE_SECRET=${SERVICE_SECRET:-reserva-service-dev}
+    volumes:
+      - .:/app
+      - reserva-hotels:/app/services/hotels/prisma
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4102/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  transport:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run db:push --workspace=@reserva/transport && npm run db:seed --workspace=@reserva/transport && npm run dev --workspace=@reserva/transport"
+    ports:
+      - "4104:4104"
+    environment:
+      - PORT=4104
+      - NODE_ENV=development
+      - DATABASE_URL=file:./transport.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - WEB_URL=http://localhost:3001
+      - SERVICE_SECRET=${SERVICE_SECRET:-reserva-service-dev}
+    volumes:
+      - .:/app
+      - reserva-transport:/app/services/transport/prisma
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4104/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  booking:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run db:push --workspace=@reserva/booking && npm run dev --workspace=@reserva/booking"
+    ports:
+      - "4103:4103"
+    environment:
+      - PORT=4103
+      - NODE_ENV=development
+      - DATABASE_URL=file:./booking.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - WEB_URL=http://localhost:3001
+      - HOTELS_URL=http://hotels:4102
+      - TRANSPORT_URL=http://transport:4104
+      - HOLD_MINUTES=15
+      - SERVICE_SECRET=${SERVICE_SECRET:-reserva-service-dev}
+    volumes:
+      - .:/app
+      - reserva-booking:/app/services/booking/prisma
+    depends_on:
+      hotels:
+        condition: service_started
+      transport:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4103/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  gateway:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev --workspace=@reserva/gateway"
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - NODE_ENV=development
+      - WEB_URL=http://localhost:3001
+      - CORE_URL=http://core:4101
+      - HOTELS_URL=http://hotels:4102
+      - BOOKING_URL=http://booking:4103
+      - TRANSPORT_URL=http://transport:4104
+    volumes:
+      - .:/app
+    depends_on:
+      - core
+      - hotels
+      - booking
+      - transport
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Optionnel : build Next standalone. En local préférer `npm run dev:web` (:3001).
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run build:shared && npm run dev --workspace=apps/web"
+    ports:
+      - "3001:3001"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:4000/api
-      - API_URL=http://api:4000/api
+      - PORT=3001
+    volumes:
+      - .:/app
     depends_on:
-      - api
+      - gateway
     restart: unless-stopped
+
+volumes:
+  reserva-db:
+  reserva-hotels:
+  reserva-booking:
+  reserva-transport:

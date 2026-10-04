@@ -13,6 +13,7 @@ import { OperateurMobileMoney } from "@reserva/shared";
 import { creerAvoir } from "../avoirs/avoirs.service";
 import { promouvoirCreneau } from "../attentes/attentes.service";
 import { notifierAlertesService } from "../alertes/alertes.service";
+import { calculerPourReservation, enregistrerRemboursement } from "../economie/economie.service";
 
 interface PeriodeBloqueeApi {
   serviceId: string | null;
@@ -76,6 +77,12 @@ export async function creerReservation(clientId: string, input: CreerReservation
 
   await exigerCreneauNonBloque(prisma, creneau, creneau.service.prestataireId);
 
+  const tarif = await calculerPourReservation({
+    prestataireId: creneau.service.prestataireId,
+    prixService: creneau.service.prix,
+    devise: creneau.service.devise,
+  });
+
   // Transaction atomique : vérifie la capacité ET incrémente en une seule opération,
   // afin d'empêcher deux clients de prendre la dernière place simultanément.
   const reservation = await prisma.$transaction(async (tx) => {
@@ -98,7 +105,12 @@ export async function creerReservation(clientId: string, input: CreerReservation
         creneauId: input.creneauId,
         statut: "EN_ATTENTE",
         statutPaiement: "EN_ATTENTE",
-        montantTotal: creneau.service.prix,
+        montantTotal: tarif.montantTotalClient,
+        montantReduction: tarif.montantReduction,
+        montantCommission: tarif.montantCommission,
+        montantFraisService: tarif.montantFraisService,
+        montantNetPrestataire: tarif.montantNetPrestataire,
+        tauxCommissionApplique: tarif.tauxCommission,
         devise: creneau.service.devise,
         notes: input.notes,
         reservePourTiers: input.reservePourTiers,
@@ -294,20 +306,21 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
     });
   }
 
-  await prisma.$transaction([
-    prisma.reservation.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.reservation.update({
       where: { id: input.reservationId },
       data: {
         statut: "ANNULEE",
         motifAnnulation: input.motif,
         statutPaiement: montantRembourse > 0 ? "REMBOURSE" : reservation.statutPaiement,
       },
-    }),
-    prisma.creneau.update({
+    });
+    await tx.creneau.update({
       where: { id: reservation.creneauId },
       data: { capaciteReservee: { decrement: 1 } },
-    }),
-  ]);
+    });
+    await enregistrerRemboursement(tx, reservation, montantRembourse);
+  });
 
   // Une place se libère : on informe les abonnés à l'alerte dispo et on promeut la file d'attente
   promouvoirCreneau(reservation.serviceId, reservation.creneauId).catch(() => {});
@@ -562,6 +575,11 @@ export async function creerReservationsRecurrentes(
 
   const creneauxAServir = [creneauBase, ...correspondances];
   const recurrenceGroupeId = crypto.randomUUID();
+  const tarif = await calculerPourReservation({
+    prestataireId: creneauBase.service.prestataireId,
+    prixService: creneauBase.service.prix,
+    devise: creneauBase.service.devise,
+  });
 
   const reservations = await prisma.$transaction(async (tx) => {
     const resultats = [];
@@ -586,7 +604,12 @@ export async function creerReservationsRecurrentes(
             recurrenceGroupeId,
             statut: "EN_ATTENTE",
             statutPaiement: "EN_ATTENTE",
-            montantTotal: creneauBase.service.prix,
+            montantTotal: tarif.montantTotalClient,
+            montantReduction: tarif.montantReduction,
+            montantCommission: tarif.montantCommission,
+            montantFraisService: tarif.montantFraisService,
+            montantNetPrestataire: tarif.montantNetPrestataire,
+            tauxCommissionApplique: tarif.tauxCommission,
             devise: creneauBase.service.devise,
             notes: input.notes ? `[Récurrent] ${input.notes}`.trim() : "[Récurrent]",
           },

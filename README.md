@@ -1,97 +1,80 @@
-# RESERVA — Monorepo
+# RESERVA — Plateforme de réservation (RDC)
 
-Application de réservation planifiée pour la République Démocratique du Congo.
-Voir `docs/cahier-des-charges.md` et les documents Word fournis séparément pour le détail
-fonctionnel complet (cahier des charges, user stories, branding, PRD).
+Vague 1 livrée : **hôtels**, **bus OD**, **santé/restauration (core)**, **console admin web**, **app mobile Flutter**.
 
-## Structure du monorepo
+## Modèle produit : marketplace (pas multi-tenant)
 
-```
-reserva_final/
-├── apps/
-│   ├── api/          Backend Node.js + Express + Prisma (PostgreSQL)
-│   ├── web/           Frontend Next.js (clients + prestataires)
-│   └── mobile/        Application Expo/React Native (clients + prestataires)
-├── packages/
-│   └── shared/         Types, enums, schémas de validation Zod partagés
-└── docs/
-```
+RESERVA est un **marketplace mono-opérateur** (référence Trip / Booking), pas un SaaS multi-tenant white-label.
 
-## Démarrage rapide (Windows)
+- Une seule plateforme RESERVA, un admin global
+- Des **prestataires** (vendeurs) isolés via `prestataireId`
+- Des **clients** qui réservent sur un catalogue partagé
+- Revenus : **commission** + **frais de service** + abonnements prestataire + publicités
 
-### 1. Prérequis
+Pas de `Tenant` / `Organisation` / `tenantId`. Ne pas introduire de multi-tenant sauf décision produit explicite de vendre la plateforme à plusieurs opérateurs.
 
-- **Node.js 18+** : [nodejs.org](https://nodejs.org)
-- **PostgreSQL 14+** : [postgresql.org/download/windows](https://www.postgresql.org/download/windows/)
-- **Expo Go** sur votre téléphone Android (pour tester le mobile)
+## Architecture
 
-### 2. Installation
+| Service | Port | Rôle |
+|---------|------|------|
+| Gateway | **4000** | Point d’entrée unique `/api/*` (web + mobile) |
+| Core | 4101 | Auth, santé, restauration, admin, économie |
+| Hotels | 4102 | Inventaire & catalogue hôtels |
+| Booking | 4103 | Holds 15 min, paiements simulés, billets |
+| Transport | 4104 | Trajets bus OD |
+| Web admin | **3001** | Console administrateur uniquement |
+| Mobile | Flutter | Clients & prestataires (Android / iOS) |
 
-Ouvrez PowerShell à la racine du projet :
+Bases : **SQLite** par service. Mobile Money / SMS en **mode simulation** en local.
 
-```powershell
+## Démarrage local (recommandé)
+
+```bash
+# 1. Dépendances
 npm install
-```
+npm run build:shared
 
-Cette commande installe les dépendances pour les 4 packages du monorepo (api, web,
-mobile, shared) en une seule fois grâce aux **npm workspaces**.
-
-### 3. Configuration de la base de données
-
-```powershell
-cd apps\api
-copy .env.example .env
-```
-
-Modifiez `apps\api\.env` avec vos identifiants PostgreSQL, puis :
-
-```powershell
-npx prisma generate
-npx prisma migrate dev --name init
+# 2. Bases + seeds
+npm run db:generate
 npm run db:seed
+npm run db:push:hotels && npm run db:seed:hotels
+npm run db:push:booking
+npm run db:push:transport && npm run db:seed:transport
+
+# 3. Plateforme complète
+npm run dev:platform
 ```
 
-### 4. Démarrer les applications
+- Admin : http://localhost:3001 — `+243900000001` / PIN `1234`
+- API (gateway) : http://localhost:4000/api/sante
+- Mobile : `npm run pub:mobile` puis `npm run dev:mobile`  
+  (émulateur Android → `http://10.0.2.2:4000/api` ; appareil → `--dart-define=API_URL=http://IP_LAN:4000/api`)
 
-Trois terminaux PowerShell séparés, depuis la racine :
+Copiez les `.env.example` vers `.env` dans `apps/api`, `apps/web`, `services/*` si besoin.
 
-```powershell
-npm run dev:api      # Backend sur http://localhost:4000
-npm run dev:web      # Frontend web sur http://localhost:3000
-npm run dev:mobile    # Expo — scannez le QR code avec Expo Go
+## Scripts utiles
+
+```bash
+npm run smoke:local          # Santé gateway + login admin + catalogues
+npm run analyze:mobile
+npm run test:e2e -w apps/web # Playwright (plateforme déjà démarrée)
 ```
 
-## Documentation détaillée
+## Docker
 
-- `apps/api/README.md` — Backend : configuration, endpoints, mode simulation des paiements
-- `apps/web/README.md` — Frontend web : comptes de démo, structure
-- `apps/mobile/README.md` — Mobile : configuration réseau pour tester sur téléphone physique
+`docker compose up` lance core / hotels / booking / transport / gateway / web.  
+Pour le quotidien, préférer `npm run dev:platform`.
 
-## Périmètre fonctionnel implémenté (MVP)
+## Périmètre Vague 1
 
-✅ Authentification (inscription SMS/OTP, code PIN, connexion)
-✅ Recherche de services par catégorie/ville/texte
-✅ Réservation avec sélection de créneaux (gestion de la concurrence)
-✅ Annulation avec calcul automatique de remboursement selon la politique du prestataire
-✅ Paiement Mobile Money (M-Pesa, Airtel Money, Orange Money) en **mode simulation**
-✅ Avis et notation (avec réponse du prestataire)
-✅ Tableau de bord prestataire (statistiques, réservations du jour)
-✅ Gestion des créneaux par le prestataire (unitaire et récurrente)
-✅ Validation des prestataires par un administrateur
-✅ Notifications in-app + rappels SMS automatiques (24h/1h avant)
+- ✅ Hold hôtel 15 min → paiement → confirmation (+ QR mobile)
+- ✅ Bus OD → billet + QR
+- ✅ Réservations santé (core)
+- ✅ Console admin (pilotage, finances, ledger, versements, OTA…)
+- ❌ Vols / suite Trip+Booking (vagues suivantes)
+- ❌ Mobile Money / SMS production (adapters prêts, mode simulation)
 
-## Mode simulation
+## Remotes
 
-Par défaut, **aucune clé API réelle n'est nécessaire** pour faire fonctionner
-l'application de bout en bout : les SMS s'affichent dans la console du serveur, et les
-paiements Mobile Money sont automatiquement approuvés (avec un taux d'échec simulé de
-8% pour tester aussi ce cas). Voir `apps/api/README.md` pour passer en production.
-
-## Prochaines étapes suggérées
-
-- Écran d'administration web pour valider les prestataires (actuellement via API directe
-  ou Prisma Studio)
-- Gestion complète des services/créneaux côté prestataire sur mobile
-- Intégration réelle des API M-Pesa / Airtel Money / Orange Money et d'un fournisseur SMS
-- Tests automatisés (le squelette Vitest est en place côté API)
-- Internationalisation lingala/swahili (Phase 2 du PRD)
+- `origin` → github.com/clskas/Reserva  
+- `afri-soft-com` → github.com/afri-soft-com/Reserva

@@ -168,15 +168,24 @@ class _AccueilScreenState extends State<AccueilScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => context.go('/services'),
-              icon: const Icon(Icons.search),
-              label: Text(AppTraductions.t('trouverService')),
+              onPressed: () => context.push('/voyages'),
+              icon: const Icon(Icons.flight_takeoff),
+              label: const Text('Voyages — hôtels & bus'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppCouleurs.accent,
                 foregroundColor: AppCouleurs.primaireFonce,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.go('/services'),
+              icon: const Icon(Icons.search),
+              label: Text(AppTraductions.t('trouverService')),
             ),
           ),
         ],
@@ -284,7 +293,15 @@ class _AccueilScreenState extends State<AccueilScreen> {
       itemCount: categories.length,
       itemBuilder: (ctx, i) {
         return GestureDetector(
-          onTap: () => context.go('/services', extra: categories[i].$3),
+          onTap: () {
+            if (categories[i].$3 == 'HOTELLERIE') {
+              context.push('/hotels');
+            } else if (categories[i].$3 == 'TRANSPORT') {
+              context.push('/transport');
+            } else {
+              context.go('/services', extra: categories[i].$3);
+            }
+          },
           child: Container(
             decoration: BoxDecoration(
               color: AppCouleurs.blanc,

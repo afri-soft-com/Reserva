@@ -10,6 +10,7 @@ import { swaggerSpec } from "./config/swagger";
 import { routesApi } from "./routes";
 import { gestionnaireErreurs } from "./middlewares/erreurs";
 import { fluxLogsJson, formatLogsJson } from "./utils/logger";
+import { prisma } from "./config/prisma";
 
 export const app = express();
 
@@ -34,7 +35,7 @@ app.use(
 );
 app.use(
   cors({
-    origin: [env.WEB_URL, "http://localhost:19006", "exp://localhost:19000"],
+    origin: [env.WEB_URL, "http://localhost:3001", "http://127.0.0.1:3001"],
     credentials: true,
   })
 );
@@ -61,8 +62,22 @@ const limiteurAuth = rateLimit({
 });
 app.use("/api/auth", limiteurAuth);
 
-app.get("/api/sante", (_req: Request, res: Response) => {
-  res.json({ statut: "operationnel", horodatage: new Date().toISOString() });
+app.get("/api/sante", async (_req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      statut: "operationnel",
+      base: "ok",
+      horodatage: new Date().toISOString(),
+      environnement: env.NODE_ENV,
+    });
+  } catch {
+    res.status(503).json({
+      statut: "indisponible",
+      base: "erreur",
+      horodatage: new Date().toISOString(),
+    });
+  }
 });
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));

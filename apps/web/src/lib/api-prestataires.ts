@@ -172,3 +172,8 @@ export async function obtenirStatistiquesPrestataire() {
   const { data } = await clientApi.get("/prestataires/moi/statistiques");
   return data.donnees as StatistiquesPrestataire;
 }
+
+export async function obtenirMonAbonnement() {
+  const { data } = await clientApi.get("/prestataires/moi/abonnement");
+  return data.donnees as { abonnement: any; message?: string };
+}

@@ -15,6 +15,7 @@ type Etape = "TELEPHONE" | "OTP" | "PIN";
 export default function PageReinitialiserPin() {
   const router = useRouter();
   const connecterStore = useAuthStore((etat) => etat.connecter);
+  const deconnecterStore = useAuthStore((etat) => etat.deconnecter);
 
   const [etape, setEtape] = useState<Etape>("TELEPHONE");
   const [telephone, setTelephone] = useState("");
@@ -55,9 +56,15 @@ export default function PageReinitialiserPin() {
     setChargement(true);
     try {
       const resultat = await reinitialiserPin({ telephone, code, nouveauPin });
-      connecterStore(resultat.token, resultat.utilisateur);
       toastSucces("Code PIN réinitialisé avec succès !");
-      router.push("/services");
+      if (resultat.utilisateur.role === "ADMIN") {
+        connecterStore(resultat.token, resultat.utilisateur);
+        router.push("/admin/pilotage");
+      } else {
+        deconnecterStore();
+        toastSucces("Connectez-vous depuis l'application mobile.");
+        router.push("/connexion");
+      }
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
     } finally {

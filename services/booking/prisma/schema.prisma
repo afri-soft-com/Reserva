@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model SejourHotel {
+  id              String   @id @default(uuid())
+  numero          String   @unique
+  clientId        String
+  hotelId         String
+  hotelNom        String
+  ville           String
+  typeChambreId   String
+  chambreNom      String
+  planTarifId     String
+  tarifNom        String
+  arrivee         String
+  depart          String
+  nuits           Int
+  adultes         Int
+  enfants         Int      @default(0)
+  quantite        Int      @default(1)
+  montantChambre  Float
+  montantFrais    Float    @default(0)
+  montantCommission Float  @default(0)
+  montantTotal    Float
+  montantPaye     Float    @default(0)
+  devise          String   @default("USD")
+  statut          String   @default("HOLD")
+  statutPaiement  String   @default("EN_ATTENTE")
+  expireLe        DateTime
+  notes           String?
+  creeLe          DateTime @default(now())
+  misAJourLe      DateTime @updatedAt
+
+  paiements       PaiementSejour[]
+
+  @@index([clientId, statut])
+  @@map("sejours_hotel")
+}
+
+model PaiementSejour {
+  id                String   @id @default(uuid())
+  sejourId          String
+  sejour            SejourHotel @relation(fields: [sejourId], references: [id], onDelete: Cascade)
+  operateur         String
+  montant           Float
+  devise            String
+  statut            String
+  referenceExterne  String?
+  telephonePaiement String?
+  creeLe            DateTime @default(now())
+
+  @@map("paiements_sejour")
+}
+
+model BilletTransport {
+  id                String   @id @default(uuid())
+  numero            String   @unique
+  clientId          String
+  trajetId          String
+  operateurNom      String
+  origine           String
+  destination       String
+  dateDepart        String
+  heureDepart       String
+  dureeMinutes      Int
+  places            Int      @default(1)
+  montantBase       Float
+  montantFrais      Float    @default(0)
+  montantCommission Float    @default(0)
+  montantTotal      Float
+  montantPaye       Float    @default(0)
+  devise            String   @default("CDF")
+  statut            String   @default("HOLD")
+  statutPaiement    String   @default("EN_ATTENTE")
+  expireLe          DateTime
+  qrCode            String?
+  notes             String?
+  creeLe            DateTime @default(now())
+  misAJourLe        DateTime @updatedAt
+
+  paiements         PaiementBillet[]
+
+  @@index([clientId, statut])
+  @@map("billets_transport")
+}
+
+model PaiementBillet {
+  id                String   @id @default(uuid())
+  billetId          String
+  billet            BilletTransport @relation(fields: [billetId], references: [id], onDelete: Cascade)
+  operateur         String
+  montant           Float
+  devise            String
+  statut            String
+  referenceExterne  String?
+  telephonePaiement String?
+  creeLe            DateTime @default(now())
+
+  @@map("paiements_billet")
+}

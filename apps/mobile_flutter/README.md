@@ -1,16 +1,28 @@
-# reserva
+# RESERVA Mobile (Flutter)
 
-A new Flutter project.
+Application clients & prestataires (Android / iOS).
 
-## Getting Started
+## Prérequis
 
-This project is a starting point for a Flutter application.
+- Flutter SDK
+- Plateforme démarrée : `npm run dev:platform` (gateway **:4000**)
 
-A few resources to get you started if this is your first Flutter project:
+## Lancer
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+flutter pub get
+# Émulateur Android (défaut dans lib/config.dart)
+flutter run
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Appareil physique / iOS sim
+flutter run --dart-define=API_URL=http://IP_DE_VOTRE_PC:4000/api
+```
+
+## Modules Vague 1
+
+- Santé / restauration (core)
+- Hôtels (recherche → hold → paiement → confirmation + QR)
+- Transport bus OD (trajet → billet + QR)
+- Mes voyages / réservations
+
+CI iOS unsigned : `.github/workflows/mobile-ios.yml` (voir `docs/mobile-ios-github.md`).

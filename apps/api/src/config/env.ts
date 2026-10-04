@@ -9,14 +9,14 @@ function lireVariable(nom: string, valeurParDefaut?: string): string {
 }
 
 export const env = {
-  PORT: parseInt(lireVariable("PORT", "4000"), 10),
+  PORT: parseInt(lireVariable("PORT", "4101"), 10),
   NODE_ENV: lireVariable("NODE_ENV", "development"),
   DATABASE_URL: lireVariable("DATABASE_URL"),
   JWT_SECRET: lireVariable("JWT_SECRET"),
   JWT_EXPIRATION: lireVariable("JWT_EXPIRATION", "7d"),
   MODE_PAIEMENT: lireVariable("MODE_PAIEMENT", "simulation") as "simulation" | "production",
   MODE_SMS: lireVariable("MODE_SMS", "simulation") as "simulation" | "production",
-  WEB_URL: lireVariable("WEB_URL", "http://localhost:3000"),
+  WEB_URL: lireVariable("WEB_URL", "http://localhost:3001"),
   CRON_SECRET: lireVariable("CRON_SECRET"),
 };
 

@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Operateur {
+  id        String   @id @default(uuid())
+  nom       String
+  telephone String?
+  logoUrl   String?
+  noteMoyenne Float  @default(4.2)
+  actif     Boolean  @default(true)
+  trajets   Trajet[]
+
+  @@map("operateurs")
+}
+
+model Ligne {
+  id           String   @id @default(uuid())
+  origine      String
+  destination  String
+  distanceKm   Int?
+  actif        Boolean  @default(true)
+  trajets      Trajet[]
+
+  @@unique([origine, destination])
+  @@map("lignes")
+}
+
+model Trajet {
+  id              String   @id @default(uuid())
+  ligneId         String
+  ligne           Ligne    @relation(fields: [ligneId], references: [id], onDelete: Cascade)
+  operateurId     String
+  operateur       Operateur @relation(fields: [operateurId], references: [id])
+  dateDepart      String
+  heureDepart     String
+  dureeMinutes    Int
+  confort         String   @default("STANDARD")
+  prix            Float
+  devise          String   @default("CDF")
+  placesTotales   Int
+  placesReservees Int      @default(0)
+  placesVendues   Int      @default(0)
+  remboursable    Boolean  @default(true)
+  delaiAnnulHeures Int     @default(12)
+  actif           Boolean  @default(true)
+
+  @@index([dateDepart, ligneId])
+  @@map("trajets")
+}

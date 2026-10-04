@@ -98,6 +98,8 @@ model Prestataire {
   abonnements   AbonnementPrestataire[]
   packages      PackageService[]
   periodesIndisponibles PeriodeIndisponible[]
+  ecritures     EcritureComptable[]
+  versements    VersementPrestataire[]
 
   @@index([categorie, ville])
   @@map("prestataires")
@@ -163,6 +165,11 @@ model Reservation {
   montantReduction    Float    @default(0)
   pointsUtilises      Int      @default(0)
   avoirUtilise        Float    @default(0)
+  montantCommission      Float    @default(0)
+  montantFraisService    Float    @default(0)
+  montantNetPrestataire  Float    @default(0)
+  tauxCommissionApplique Float    @default(0)
+  commissionStatut       String   @default("EN_ATTENTE")
   notes               String?
   reservePourTiers    Boolean  @default(false)
   nomTiers            String?
@@ -175,6 +182,7 @@ model Reservation {
 
   transactions        Transaction[]
   avis                Avis?
+  ecritures           EcritureComptable[]
   notifications       Notification[]
   carteCadeauId       String?
   carteCadeau         CarteCadeau? @relation(fields: [carteCadeauId], references: [id])
@@ -294,14 +302,18 @@ model PlanAbonnement {
 }
 
 model AbonnementPrestataire {
-  id            String   @id @default(uuid())
-  prestataireId String
-  planId        String
-  dateDebut     DateTime
-  dateFin       DateTime
-  statut        String   @default("ACTIF")
-  creeLe        DateTime @default(now())
-  misAJourLe    DateTime @updatedAt
+  id               String   @id @default(uuid())
+  prestataireId    String
+  planId           String
+  dateDebut        DateTime
+  dateFin          DateTime
+  statut           String   @default("ACTIF")
+  montantPaye      Float    @default(0)
+  operateurPaiement String?
+  referencePaiement String?
+  statutPaiement   String   @default("GRATUIT")
+  creeLe           DateTime @default(now())
+  misAJourLe       DateTime @updatedAt
 
   prestataire   Prestataire       @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
   plan          PlanAbonnement    @relation(fields: [planId], references: [id])
@@ -310,6 +322,47 @@ model AbonnementPrestataire {
   @@index([planId])
   @@index([statut])
   @@map("abonnements_prestataire")
+}
+
+model EcritureComptable {
+  id            String   @id @default(uuid())
+  type          String
+  compte        String
+  sens          String
+  montant       Float
+  devise        String   @default("CDF")
+  prestataireId String?
+  prestataire   Prestataire? @relation(fields: [prestataireId], references: [id])
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+  abonnementId  String?
+  versementId   String?
+  description   String?
+  creeLe        DateTime @default(now())
+
+  @@index([compte, prestataireId])
+  @@index([type, creeLe])
+  @@index([reservationId])
+  @@map("ecritures_comptables")
+}
+
+model VersementPrestataire {
+  id                String    @id @default(uuid())
+  prestataireId     String
+  prestataire       Prestataire @relation(fields: [prestataireId], references: [id], onDelete: Cascade)
+  montant           Float
+  devise            String    @default("CDF")
+  statut            String    @default("DEMANDE")
+  operateur         String?
+  telephonePaiement String?
+  referenceExterne  String?
+  noteAdmin         String?
+  demandeLe         DateTime  @default(now())
+  traiteLe          DateTime?
+  creeLe            DateTime  @default(now())
+
+  @@index([prestataireId, statut])
+  @@map("versements_prestataire")
 }
 
 model ConfigurationTarification {

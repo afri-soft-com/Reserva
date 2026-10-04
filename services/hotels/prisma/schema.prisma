@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Hotel {
+  id              String   @id @default(uuid())
+  nom             String
+  description     String?
+  ville           String
+  quartier        String
+  adresse         String?
+  etoiles         Int      @default(3)
+  noteMoyenne     Float    @default(0)
+  noteProprete    Float    @default(0)
+  noteEmplacement Float    @default(0)
+  nombreAvis      Int      @default(0)
+  latitude        Float?
+  longitude       Float?
+  commodites      String   @default("[]")
+  photos          String   @default("[]")
+  photoUrl        String?
+  telephone       String?
+  politiqueAnnul  String   @default("Annulation gratuite jusqu'à 48h avant l'arrivée.")
+  checkInHeure    String   @default("14:00")
+  checkOutHeure   String   @default("12:00")
+  prestataireId   String?
+  actif           Boolean  @default(true)
+  creeLe          DateTime @default(now())
+  misAJourLe      DateTime @updatedAt
+
+  chambres        TypeChambre[]
+  avis            AvisHotel[]
+
+  @@index([ville, actif])
+  @@map("hotels")
+}
+
+model TypeChambre {
+  id              String   @id @default(uuid())
+  hotelId         String
+  hotel           Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  nom             String
+  description     String?
+  capaciteAdultes Int      @default(2)
+  capaciteEnfants Int      @default(1)
+  superficieM2    Int?
+  lits            String   @default("1 lit double")
+  commodites      String   @default("[]")
+  photos          String   @default("[]")
+  actif           Boolean  @default(true)
+  creeLe          DateTime @default(now())
+
+  tarifs          PlanTarif[]
+  disponibilites  DisponibiliteJour[]
+
+  @@index([hotelId])
+  @@map("types_chambre")
+}
+
+model PlanTarif {
+  id                 String   @id @default(uuid())
+  typeChambreId      String
+  typeChambre        TypeChambre @relation(fields: [typeChambreId], references: [id], onDelete: Cascade)
+  nom                String
+  petitDejeuner      Boolean  @default(false)
+  remboursable       Boolean  @default(true)
+  delaiAnnulHeures   Int      @default(48)
+  prixParNuit        Float
+  devise             String   @default("USD")
+  actif              Boolean  @default(true)
+
+  @@index([typeChambreId])
+  @@map("plans_tarif")
+}
+
+model DisponibiliteJour {
+  id            String   @id @default(uuid())
+  typeChambreId String
+  typeChambre   TypeChambre @relation(fields: [typeChambreId], references: [id], onDelete: Cascade)
+  jour          String
+  total         Int
+  vendues       Int      @default(0)
+  reservees     Int      @default(0)
+  /// Prix de la nuit pour ce jour (surcharge saisonnière). 0 = utiliser PlanTarif.prixParNuit
+  prix          Float    @default(0)
+
+  @@unique([typeChambreId, jour])
+  @@index([jour])
+  @@map("disponibilites_jour")
+}
+
+model AvisHotel {
+  id           String   @id @default(uuid())
+  hotelId      String
+  hotel        Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  clientId     String?
+  auteurNom    String
+  note         Int
+  noteProprete Int      @default(0)
+  noteEmplacement Int   @default(0)
+  commentaire  String?
+  sejourId     String?
+  creeLe       DateTime @default(now())
+
+  @@index([hotelId])
+  @@map("avis_hotel")
+}

@@ -10,6 +10,52 @@ export async function obtenirStatistiquesAdmin() {
   };
 }
 
+export async function obtenirPilotageAdmin() {
+  const { data } = await clientApi.get("/admin/pilotage");
+  return data.donnees as {
+    stats: any;
+    alertes: {
+      prestatairesEnAttente: number;
+      versementsEnAttente: number;
+      abonnementsExpirant: number;
+      paiementsEnAttente: number;
+    };
+    files: {
+      prestatairesEnAttente: any[];
+      versementsEnAttente: any[];
+      reservationsRecentes: any[];
+      abonnementsExpirant: any[];
+    };
+  };
+}
+
+export async function listerReservationsAdmin(params: {
+  page?: number;
+  statut?: string;
+  statutPaiement?: string;
+  recherche?: string;
+} = {}) {
+  const { data } = await clientApi.get("/admin/reservations", { params });
+  return data.donnees as { items: any[]; total: number; page: number; totalPages: number };
+}
+
+export async function telechargerExportAdmin(type: "reservations" | "prestataires" | "utilisateurs") {
+  const { default: axios } = await import("axios");
+  const { API_URL } = await import("./api-client");
+  const token = typeof window !== "undefined" ? localStorage.getItem("reserva_token") : null;
+  const response = await axios.get(`${API_URL}/admin/export/${type}`, {
+    responseType: "arraybuffer",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  const blob = new Blob([response.data], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `reserva-${type}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function listerTousPrestatairesAdmin(page = 1, parPage = 20) {
   const { data } = await clientApi.get("/admin/prestataires", { params: { page, parPage } });
   return data.donnees as { items: any[]; total: number; page: number; totalPages: number };

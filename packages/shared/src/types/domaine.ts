@@ -79,6 +79,10 @@ export interface Reservation {
   montantTotal: number;
   montantPaye: number;
   montantReduction: number;
+  montantCommission?: number;
+  montantFraisService?: number;
+  montantNetPrestataire?: number;
+  tauxCommissionApplique?: number;
   devise: Devise;
   notes?: string | null;
   reservePourTiers: boolean;

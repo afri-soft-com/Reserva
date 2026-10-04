@@ -1,46 +1,49 @@
 # Commandes RESERVA
 
-## Web (Next.js)
+**Modèle :** marketplace mono-opérateur (pas multi-tenant SaaS). Isolation vendeur = `prestataireId`, admin = plateforme globale.
+
+## Plateforme (recommandé)
 ```bash
-npm run dev:web          # Démarrer le serveur web (:3000)
+npm run build:shared
+npm run dev:platform   # core:4101 hotels:4102 booking:4103 transport:4104 gateway:4000 web:3001
 ```
 
-## API (Express)
+## Web admin (Next.js :3001)
 ```bash
-npm run dev:api          # Démarrer l'API (:4000)
-npm run build:shared     # Build packages/shared avant l'API
-npm run db:migrate       # Migrer la base SQLite
-npm run db:seed          # Charger les données de test
+npm run dev:web
+# NEXT_PUBLIC_API_URL=http://localhost:4000/api
+```
+
+## API / microservices
+```bash
+npm run dev:core       # :4101 (auth, admin, économie, santé)
+npm run dev:hotels     # :4102
+npm run dev:booking    # :4103
+npm run dev:transport  # :4104
+npm run dev:gateway    # :4000 — URL utilisée par web + mobile
+```
+
+## Bases SQLite
+```bash
+npm run db:generate && npm run db:seed
+npm run db:push:hotels && npm run db:seed:hotels
+npm run db:push:booking
+npm run db:push:transport && npm run db:seed:transport
 ```
 
 ## Mobile Flutter
 ```bash
-npm run pub:mobile       # flutter pub get
-npm run analyze:mobile   # dart analyze lib/ (vérification statique)
-npm run dev:mobile       # flutter run (sur émulateur connecté)
-
-# Construire avec URL API personnalisée
-cd apps/mobile_flutter && flutter run --dart-define=API_URL=http://10.0.2.2:4000/api
+npm run pub:mobile
+npm run analyze:mobile
+npm run dev:mobile
+# Appareil physique :
+cd apps/mobile_flutter && flutter run --dart-define=API_URL=http://192.168.x.x:4000/api
 ```
 
-## Lint & Typecheck
+## Tests / smoke
 ```bash
-npm run lint             # ESLint tous les workspaces
-npx tsc --noEmit         # TypeScript (à la racine ou dans apps/api)
+npm run smoke:local
+npm run test:e2e -w apps/web   # gateway + web déjà up
 ```
 
-## Tests E2E (Playwright)
-```bash
-# Prérequis : API + Web doivent tourner + base seedée
-npm run dev:api          # Terminal 1
-npm run dev:web          # Terminal 2 (port 3001)
-
-# Lancer les tests E2E
-npm run test:e2e -w apps/web
-
-# Avec interface graphique Playwright
-cd apps/web && npx playwright test --ui
-
-# Voir le rapport HTML
-cd apps/web && npx playwright show-report e2e/rapport
-```
+Admin démo : `+243900000001` / PIN `1234`.

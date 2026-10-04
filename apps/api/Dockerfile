@@ -14,5 +14,6 @@ COPY --from=builder /app/apps/api/dist apps/api/dist
 COPY --from=builder /app/apps/api/package.json apps/api/
 COPY --from=builder /app/apps/api/prisma apps/api/prisma
 RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
-EXPOSE 4000
+EXPOSE 4101
+ENV PORT=4101
 CMD ["node", "apps/api/dist/server.js"]

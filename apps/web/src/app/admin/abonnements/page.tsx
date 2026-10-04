@@ -6,19 +6,30 @@ import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur, toastSucces } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
-import { listerPlansAdmin, creerPlanAdmin, modifierPlanAdmin, supprimerPlanAdmin } from "../../../lib/api-admin";
+import {
+  listerPlansAdmin,
+  creerPlanAdmin,
+  modifierPlanAdmin,
+  supprimerPlanAdmin,
+  listerAbonnementsAdmin,
+} from "../../../lib/api-admin";
 import { formaterMontant } from "@reserva/shared";
 
 export default function PageAdminAbonnements() {
+  const [onglet, setOnglet] = useState<"plans" | "souscriptions">("plans");
   const [plans, setPlans] = useState<any[]>([]);
+  const [souscriptions, setSouscriptions] = useState<any[]>([]);
   const [chargement, setChargement] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [pageSous, setPageSous] = useState(1);
+  const [totalPagesSous, setTotalPagesSous] = useState(1);
   const [modalOuvert, setModalOuvert] = useState(false);
   const [edition, setEdition] = useState<any | null>(null);
   const [form, setForm] = useState({ nom: "", description: "", prix: "", devise: "CDF", dureeJours: "30", maxServices: "", commissionReduite: "", fonctionnalites: "" });
 
-  useEffect(() => { charger(); }, [page]);
+  useEffect(() => { if (onglet === "plans") charger(); }, [page, onglet]);
+  useEffect(() => { if (onglet === "souscriptions") chargerSouscriptions(); }, [pageSous, onglet]);
 
   async function charger() {
     setChargement(true);
@@ -26,6 +37,16 @@ export default function PageAdminAbonnements() {
       const r = await listerPlansAdmin(page);
       setPlans(r.items);
       setTotalPages(r.totalPages);
+    } catch (e) { toastErreur(extraireMessageErreur(e)); }
+    finally { setChargement(false); }
+  }
+
+  async function chargerSouscriptions() {
+    setChargement(true);
+    try {
+      const r = await listerAbonnementsAdmin(pageSous);
+      setSouscriptions(r.items);
+      setTotalPagesSous(r.totalPages);
     } catch (e) { toastErreur(extraireMessageErreur(e)); }
     finally { setChargement(false); }
   }
@@ -79,18 +100,88 @@ export default function PageAdminAbonnements() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Plans d'abonnement</h1>
-        <Bouton taille="sm" onClick={() => ouvrirModal()}><Plus className="h-4 w-4" /> Nouveau plan</Bouton>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <Package className="h-6 w-6" /> Abonnements
+          </h1>
+          <p className="text-sm text-gray-500">Plans commerciaux et souscriptions prestataires actives.</p>
+        </div>
+        {onglet === "plans" && (
+          <Bouton taille="sm" onClick={() => ouvrirModal()}><Plus className="h-4 w-4" /> Nouveau plan</Bouton>
+        )}
+      </div>
+
+      <div className="flex gap-2 border-b border-gray-200 pb-2">
+        <button
+          type="button"
+          onClick={() => setOnglet("plans")}
+          className={`rounded-lg px-3 py-1.5 text-sm font-medium ${onglet === "plans" ? "bg-primaire-50 text-primaire" : "text-gray-600 hover:bg-gray-100"}`}
+        >
+          Plans
+        </button>
+        <button
+          type="button"
+          onClick={() => setOnglet("souscriptions")}
+          className={`rounded-lg px-3 py-1.5 text-sm font-medium ${onglet === "souscriptions" ? "bg-primaire-50 text-primaire" : "text-gray-600 hover:bg-gray-100"}`}
+        >
+          Souscriptions
+        </button>
       </div>
 
       {chargement && <p className="text-gray-500">Chargement...</p>}
 
-      {!chargement && plans.length === 0 && (
+      {onglet === "souscriptions" && !chargement && (
+        <>
+          {souscriptions.length === 0 ? (
+            <Carte><p className="text-center text-gray-500">Aucune souscription enregistrée.</p></Carte>
+          ) : (
+            <div className="overflow-x-auto rounded-card bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b text-xs uppercase text-gray-500">
+                    <th className="px-4 py-3">Prestataire</th>
+                    <th className="px-4 py-3">Plan</th>
+                    <th className="px-4 py-3">Début</th>
+                    <th className="px-4 py-3">Fin</th>
+                    <th className="px-4 py-3">Statut</th>
+                    <th className="px-4 py-3">Montant</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {souscriptions.map((a) => (
+                    <tr key={a.id} className="border-b border-gray-50">
+                      <td className="px-4 py-3 font-medium">{a.prestataire?.nomEntreprise}</td>
+                      <td className="px-4 py-3">{a.plan?.nom}</td>
+                      <td className="px-4 py-3 text-gray-500">{new Date(a.dateDebut).toLocaleDateString("fr-FR")}</td>
+                      <td className="px-4 py-3 text-gray-500">{new Date(a.dateFin).toLocaleDateString("fr-FR")}</td>
+                      <td className="px-4 py-3 text-xs">{a.statut}</td>
+                      <td className="px-4 py-3 font-semibold">
+                        {formaterMontant(a.montantPaye ?? a.plan?.prix ?? 0, a.plan?.devise || "CDF")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="flex items-center justify-center gap-4">
+            <Bouton variante="fantome" taille="sm" disabled={pageSous <= 1} onClick={() => setPageSous((p) => p - 1)}>
+              <ChevronLeft className="h-4 w-4" /> Précédent
+            </Bouton>
+            <span className="text-sm text-gray-500">Page {pageSous} sur {totalPagesSous}</span>
+            <Bouton variante="fantome" taille="sm" disabled={pageSous >= totalPagesSous} onClick={() => setPageSous((p) => p + 1)}>
+              Suivant <ChevronRight className="h-4 w-4" />
+            </Bouton>
+          </div>
+        </>
+      )}
+
+      {onglet === "plans" && !chargement && plans.length === 0 && (
         <Carte><p className="text-center text-gray-500">Aucun plan d'abonnement. Créez-en un.</p></Carte>
       )}
 
-      {!chargement && plans.length > 0 && (
+      {onglet === "plans" && !chargement && plans.length > 0 && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {plans.map((p) => (

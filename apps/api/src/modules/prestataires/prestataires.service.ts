@@ -1,6 +1,7 @@
 import { prisma } from "../../config/prisma";
 import { ErreurValidation, ErreurNonTrouve, ErreurInterdit } from "../../utils/erreurs";
 import { CreerPrestataireInput, ModifierPrestataireInput, ValiderPrestataireInput, CreerServiceOffertInput, ModifierServiceOffertInput } from "./prestataires.schema";
+import { attribuerPlanGratuit, verifierQuotaServices } from "../economie/economie.service";
 
 /** Crée un profil prestataire pour l'utilisateur connecté (passe son rôle à PRESTATAIRE en attente de validation) */
 export async function creerProfilPrestataire(utilisateurId: string, input: CreerPrestataireInput) {
@@ -63,10 +64,12 @@ export async function validerPrestataire(input: ValiderPrestataireInput) {
   }
 
   if (input.approuver) {
-    return prisma.prestataire.update({
+    const approuve = await prisma.prestataire.update({
       where: { id: input.prestataireId },
       data: { statut: "APPROUVE", motifRejet: null },
     });
+    await attribuerPlanGratuit(approuve.id).catch(() => {});
+    return approuve;
   }
 
   if (!input.motifRejet) {
@@ -122,6 +125,7 @@ async function exigerPrestataireApprouve(utilisateurId: string) {
 /** Crée un nouveau service proposé par le prestataire connecté */
 export async function creerServiceOffert(utilisateurId: string, input: CreerServiceOffertInput) {
   const prestataire = await exigerPrestataireApprouve(utilisateurId);
+  await verifierQuotaServices(prestataire.id);
 
   return prisma.serviceOffert.create({
     data: { ...input, prestataireId: prestataire.id },

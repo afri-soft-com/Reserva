@@ -10,6 +10,16 @@ import { listerConfigsTarifAdmin, creerOuModifierConfigTarifAdmin, supprimerConf
 
 const TYPE_LABEL: Record<string, string> = { TEXTE: "Texte", NOMBRE: "Nombre", POURCENT: "Pourcentage", MONTANT: "Montant" };
 
+const PRESETS = [
+  { cle: "COMMISSION_PRESTATAIRE", valeur: "5", type: "POURCENT", description: "Commission prestataire par défaut (%)" },
+  { cle: "TAUX_USD_CDF", valeur: "2800", type: "NOMBRE", description: "Taux de change USD → CDF" },
+  { cle: "FRAIS_SERVICE_SEUIL_USD", valeur: "50", type: "MONTANT", description: "Seuil d'application des frais de service (USD)" },
+  { cle: "FRAIS_SERVICE_MONTANT_USD", valeur: "2", type: "MONTANT", description: "Frais de service en USD" },
+  { cle: "FRAIS_SERVICE_MONTANT_CDF", valeur: "5000", type: "MONTANT", description: "Frais de service en CDF" },
+  { cle: "VERSEMENT_MINIMUM_CDF", valeur: "20000", type: "MONTANT", description: "Montant minimum de versement (CDF)" },
+  { cle: "VERSEMENT_MINIMUM_USD", valeur: "10", type: "MONTANT", description: "Montant minimum de versement (USD)" },
+];
+
 export default function PageAdminTarifications() {
   const [configs, setConfigs] = useState<any[]>([]);
   const [chargement, setChargement] = useState(true);
@@ -54,9 +64,33 @@ export default function PageAdminTarifications() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Tarifications</h1>
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <CreditCard className="h-6 w-6" /> Tarifications
+          </h1>
+          <p className="text-sm text-gray-500">Clés économiques (commission, frais, change, minimums de versement).</p>
+        </div>
         <Bouton taille="sm" onClick={() => setModalOuvert(true)}><Plus className="h-4 w-4" /> Ajouter</Bouton>
       </div>
+
+      <Carte>
+        <p className="mb-2 text-sm font-medium text-gray-700">Presets économiques</p>
+        <div className="flex flex-wrap gap-2">
+          {PRESETS.map((p) => (
+            <button
+              key={p.cle}
+              type="button"
+              onClick={() => {
+                setForm({ cle: p.cle, valeur: p.valeur, description: p.description, type: p.type });
+                setModalOuvert(true);
+              }}
+              className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:border-primaire hover:text-primaire"
+            >
+              {p.cle}
+            </button>
+          ))}
+        </div>
+      </Carte>
 
       {chargement && <p className="text-gray-500">Chargement...</p>}
 

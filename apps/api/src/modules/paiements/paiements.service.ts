@@ -3,6 +3,7 @@ import { ErreurNonTrouve, ErreurValidation, ErreurInterdit } from "../../utils/e
 import { InitierPaiementInput } from "@reserva/shared";
 import { initierPaiementMobileMoney } from "./mobilemoney.adapter";
 import { ajouterPointsGain } from "../fidelite/fidelite.service";
+import { enregistrerPaiementReservation } from "../economie/economie.service";
 
 /** Échappe les caractères HTML pour éviter toute injection dans les documents générés */
 function echapperHtml(valeur: string | null | undefined): string {
@@ -65,9 +66,12 @@ export async function initierPaiement(clientId: string, input: InitierPaiementIn
     const nouveauMontantPaye = reservation.montantPaye + input.montant;
     const statutPaiement = nouveauMontantPaye >= reservation.montantTotal ? "PAYE" : "PARTIEL";
 
-    await prisma.reservation.update({
-      where: { id: reservation.id },
-      data: { montantPaye: nouveauMontantPaye, statutPaiement },
+    await prisma.$transaction(async (tx) => {
+      await tx.reservation.update({
+        where: { id: reservation.id },
+        data: { montantPaye: nouveauMontantPaye, statutPaiement },
+      });
+      await enregistrerPaiementReservation(tx, reservation, input.montant);
     });
 
     await prisma.notification.create({

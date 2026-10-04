@@ -5,27 +5,47 @@
   "description": "RESERVA - Application de reservation planifiee pour la RDCongo",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "services/*"
   ],
   "scripts": {
+    "dev:core": "npm run dev --workspace=apps/api",
     "dev:api": "npm run dev --workspace=apps/api",
+    "dev:hotels": "npm run dev --workspace=@reserva/hotels",
+    "dev:booking": "npm run dev --workspace=@reserva/booking",
+    "dev:transport": "npm run dev --workspace=@reserva/transport",
+    "dev:gateway": "npm run dev --workspace=@reserva/gateway",
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:mobile": "cd apps/mobile_flutter && flutter run",
+    "dev:platform": "concurrently -n core,hotels,booking,transport,gw,web -c blue,magenta,green,white,yellow,cyan \"npm run dev:core\" \"npm run dev:hotels\" \"npm run dev:booking\" \"npm run dev:transport\" \"npm run dev:gateway\" \"npm run dev:web\"",
     "analyze:mobile": "cd apps/mobile_flutter && dart analyze lib/",
     "pub:mobile": "cd apps/mobile_flutter && flutter pub get",
     "build:shared": "npm run build --workspace=packages/shared",
     "build:api": "npm run build --workspace=apps/api",
     "build:web": "npm run build --workspace=apps/web",
     "db:generate": "npm run db:generate --workspace=apps/api",
+    "db:generate:hotels": "npm run db:generate --workspace=@reserva/hotels",
+    "db:generate:booking": "npm run db:generate --workspace=@reserva/booking",
+    "db:generate:transport": "npm run db:generate --workspace=@reserva/transport",
     "db:migrate": "npm run db:migrate --workspace=apps/api",
     "db:seed": "npm run db:seed --workspace=apps/api",
+    "db:seed:hotels": "npm run db:seed --workspace=@reserva/hotels",
+    "db:seed:transport": "npm run db:seed --workspace=@reserva/transport",
+    "db:push:hotels": "npm run db:push --workspace=@reserva/hotels",
+    "db:push:booking": "npm run db:push --workspace=@reserva/booking",
+    "db:push:transport": "npm run db:push --workspace=@reserva/transport",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "smoke:local": "node scripts/smoke-local.mjs",
+    "setup:local": "npm run build:shared && npm run db:generate && npm run db:seed && npm run db:push:hotels && npm run db:seed:hotels && npm run db:push:booking && npm run db:push:transport && npm run db:seed:transport"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
     "styled-jsx": "^5.1.7"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }

@@ -67,8 +67,8 @@ export async function obtenirStatistiquesPlateforme(filtres?: FiltresStatistique
     prisma.prestataire.count({ where: { ...filtrePrestataire, statut: "EN_ATTENTE_VALIDATION" } }),
     prisma.prestataire.count({ where: { ...filtrePrestataire, statut: "APPROUVE" } }),
     prisma.reservation.aggregate({
-      where: { ...baseWhere, statutPaiement: "PAYE" },
-      _sum: { montantPaye: true },
+      where: { ...baseWhere, statutPaiement: { in: ["PAYE", "PARTIEL"] } },
+      _sum: { montantPaye: true, montantCommission: true, montantFraisService: true },
     }),
     prisma.reservation.groupBy({ by: ["statut"], where: baseWhere, _count: true }),
     prisma.utilisateur.count({ where: filtreDates }),
@@ -121,6 +121,10 @@ export async function obtenirStatistiquesPlateforme(filtres?: FiltresStatistique
     },
     revenus: {
       ceMois: revenusMois._sum.montantPaye ?? 0,
+      gmv: revenusMois._sum.montantPaye ?? 0,
+      commissions: revenusMois._sum.montantCommission ?? 0,
+      fraisService: revenusMois._sum.montantFraisService ?? 0,
+      plateforme: (revenusMois._sum.montantCommission ?? 0) + (revenusMois._sum.montantFraisService ?? 0),
     },
     evolution,
   };
@@ -152,6 +156,125 @@ export async function listerTousUtilisateurs(page = 1, parPage = 20) {
     prisma.utilisateur.count(),
   ]);
   return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) };
+}
+
+export async function listerReservationsAdmin(params: {
+  page?: number;
+  parPage?: number;
+  statut?: string;
+  statutPaiement?: string;
+  recherche?: string;
+}) {
+  const page = params.page ?? 1;
+  const parPage = params.parPage ?? 20;
+  const skip = (page - 1) * parPage;
+  const where: Record<string, unknown> = {};
+  if (params.statut) where.statut = params.statut;
+  if (params.statutPaiement) where.statutPaiement = params.statutPaiement;
+  if (params.recherche?.trim()) {
+    const q = params.recherche.trim();
+    where.OR = [
+      { numero: { contains: q } },
+      { client: { nom: { contains: q } } },
+      { client: { telephone: { contains: q } } },
+      { prestataire: { nomEntreprise: { contains: q } } },
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.reservation.findMany({
+      where,
+      skip,
+      take: parPage,
+      orderBy: { creeLe: "desc" },
+      include: {
+        client: { select: { nom: true, telephone: true } },
+        prestataire: { select: { nomEntreprise: true, ville: true, categorie: true } },
+        service: { select: { nom: true } },
+        creneau: { select: { debut: true, fin: true } },
+      },
+    }),
+    prisma.reservation.count({ where }),
+  ]);
+
+  return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) || 1 };
+}
+
+export async function obtenirPilotageAdmin() {
+  const maintenant = new Date();
+  const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+  const [
+    stats,
+    prestatairesEnAttente,
+    versementsEnAttente,
+    reservationsRecentes,
+    abonnementsExpirant,
+    paiementsEnAttente,
+  ] = await Promise.all([
+    obtenirStatistiquesPlateforme({ periode: "mois" }),
+    prisma.prestataire.findMany({
+      where: { statut: "EN_ATTENTE_VALIDATION" },
+      take: 8,
+      orderBy: { creeLe: "desc" },
+      select: {
+        id: true,
+        nomEntreprise: true,
+        ville: true,
+        categorie: true,
+        creeLe: true,
+        utilisateur: { select: { telephone: true, nom: true } },
+      },
+    }),
+    prisma.versementPrestataire.findMany({
+      where: { statut: "DEMANDE" },
+      take: 8,
+      orderBy: { demandeLe: "desc" },
+      include: { prestataire: { select: { nomEntreprise: true } } },
+    }),
+    prisma.reservation.findMany({
+      take: 8,
+      orderBy: { creeLe: "desc" },
+      include: {
+        client: { select: { nom: true } },
+        prestataire: { select: { nomEntreprise: true } },
+        service: { select: { nom: true } },
+      },
+    }),
+    prisma.abonnementPrestataire.findMany({
+      where: {
+        statut: "ACTIF",
+        dateFin: {
+          gte: maintenant,
+          lte: new Date(maintenant.getTime() + 14 * 24 * 60 * 60 * 1000),
+        },
+      },
+      take: 8,
+      orderBy: { dateFin: "asc" },
+      include: {
+        plan: { select: { nom: true } },
+        prestataire: { select: { nomEntreprise: true } },
+      },
+    }),
+    prisma.reservation.count({
+      where: { statutPaiement: "EN_ATTENTE", creeLe: { gte: debutMois } },
+    }),
+  ]);
+
+  return {
+    stats,
+    alertes: {
+      prestatairesEnAttente: prestatairesEnAttente.length,
+      versementsEnAttente: versementsEnAttente.length,
+      abonnementsExpirant: abonnementsExpirant.length,
+      paiementsEnAttente,
+    },
+    files: {
+      prestatairesEnAttente,
+      versementsEnAttente,
+      reservationsRecentes,
+      abonnementsExpirant,
+    },
+  };
 }
 
 export async function suspendrePrestataire(prestataireId: string) {

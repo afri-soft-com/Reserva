@@ -12,6 +12,8 @@ async function main() {
   await prisma.favori.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.avis.deleteMany();
+  await prisma.ecritureComptable.deleteMany();
+  await prisma.versementPrestataire.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.reservation.deleteMany();
   await prisma.creneau.deleteMany();
@@ -271,13 +273,13 @@ async function main() {
   const planGratuit = await prisma.planAbonnement.create({
     data: {
       nom: "Gratuit",
-      description: "Pour découvrir la plateforme",
+      description: "Pour démarrer sans frais — idéal pour tester RESERVA",
       prix: 0,
       devise: "CDF",
-      dureeJours: 30,
-      maxServices: 1,
-      commissionReduite: null,
-      fonctionnalites: JSON.stringify(["1 service actif", "Accès messagerie", "Statistiques de base"]),
+      dureeJours: 90,
+      maxServices: 3,
+      commissionReduite: 5,
+      fonctionnalites: JSON.stringify(["3 services actifs", "Tableau de bord", "Paiements Mobile Money", "Commission 5%"]),
       actif: true,
     },
   });
@@ -285,13 +287,13 @@ async function main() {
   const planPro = await prisma.planAbonnement.create({
     data: {
       nom: "Pro",
-      description: "Pour les prestataires professionnels",
-      prix: 25000,
+      description: "Pour les cabinets, hôtels et compagnies en croissance",
+      prix: 45000,
       devise: "CDF",
       dureeJours: 30,
-      maxServices: 10,
-      commissionReduite: 0.05,
-      fonctionnalites: JSON.stringify(["Jusqu'à 10 services", "Commission réduite à 5%", "Rapport PDF", "Support prioritaire"]),
+      maxServices: 20,
+      commissionReduite: 3.5,
+      fonctionnalites: JSON.stringify(["20 services", "Commission 3,5%", "Mise en avant recherche", "Rapport PDF", "Support prioritaire"]),
       actif: true,
     },
   });
@@ -299,13 +301,13 @@ async function main() {
   await prisma.planAbonnement.create({
     data: {
       nom: "Premium",
-      description: "Pour les grandes entreprises",
-      prix: 75,
+      description: "Pour les réseaux et grandes enseignes",
+      prix: 25,
       devise: "USD",
       dureeJours: 30,
       maxServices: null,
-      commissionReduite: 0.02,
-      fonctionnalites: JSON.stringify(["Services illimités", "Commission réduite à 2%", "API personnalisée", "Support dédié", "Accès aux statistiques avancées"]),
+      commissionReduite: 2,
+      fonctionnalites: JSON.stringify(["Services illimités", "Commission 2%", "API partenaires", "Support dédié", "Statistiques avancées", "Priorité publicitaire"]),
       actif: true,
     },
   });
@@ -323,6 +325,8 @@ async function main() {
         dateDebut: maintenantSeed,
         dateFin: finAbonnement,
         statut: "ACTIF",
+        montantPaye: planPro.prix,
+        statutPaiement: "PAYE",
       },
     });
   }
@@ -333,16 +337,22 @@ async function main() {
 
   await prisma.configurationTarification.createMany({
     data: [
-      { cle: "COMMISSION_CLIENT", valeur: "0.10", description: "Commission appliquée aux clients (10%)", type: "POURCENTAGE" },
-      { cle: "COMMISSION_PRESTATAIRE", valeur: "0.08", description: "Commission par défaut prestataire (8%)", type: "POURCENTAGE" },
-      { cle: "FRAIS_ANNULE", valeur: "0.15", description: "Frais de pénalité d'annulation (15%)", type: "POURCENTAGE" },
-      { cle: "SEUIL_ANNULE_GRATUIT_HEURES", valeur: "24", description: "Délai annulation gratuite (heures)", type: "ENTIER" },
+      { cle: "COMMISSION_PRESTATAIRE", valeur: "5", description: "Commission plateforme par défaut (5%)", type: "POURCENT" },
+      { cle: "COMMISSION_CLIENT", valeur: "0", description: "Frais client additionnels (%)", type: "POURCENT" },
+      { cle: "FRAIS_SERVICE_SEUIL_USD", valeur: "50", description: "Seuil USD au-delà duquel un frais de service s'applique", type: "MONTANT" },
+      { cle: "FRAIS_SERVICE_MONTANT_USD", valeur: "2", description: "Frais de service pour réservations ≥ 50 USD", type: "MONTANT" },
+      { cle: "FRAIS_SERVICE_MONTANT_CDF", valeur: "5000", description: "Frais de service équivalent en CDF", type: "MONTANT" },
+      { cle: "TAUX_USD_CDF", valeur: "2800", description: "Taux de change USD → CDF", type: "NOMBRE" },
+      { cle: "VERSEMENT_MINIMUM_CDF", valeur: "20000", description: "Seuil de versement prestataire (CDF)", type: "MONTANT" },
+      { cle: "VERSEMENT_MINIMUM_USD", valeur: "10", description: "Seuil de versement prestataire (USD)", type: "MONTANT" },
+      { cle: "FRAIS_ANNULE", valeur: "15", description: "Frais de pénalité d'annulation tardive (%)", type: "POURCENT" },
+      { cle: "SEUIL_ANNULE_GRATUIT_HEURES", valeur: "24", description: "Délai annulation gratuite (heures)", type: "NOMBRE" },
       { cle: "FRAIS_ENVOI_SMS", valeur: "150", description: "Coût unitaire par SMS (CDF)", type: "MONTANT" },
-      { cle: "LIMITE_RECHERCHE_RADIUS_KM", valeur: "50", description: "Rayon de recherche par défaut (km)", type: "ENTIER" },
+      { cle: "LIMITE_RECHERCHE_RADIUS_KM", valeur: "50", description: "Rayon de recherche par défaut (km)", type: "NOMBRE" },
     ],
   });
 
-  console.log("✓ 6 configurations de tarification créées");
+  console.log("✓ 12 configurations de tarification créées");
 
   console.log("Création d'avis clients pour les prestataires...");
 
@@ -598,6 +608,102 @@ async function main() {
   });
 
   console.log(`✓ Package "${packageSante.nom}" et carte cadeau CADEAU-DEMO-100 créés`);
+
+  console.log("Écriture du grand livre économique...");
+
+  const reservationsPayees = await prisma.reservation.findMany({
+    where: { statutPaiement: { in: ["PAYE", "PARTIEL"] } },
+  });
+  const tauxSeed = 3.5;
+  for (const r of reservationsPayees) {
+    const base = r.montantTotal;
+    const commission = r.devise === "USD"
+      ? Math.round(base * (tauxSeed / 100) * 100) / 100
+      : Math.round(base * (tauxSeed / 100));
+    const frais = r.devise === "USD" && base >= 50 ? 2 : 0;
+    const totalClient = r.devise === "USD"
+      ? Math.round((base + frais) * 100) / 100
+      : base + frais;
+    const net = r.devise === "USD"
+      ? Math.round((base - commission) * 100) / 100
+      : base - commission;
+    const paye = r.statutPaiement === "PARTIEL" ? r.montantPaye : totalClient;
+    const ratio = totalClient > 0 ? paye / totalClient : 0;
+
+    await prisma.reservation.update({
+      where: { id: r.id },
+      data: {
+        montantTotal: totalClient,
+        montantPaye: paye,
+        montantCommission: commission,
+        montantFraisService: frais,
+        montantNetPrestataire: net,
+        tauxCommissionApplique: tauxSeed,
+        commissionStatut: "ACQUISE",
+      },
+    });
+
+    if (commission * ratio > 0) {
+      await prisma.ecritureComptable.create({
+        data: {
+          type: "COMMISSION",
+          compte: "PLATEFORME",
+          sens: "CREDIT",
+          montant: commission * ratio,
+          devise: r.devise,
+          prestataireId: r.prestataireId,
+          reservationId: r.id,
+          description: `Commission ${r.numero}`,
+        },
+      });
+    }
+    if (frais * ratio > 0) {
+      await prisma.ecritureComptable.create({
+        data: {
+          type: "FRAIS_SERVICE",
+          compte: "PLATEFORME",
+          sens: "CREDIT",
+          montant: frais * ratio,
+          devise: r.devise,
+          prestataireId: r.prestataireId,
+          reservationId: r.id,
+          description: `Frais ${r.numero}`,
+        },
+      });
+    }
+    if (net * ratio > 0) {
+      await prisma.ecritureComptable.create({
+        data: {
+          type: "NET_PRESTATAIRE",
+          compte: "PRESTATAIRE",
+          sens: "CREDIT",
+          montant: net * ratio,
+          devise: r.devise,
+          prestataireId: r.prestataireId,
+          reservationId: r.id,
+          description: `Net ${r.numero}`,
+        },
+      });
+    }
+  }
+
+  await prisma.prestataire.updateMany({
+    where: { statut: "APPROUVE" },
+    data: { tauxCommissionPourcent: tauxSeed },
+  });
+
+  await prisma.ecritureComptable.create({
+    data: {
+      type: "ABONNEMENT",
+      compte: "PLATEFORME",
+      sens: "CREDIT",
+      montant: 45000 * prestatairesIds.length,
+      devise: "CDF",
+      description: "Abonnements Pro de démonstration",
+    },
+  });
+
+  console.log(`✓ ${reservationsPayees.length} réservations passées au grand livre`);
 
   console.log("\n=== Comptes de démonstration (PIN universel : 1234) ===");
   console.log("Admin       :", admin.telephone);

@@ -20,6 +20,7 @@ import { routesAlertes } from "../modules/alertes/alertes.routes";
 import { routesAttentes } from "../modules/attentes/attentes.routes";
 import { routesIndisponibilites } from "../modules/indisponibilites/indisponibilites.routes";
 import { routesPortefeuille } from "../modules/portefeuille/portefeuille.routes";
+import { routesEconomie } from "../modules/economie/economie.routes";
 
 export const routesApi = Router();
 
@@ -44,3 +45,4 @@ routesApi.use("/alertes", routesAlertes);
 routesApi.use("/attentes", routesAttentes);
 routesApi.use("/indisponibilites", routesIndisponibilites);
 routesApi.use("/portefeuille", routesPortefeuille);
+routesApi.use("/economie", routesEconomie);

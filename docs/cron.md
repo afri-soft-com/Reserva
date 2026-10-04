@@ -47,14 +47,16 @@ En l'absence de `CRON_SECRET` côté serveur, les endpoints cron renvoient une e
 
 ```cron
 # Rappels toutes les 5 minutes
-*/5 * * * * curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/notifications/cron/rappels
+*/5 * * * * curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/api/notifications/cron/rappels
 
 # Rapport hebdomadaire chaque lundi à 06h00
-0 6 * * 1 curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/admin/cron/rapport-hebdo
+0 6 * * 1 curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/api/admin/cron/rapport-hebdo
 
 # Expiration des abonnements chaque nuit à 02h00
-0 2 * * * curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/admin/cron/expirer-abonnements
+0 2 * * * curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/api/admin/cron/expirer-abonnements
 ```
+
+L'API expire aussi les abonnements au démarrage du serveur (scheduler interne).
 
 ## Rappels internes (autonomes)
 

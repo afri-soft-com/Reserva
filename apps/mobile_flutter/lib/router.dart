@@ -28,6 +28,15 @@ import 'screens/package/package_detail_screen.dart';
 import 'screens/alertes/alertes_screen.dart';
 import 'screens/attentes/attentes_screen.dart';
 import 'screens/prestataire/calendrier_prestataire_screen.dart';
+import 'screens/hotels/hotels_recherche_screen.dart';
+import 'screens/hotels/hotel_detail_screen.dart';
+import 'screens/hotels/hotel_checkout_screen.dart';
+import 'screens/hotels/hotel_sejour_screen.dart';
+import 'screens/transport/transport_recherche_screen.dart';
+import 'screens/transport/transport_detail_screen.dart';
+import 'screens/transport/transport_checkout_screen.dart';
+import 'screens/transport/transport_billet_screen.dart';
+import 'screens/voyages/voyages_hub_screen.dart';
 
 GoRouter createRouter(AuthProvider auth) {
   return GoRouter(
@@ -161,6 +170,48 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(
         path: '/prestataire/calendrier',
         builder: (ctx, state) => const CalendrierPrestataireScreen(),
+      ),
+      GoRoute(path: '/voyages', builder: (ctx, state) => const VoyagesHubScreen()),
+      GoRoute(path: '/hotels', builder: (ctx, state) => const HotelsRechercheScreen()),
+      GoRoute(
+        path: '/hotels/checkout/:id',
+        builder: (ctx, state) => HotelCheckoutScreen(sejourId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/hotels/sejour/:id',
+        builder: (ctx, state) => HotelSejourScreen(sejourId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/hotels/:id',
+        builder: (ctx, state) {
+          final extra = (state.extra as Map?) ?? {};
+          return HotelDetailScreen(
+            hotelId: state.pathParameters['id']!,
+            arrivee: '${extra['arrivee'] ?? ''}',
+            depart: '${extra['depart'] ?? ''}',
+            adultes: (extra['adultes'] as int?) ?? 2,
+            enfants: (extra['enfants'] as int?) ?? 0,
+          );
+        },
+      ),
+      GoRoute(path: '/transport', builder: (ctx, state) => const TransportRechercheScreen()),
+      GoRoute(
+        path: '/transport/checkout/:id',
+        builder: (ctx, state) => TransportCheckoutScreen(billetId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/transport/billet/:id',
+        builder: (ctx, state) => TransportBilletScreen(billetId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/transport/:id',
+        builder: (ctx, state) {
+          final extra = (state.extra as Map?) ?? {};
+          return TransportDetailScreen(
+            trajetId: state.pathParameters['id']!,
+            places: (extra['places'] as int?) ?? 1,
+          );
+        },
       ),
     ],
   );

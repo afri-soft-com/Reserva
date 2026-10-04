@@ -7,17 +7,15 @@ export class ConnexionPage {
   readonly champTelephone: Locator;
   readonly champPin: Locator;
   readonly boutonSeConnecter: Locator;
-  readonly lienInscription: Locator;
   readonly lienMotDePasseOublie: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.titre = page.getByRole("heading", { name: "Connexion" });
+    this.titre = page.getByRole("heading", { name: /Connexion administrateur/i });
     this.champTelephone = page.getByPlaceholder("Ex: 0991234567");
     this.champPin = page.getByPlaceholder("••••");
     this.boutonSeConnecter = page.getByRole("button", { name: "Se connecter" });
-    this.lienInscription = page.getByRole("link", { name: "Inscrivez-vous" });
-    this.lienMotDePasseOublie = page.getByRole("link", { name: "Mot de passe oublié" });
+    this.lienMotDePasseOublie = page.getByRole("link", { name: /Mot de passe oublié/i });
   }
 
   async aller() {
