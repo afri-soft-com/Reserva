@@ -152,46 +152,48 @@ jobs:
       group: deploy-prod
       cancel-in-progress: false
     steps:
-      - name: Trigger Deploy Hooks
+      - name: Trigger Render deploys (API)
         env:
-          HOOK_CORE: ${{ secrets.RENDER_DEPLOY_HOOK_CORE }}
-          HOOK_HOTELS: ${{ secrets.RENDER_DEPLOY_HOOK_HOTELS }}
-          HOOK_TRANSPORT: ${{ secrets.RENDER_DEPLOY_HOOK_TRANSPORT }}
-          HOOK_BOOKING: ${{ secrets.RENDER_DEPLOY_HOOK_BOOKING }}
-          HOOK_GATEWAY: ${{ secrets.RENDER_DEPLOY_HOOK_GATEWAY }}
-          HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SRV_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
+          SRV_HOTELS: ${{ secrets.RENDER_SERVICE_HOTELS }}
+          SRV_TRANSPORT: ${{ secrets.RENDER_SERVICE_TRANSPORT }}
+          SRV_BOOKING: ${{ secrets.RENDER_SERVICE_BOOKING }}
+          SRV_GATEWAY: ${{ secrets.RENDER_SERVICE_GATEWAY }}
+          SRV_WEB: ${{ secrets.RENDER_SERVICE_WEB }}
         run: |
           set -euo pipefail
-          trigger() {
+          if [ -z "${RENDER_API_KEY:-}" ]; then
+            echo "Secret RENDER_API_KEY manquant"
+            exit 1
+          fi
+          deploy() {
             name="$1"
-            url="$2"
-            if [ -z "$url" ]; then
-              echo "Secret manquant pour $name — skip"
-              return 0
+            id="$2"
+            if [ -z "$id" ]; then
+              echo "⚠ RENDER_SERVICE_${name^^} vide"
+              exit 1
             fi
-            echo "→ Deploy $name"
-            code=$(curl -sS -o /tmp/hook.out -w "%{http_code}" -X POST "$url")
-            echo "  HTTP $code $(head -c 200 /tmp/hook.out)"
+            echo "→ Deploy $name ($id)"
+            code=$(curl -sS -o /tmp/deploy.out -w "%{http_code}" \
+              -X POST "https://api.render.com/v1/services/${id}/deploys" \
+              -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              -H "Accept: application/json" \
+              -H "Content-Type: application/json" \
+              -d '{}')
+            echo "  HTTP $code $(head -c 200 /tmp/deploy.out)"
             if [ "$code" != "200" ] && [ "$code" != "201" ] && [ "$code" != "202" ]; then
-              echo "Échec deploy hook $name"
+              echo "Échec deploy API $name"
               exit 1
             fi
           }
-          missing=0
-          for v in HOOK_CORE HOOK_HOTELS HOOK_TRANSPORT HOOK_BOOKING HOOK_GATEWAY HOOK_WEB; do
-            if [ -z "${!v}" ]; then echo "⚠ $v vide"; missing=1; fi
-          done
-          if [ "$missing" = "1" ]; then
-            echo "Configurez les RENDER_DEPLOY_HOOK_* sur les deux repos GitHub"
-            exit 1
-          fi
-          trigger core "$HOOK_CORE"
-          trigger hotels "$HOOK_HOTELS"
-          trigger transport "$HOOK_TRANSPORT"
-          trigger booking "$HOOK_BOOKING"
-          trigger gateway "$HOOK_GATEWAY"
-          trigger web "$HOOK_WEB"
-          echo "✓ Hooks Render déclenchés"
+          deploy core "$SRV_CORE"
+          deploy hotels "$SRV_HOTELS"
+          deploy transport "$SRV_TRANSPORT"
+          deploy booking "$SRV_BOOKING"
+          deploy gateway "$SRV_GATEWAY"
+          deploy web "$SRV_WEB"
+          echo "✓ Déploiements Render déclenchés via API"
 
   smoke-prod:
     name: Smoke production
