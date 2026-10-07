@@ -74,20 +74,23 @@ Compte seed / démo admin :
 
 ## Secrets GitHub (`afri-soft-com/Reserva`)
 
-### Render / smoke
+### Render / smoke (déjà renseignés via API)
 
-| Secret | Exemple |
-|--------|---------|
-| `RENDER_DEPLOY_HOOK_CORE` | URL Deploy Hook |
-| `RENDER_DEPLOY_HOOK_HOTELS` | idem |
-| `RENDER_DEPLOY_HOOK_TRANSPORT` | idem |
-| `RENDER_DEPLOY_HOOK_BOOKING` | idem |
-| `RENDER_DEPLOY_HOOK_GATEWAY` | idem |
-| `RENDER_DEPLOY_HOOK_WEB` | idem |
+| Secret | Valeur / rôle |
+|--------|----------------|
+| `RENDER_API_KEY` | Clé API Render (déploie via `POST /v1/services/{id}/deploys`) |
+| `RENDER_SERVICE_CORE` | ID service `reserva-core` |
+| `RENDER_SERVICE_HOTELS` | ID `reserva-hotels` |
+| `RENDER_SERVICE_TRANSPORT` | ID `reserva-transport` |
+| `RENDER_SERVICE_BOOKING` | ID `reserva-booking` |
+| `RENDER_SERVICE_GATEWAY` | ID `reserva-gateway` |
+| `RENDER_SERVICE_WEB` | ID `reserva-web` |
 | `GATEWAY_URL` | `https://reserva-gateway.onrender.com/api` |
+| `API_URL_PROD` | idem (Flutter) |
 | `SMOKE_ADMIN_PHONE` | `+243900000001` |
-| `SMOKE_ADMIN_PIN` | PIN admin prod |
-| `API_URL_PROD` | URL gateway `/api` pour Flutter |
+| `SMOKE_ADMIN_PIN` | `1234` |
+
+URLs publiques : gateway `reserva-gateway.onrender.com`, web `reserva-web-b9au.onrender.com`, booking `reserva-booking-ogpd.onrender.com`.
 
 ### Android (Play Store)
 
@@ -123,6 +126,6 @@ GATEWAY_URL=... SMOKE_ADMIN_PHONE=... SMOKE_ADMIN_PIN=... npm run smoke:prod
 
 ## Notes
 
-- Aucun secret GitHub n’est encore configuré sur `afri-soft-com/Reserva` : Render / stores resteront skip ou en échec jusqu’à leur ajout.
+- Secrets Render + smoke : configurés. Secrets **Play Store / App Store** : encore manquants (keystore, JSON Play, certificats Apple).
 - Mobile Money réel : laisser `MODE_PAIEMENT=simulation` jusqu’au branchement.
 - SQLite sur disques Render ; Postgres recommandé avant forte charge.
