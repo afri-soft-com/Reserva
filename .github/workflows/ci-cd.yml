@@ -43,13 +43,16 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - name: npm audit (prod)
-        run: npm run ci:security
-      - name: Gitleaks
+      - name: Gitleaks (secrets)
         run: |
           curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
             | tar -xz gitleaks
           ./gitleaks detect --source . --verbose --redact
+      - name: npm audit (prod, critical)
+        run: npm run ci:security
+      - name: npm audit rapport (high, informatif)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high || true
 
   regression:
     name: Régression

@@ -752,5 +752,7 @@ export async function reproduireReservation(clientId: string, reservationId: str
     reservePourTiers: originale.reservePourTiers,
     nomTiers: originale.nomTiers ?? undefined,
     telephoneTiers: originale.telephoneTiers ?? undefined,
+    garantieActive: Boolean((originale as { garantieActive?: boolean }).garantieActive),
+    acomptePourcent: Number((originale as { acomptePourcent?: number }).acomptePourcent ?? 0),
   });
 }
