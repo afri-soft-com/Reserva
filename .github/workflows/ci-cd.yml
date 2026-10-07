@@ -320,24 +320,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           echo "$IOS_PROVISION_PROFILE_BASE64" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/reserva.mobileprovision"
-          cat > ios/ExportOptions.plist <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>method</key>
-  <string>app-store</string>
-  <key>teamID</key>
-  <string>${APPLE_TEAM_ID}</string>
-  <key>signingStyle</key>
-  <string>manual</string>
-  <key>uploadSymbols</key>
-  <true/>
-  <key>compileBitcode</key>
-  <false/>
-</dict>
-</plist>
-EOF
+          sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.plist
       - name: Build IPA Client + Pro
         env:
           API_URL: ${{ secrets.API_URL_PROD }}
