@@ -21,6 +21,29 @@ jobs:
   quality:
     name: Qualité
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: reserva
+          POSTGRES_PASSWORD: reserva
+          POSTGRES_DB: reserva
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U reserva -d reserva"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,11 +51,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      - name: Init schémas Postgres
+        run: PGPASSWORD=reserva psql -h localhost -U reserva -d reserva -f scripts/init-postgres.sql
       - name: Build shared + lint + unit tests + builds
         run: npm run ci:quality
         env:
           NEXT_PUBLIC_API_URL: http://localhost:4000/api
-          DATABASE_URL: file:./dev.db
+          DATABASE_URL: postgresql://reserva:reserva@localhost:5432/reserva?schema=core
+          REDIS_URL: redis://localhost:6379
           JWT_SECRET: ci-jwt-secret-reserva-test-only
 
   security:
@@ -61,6 +87,40 @@ jobs:
     name: Régression
     needs: [quality, security]
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: reserva
+          POSTGRES_PASSWORD: reserva
+          POSTGRES_DB: reserva
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U reserva -d reserva"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL_CORE: postgresql://reserva:reserva@localhost:5432/reserva?schema=core
+      DATABASE_URL_HOTELS: postgresql://reserva:reserva@localhost:5432/reserva?schema=hotels
+      DATABASE_URL_BOOKING: postgresql://reserva:reserva@localhost:5432/reserva?schema=booking
+      DATABASE_URL_TRANSPORT: postgresql://reserva:reserva@localhost:5432/reserva?schema=transport
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-jwt-secret-reserva-test-only
+      SERVICE_SECRET: ci-service-secret
+      CRON_SECRET: ci-cron-secret
+      MODE_PAIEMENT: simulation
+      MODE_SMS: simulation
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -68,33 +128,31 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      - name: Init schémas Postgres
+        run: PGPASSWORD=reserva psql -h localhost -U reserva -d reserva -f scripts/init-postgres.sql
       - name: Setup bases + builds services
         run: |
           npm run build:shared
           npm run db:generate
-          # Backup avant toute migration / db push (ignoré si DB absente)
+          npm run db:generate:hotels
+          npm run db:generate:booking
+          npm run db:generate:transport
           node scripts/backup-service.mjs core --allow-empty
-          DATABASE_URL=file:./dev.db npm run db:push
-          DATABASE_URL=file:./dev.db npm run db:seed
+          DATABASE_URL="$DATABASE_URL_CORE" npm run db:push
+          DATABASE_URL="$DATABASE_URL_CORE" npm run db:seed
           node scripts/backup-service.mjs hotels --allow-empty
-          DATABASE_URL=file:./hotels.db npm run db:push:hotels
-          DATABASE_URL=file:./hotels.db npm run db:seed:hotels
+          DATABASE_URL="$DATABASE_URL_HOTELS" npm run db:push:hotels
+          DATABASE_URL="$DATABASE_URL_HOTELS" npm run db:seed:hotels
           node scripts/backup-service.mjs booking --allow-empty
-          DATABASE_URL=file:./booking.db npm run db:push:booking
+          DATABASE_URL="$DATABASE_URL_BOOKING" npm run db:push:booking
           node scripts/backup-service.mjs transport --allow-empty
-          DATABASE_URL=file:./transport.db npm run db:push:transport
-          DATABASE_URL=file:./transport.db npm run db:seed:transport
+          DATABASE_URL="$DATABASE_URL_TRANSPORT" npm run db:push:transport
+          DATABASE_URL="$DATABASE_URL_TRANSPORT" npm run db:seed:transport
           npm run build:api
           npm run build -w @reserva/hotels
           npm run build -w @reserva/booking
           npm run build -w @reserva/transport
           npm run build -w @reserva/gateway
-        env:
-          JWT_SECRET: ci-jwt-secret-reserva-test-only
-          SERVICE_SECRET: ci-service-secret
-          CRON_SECRET: ci-cron-secret
-          MODE_PAIEMENT: simulation
-          MODE_SMS: simulation
       - name: Démarrer plateforme (sans web)
         run: |
           node scripts/ci-start-platform.mjs > /tmp/platform.log 2>&1 &
@@ -109,17 +167,13 @@ jobs:
           echo "--- logs plateforme ---"
           tail -n 200 /tmp/platform.log || true
           exit 1
-        env:
-          JWT_SECRET: ci-jwt-secret-reserva-test-only
-          SERVICE_SECRET: ci-service-secret
-          CRON_SECRET: ci-cron-secret
       - name: Vitest + smoke local
         run: npm run ci:regression
         env:
           GATEWAY_URL: http://127.0.0.1:4000/api
           SMOKE_ADMIN_PHONE: "+243900000001"
           SMOKE_ADMIN_PIN: "1234"
-          JWT_SECRET: ci-jwt-secret-reserva-test-only
+          DATABASE_URL: ${{ env.DATABASE_URL_CORE }}
       - name: Build web admin
         run: npm run build:web
         env:
@@ -142,6 +196,7 @@ jobs:
           CI: true
           NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api
           GATEWAY_URL: http://127.0.0.1:4000/api
+          DATABASE_URL: ${{ env.DATABASE_URL_CORE }}
 
   deploy-render:
     name: Déployer Render

@@ -1,7 +1,6 @@
 /**
  * Démarre core/hotels/booking/transport/gateway pour la CI (régression).
  * Usage: node scripts/ci-start-platform.mjs
- * Lancer en arrière-plan dans GitHub Actions (`&`).
  */
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -14,18 +13,30 @@ const common = {
   MODE_SMS: "simulation",
   WEB_URL: "http://127.0.0.1:3001",
   NODE_ENV: "development",
+  REDIS_URL: process.env.REDIS_URL || "redis://127.0.0.1:6379",
 };
+
+const urlCore =
+  process.env.DATABASE_URL_CORE ||
+  process.env.DATABASE_URL ||
+  "postgresql://reserva:reserva@127.0.0.1:5432/reserva?schema=core";
+const urlHotels =
+  process.env.DATABASE_URL_HOTELS || "postgresql://reserva:reserva@127.0.0.1:5432/reserva?schema=hotels";
+const urlBooking =
+  process.env.DATABASE_URL_BOOKING || "postgresql://reserva:reserva@127.0.0.1:5432/reserva?schema=booking";
+const urlTransport =
+  process.env.DATABASE_URL_TRANSPORT || "postgresql://reserva:reserva@127.0.0.1:5432/reserva?schema=transport";
 
 const services = [
   {
     name: "core",
     args: ["run", "start", "-w", "apps/api"],
-    env: { ...common, PORT: "4101", DATABASE_URL: "file:./dev.db" },
+    env: { ...common, PORT: "4101", DATABASE_URL: urlCore },
   },
   {
     name: "hotels",
     args: ["run", "start", "-w", "@reserva/hotels"],
-    env: { ...common, PORT: "4102", DATABASE_URL: "file:./hotels.db" },
+    env: { ...common, PORT: "4102", DATABASE_URL: urlHotels },
   },
   {
     name: "booking",
@@ -33,7 +44,7 @@ const services = [
     env: {
       ...common,
       PORT: "4103",
-      DATABASE_URL: "file:./booking.db",
+      DATABASE_URL: urlBooking,
       HOTELS_URL: "http://127.0.0.1:4102",
       TRANSPORT_URL: "http://127.0.0.1:4104",
     },
@@ -41,7 +52,7 @@ const services = [
   {
     name: "transport",
     args: ["run", "start", "-w", "@reserva/transport"],
-    env: { ...common, PORT: "4104", DATABASE_URL: "file:./transport.db" },
+    env: { ...common, PORT: "4104", DATABASE_URL: urlTransport },
   },
   {
     name: "gateway",
@@ -72,7 +83,6 @@ for (let i = 0; i < 60; i++) {
     const res = await fetch("http://127.0.0.1:4000/api/sante");
     if (res.ok) {
       console.log("✓ Gateway CI prêt");
-      // rester vivant pour garder les enfants
       await new Promise(() => {});
     }
   } catch {

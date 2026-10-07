@@ -12,6 +12,7 @@ export const env = {
   PORT: parseInt(lireVariable("PORT", "4101"), 10),
   NODE_ENV: lireVariable("NODE_ENV", "development"),
   DATABASE_URL: lireVariable("DATABASE_URL"),
+  REDIS_URL: lireVariable("REDIS_URL", ""),
   JWT_SECRET: lireVariable("JWT_SECRET"),
   JWT_EXPIRATION: lireVariable("JWT_EXPIRATION", "7d"),
   MODE_PAIEMENT: lireVariable("MODE_PAIEMENT", "simulation") as "simulation" | "production",

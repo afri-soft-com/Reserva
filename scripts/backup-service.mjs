@@ -1,75 +1,75 @@
 #!/usr/bin/env node
 /**
- * Backup SQLite d'un service avant migration / db push.
+ * Backup PostgreSQL d'un schéma/service avant migration / db push.
  * Usage: node scripts/backup-service.mjs <core|hotels|booking|transport> [--allow-empty]
+ * Env: DATABASE_URL (ou DATABASE_URL_CORE, etc.)
  */
+import { spawnSync } from "node:child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const allowEmpty = process.argv.includes("--allow-empty");
 const service = process.argv.slice(2).find((a) => !a.startsWith("-"));
 
-const catalogue = {
-  core: {
-    dir: path.join(racine, "apps/api/prisma"),
-    files: ["dev.db", "dev.db-wal", "dev.db-shm"],
-    backupDir: path.join(racine, "apps/api/backups"),
-  },
-  hotels: {
-    dir: path.join(racine, "services/hotels/prisma"),
-    files: ["hotels.db", "hotels.db-wal", "hotels.db-shm"],
-    backupDir: path.join(racine, "services/hotels/backups"),
-  },
-  booking: {
-    dir: path.join(racine, "services/booking/prisma"),
-    files: ["booking.db", "booking.db-wal", "booking.db-shm"],
-    backupDir: path.join(racine, "services/booking/backups"),
-  },
-  transport: {
-    dir: path.join(racine, "services/transport/prisma"),
-    files: ["transport.db", "transport.db-wal", "transport.db-shm"],
-    backupDir: path.join(racine, "services/transport/backups"),
-  },
+const envKeys = {
+  core: ["DATABASE_URL_CORE", "DATABASE_URL"],
+  hotels: ["DATABASE_URL_HOTELS", "DATABASE_URL"],
+  booking: ["DATABASE_URL_BOOKING", "DATABASE_URL"],
+  transport: ["DATABASE_URL_TRANSPORT", "DATABASE_URL"],
 };
 
-if (!service || !catalogue[service]) {
+if (!service || !envKeys[service]) {
   console.error("Usage: node scripts/backup-service.mjs <core|hotels|booking|transport> [--allow-empty]");
   process.exit(1);
 }
 
-const cfg = catalogue[service];
-fs.mkdirSync(cfg.backupDir, { recursive: true });
-const horodatage = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-let copies = 0;
+const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const backupDir = path.join(racine, "backups");
+fs.mkdirSync(backupDir, { recursive: true });
 
-for (const fichier of cfg.files) {
-  const source = path.join(cfg.dir, fichier);
-  if (!fs.existsSync(source)) continue;
-  const dest = path.join(cfg.backupDir, `${service}_${horodatage}_${fichier}`);
-  fs.copyFileSync(source, dest);
-  copies++;
-  console.log(`OK ${service}/${fichier} → ${dest}`);
+let url;
+for (const k of envKeys[service]) {
+  if (process.env[k]) {
+    url = process.env[k];
+    break;
+  }
 }
 
-if (copies === 0) {
+if (!url || url.startsWith("file:")) {
   if (allowEmpty) {
-    console.log(`Aucune base ${service} (premier déploiement) — backup ignoré.`);
+    console.log(`Aucune DATABASE_URL Postgres pour ${service} — backup ignoré.`);
     process.exit(0);
   }
-  console.error(`Aucune base SQLite pour ${service}.`);
+  console.error(`DATABASE_URL Postgres manquante pour ${service}`);
   process.exit(1);
 }
 
+const horodatage = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+const dest = path.join(backupDir, `${service}_${horodatage}.sql`);
+
+const result = spawnSync("pg_dump", [url, "--no-owner", "--no-acl", "-f", dest], {
+  encoding: "utf8",
+  shell: process.platform === "win32",
+});
+
+if (result.status !== 0) {
+  if (allowEmpty) {
+    console.log(`pg_dump indisponible pour ${service} — backup ignoré.`);
+    process.exit(0);
+  }
+  console.error(result.stderr || result.error?.message || "Échec pg_dump");
+  process.exit(1);
+}
+
+console.log(`OK backup ${service} → ${dest}`);
+
 const anciens = fs
-  .readdirSync(cfg.backupDir)
-  .map((f) => path.join(cfg.backupDir, f))
+  .readdirSync(backupDir)
+  .map((f) => path.join(backupDir, f))
   .filter((p) => fs.statSync(p).isFile())
   .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
 
-for (const ancien of anciens.slice(20)) {
+for (const ancien of anciens.slice(40)) {
   fs.unlinkSync(ancien);
 }
-
-console.log(`Backup ${service} terminé : ${copies} fichier(s)`);

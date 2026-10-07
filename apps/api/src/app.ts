@@ -65,9 +65,18 @@ app.use("/api/auth", limiteurAuth);
 app.get("/api/sante", async (_req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({
-      statut: "operationnel",
+    let redis: "ok" | "absent" | "erreur" = "absent";
+    try {
+      const { redisPing } = await import("@reserva/service-kit");
+      redis = await redisPing();
+    } catch {
+      redis = env.REDIS_URL ? "erreur" : "absent";
+    }
+    const ok = redis !== "erreur";
+    res.status(ok ? 200 : 503).json({
+      statut: ok ? "operationnel" : "degrade",
       base: "ok",
+      redis,
       horodatage: new Date().toISOString(),
       environnement: env.NODE_ENV,
     });

@@ -9,7 +9,8 @@ function lire(nom: string, defaut?: string): string {
 export const env = {
   PORT: parseInt(lire("PORT", "4103"), 10),
   NODE_ENV: lire("NODE_ENV", "development"),
-  DATABASE_URL: lire("DATABASE_URL", "file:./booking.db"),
+  DATABASE_URL: lire("DATABASE_URL", "postgresql://reserva:reserva@localhost:55432/reserva?schema=booking"),
+  REDIS_URL: lire("REDIS_URL", ""),
   JWT_SECRET: lire("JWT_SECRET"),
   WEB_URL: lire("WEB_URL", "http://localhost:3001"),
   HOTELS_URL: lire("HOTELS_URL", "http://localhost:4102"),

@@ -20,9 +20,9 @@ push main
 | **Qualité** | build packages, Prisma generate, lint (tsc), **tests unitaires** (`vitest` API), builds api/services/web |
 | **Sécurité** | Gitleaks + npm audit (audit soft-fail tant que deps critiques non upgradées) |
 | **Régression** | **backup** → db push/seed → plateforme éphémère → unit + **smoke local** (intégration API) → Playwright admin |
-| **Render** | Deploy Hooks après gates verts |
+| **Render** | Deploy API (`RENDER_API_KEY` + IDs services) après gates verts |
 | **Smoke prod** | `smoke:prod` contre `GATEWAY_URL` |
-| **Stores** | Fastlane flavors `client` + `pro` |
+| **Stores** | Fastlane Client+Pro (secrets Play/iOS encore à fournir) |
 
 Les PR sur `main` exécutent seulement Qualité → Sécurité → Régression.
 
@@ -128,4 +128,5 @@ GATEWAY_URL=... SMOKE_ADMIN_PHONE=... SMOKE_ADMIN_PIN=... npm run smoke:prod
 
 - Secrets Render + smoke : configurés. Secrets **Play Store / App Store** : encore manquants (keystore, JSON Play, certificats Apple).
 - Mobile Money réel : laisser `MODE_PAIEMENT=simulation` jusqu’au branchement.
-- SQLite sur disques Render ; Postgres recommandé avant forte charge.
+- **PostgreSQL + Redis** : `reserva-db` + `reserva-redis` (schémas `core|hotels|booking|transport`).
+- Secrets stores : voir [`docs/secrets-stores.md`](./secrets-stores.md).

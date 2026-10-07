@@ -1,57 +1,50 @@
 #!/usr/bin/env node
-// Sauvegarde automatique de la base SQLite (dev.db + journaux WAL) vers backups/.
-// Usage : npm run db:backup
+/**
+ * Backup PostgreSQL (pg_dump) vers apps/api/backups/
+ * Usage: DATABASE_URL=... npm run db:backup -w apps/api
+ * Option: --allow-empty (pas de dump si URL absente / pg_dump indisponible en CI première fois)
+ */
+import { spawnSync } from "node:child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+const allowEmpty = process.argv.includes("--allow-empty") || process.env.BACKUP_ALLOW_EMPTY === "1";
 const ici = path.dirname(fileURLToPath(import.meta.url));
 const racineApi = path.resolve(ici, "..");
-const dossierDb = path.join(racineApi, "prisma");
 const dossierBackups = path.join(racineApi, "backups");
+const url = process.env.DATABASE_URL;
 
-if (!fs.existsSync(dossierDb)) {
-  console.error("Dossier prisma introuvable :", dossierDb);
+if (!url || url.startsWith("file:")) {
+  if (allowEmpty) {
+    console.log("DATABASE_URL Postgres absente — backup ignoré.");
+    process.exit(0);
+  }
+  console.error("DATABASE_URL PostgreSQL requise pour le backup.");
   process.exit(1);
 }
 
 fs.mkdirSync(dossierBackups, { recursive: true });
+const horodatage = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+const dest = path.join(dossierBackups, `reserva_core_${horodatage}.sql`);
 
-const maintenant = new Date();
-const horodatage = [
-  maintenant.getFullYear(),
-  String(maintenant.getMonth() + 1).padStart(2, "0"),
-  String(maintenant.getDate()).padStart(2, "0"),
-  "_",
-  String(maintenant.getHours()).padStart(2, "0"),
-  String(maintenant.getMinutes()).padStart(2, "0"),
-  String(maintenant.getSeconds()).padStart(2, "0"),
-].join("");
+const result = spawnSync("pg_dump", [url, "--no-owner", "--no-acl", "-f", dest], {
+  encoding: "utf8",
+  shell: process.platform === "win32",
+});
 
-const fichiers = ["dev.db", "dev.db-wal", "dev.db-shm"];
-let copies = 0;
-
-for (const fichier of fichiers) {
-  const source = path.join(dossierDb, fichier);
-  if (!fs.existsSync(source)) continue;
-  const destination = path.join(dossierBackups, `reserva_${horodatage}_${fichier.replace("dev.db", "dev")}`);
-  fs.copyFileSync(source, destination);
-  copies++;
-  console.log(`OK ${fichier} -> ${destination}`);
-}
-
-const allowEmpty = process.argv.includes("--allow-empty") || process.env.BACKUP_ALLOW_EMPTY === "1";
-
-if (copies === 0) {
+if (result.status !== 0) {
   if (allowEmpty) {
-    console.log("Aucune base trouvée — backup ignoré (allow-empty).");
+    console.log("pg_dump indisponible — backup ignoré (allow-empty).");
+    console.log(result.stderr || result.error?.message || "");
     process.exit(0);
   }
-  console.error("Aucune base trouvée dans", dossierDb);
+  console.error(result.stderr || result.error?.message || "Échec pg_dump");
   process.exit(1);
 }
 
-// Ne conserver que les 20 sauvegardes les plus récentes
+console.log(`OK backup → ${dest}`);
+
 const anciens = fs
   .readdirSync(dossierBackups)
   .map((f) => path.join(dossierBackups, f))
@@ -60,7 +53,4 @@ const anciens = fs
 
 for (const ancien of anciens.slice(20)) {
   fs.unlinkSync(ancien);
-  console.log(`Nettoyé : ${ancien}`);
 }
-
-console.log(`Backup terminé : ${copies} fichier(s) -> ${dossierBackups}`);

@@ -10,4 +10,4 @@ npm run dev:core   # depuis la racine
 npm run dev        # depuis apps/api
 ```
 
-Base : SQLite (`DATABASE_URL=file:./dev.db`). Voir `.env.example`.
+Base : PostgreSQL (`DATABASE_URL=postgresql://.../reserva?schema=core`) + Redis (`REDIS_URL`). Voir `.env.example`.

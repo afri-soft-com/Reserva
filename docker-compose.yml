@@ -1,5 +1,38 @@
-# Stack locale Docker (optionnel). Préférer `npm run dev:platform` pour le quotidien.
+# Stack locale Docker — PostgreSQL + Redis + microservices RESERVA
+# Usage: docker compose up -d postgres redis
+# Puis: npm run setup:local && npm run dev:platform
+
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "55432:5432"
+    environment:
+      POSTGRES_USER: reserva
+      POSTGRES_PASSWORD: reserva
+      POSTGRES_DB: reserva
+    volumes:
+      - reserva-pg:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/01-schemas.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reserva -d reserva"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   core:
     build:
       context: .
@@ -9,15 +42,19 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=4101
-      - DATABASE_URL=file:./dev.db
+      - DATABASE_URL=postgresql://reserva:reserva@postgres:5432/reserva?schema=core
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - JWT_EXPIRATION=7d
       - WEB_URL=http://localhost:3001
       - CRON_SECRET=${CRON_SECRET:-change-me}
       - MODE_PAIEMENT=${MODE_PAIEMENT:-simulation}
       - MODE_SMS=${MODE_SMS:-simulation}
-    volumes:
-      - reserva-db:/app/apps/api/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4101/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -28,59 +65,58 @@ services:
   hotels:
     image: node:20-alpine
     working_dir: /app
-    command: sh -c "npm ci && npm run db:push --workspace=@reserva/hotels && npm run db:seed --workspace=@reserva/hotels && npm run dev --workspace=@reserva/hotels"
+    command: sh -c "npm ci && npm run build:shared && npm run db:generate:hotels && npm run db:push:hotels && npm run db:seed:hotels && npm run dev --workspace=@reserva/hotels"
     ports:
       - "4102:4102"
     environment:
       - PORT=4102
       - NODE_ENV=development
-      - DATABASE_URL=file:./hotels.db
+      - DATABASE_URL=postgresql://reserva:reserva@postgres:5432/reserva?schema=hotels
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - WEB_URL=http://localhost:3001
       - SERVICE_SECRET=${SERVICE_SECRET:-reserva-service-dev}
     volumes:
       - .:/app
-      - reserva-hotels:/app/services/hotels/prisma
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4102/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   transport:
     image: node:20-alpine
     working_dir: /app
-    command: sh -c "npm ci && npm run db:push --workspace=@reserva/transport && npm run db:seed --workspace=@reserva/transport && npm run dev --workspace=@reserva/transport"
+    command: sh -c "npm ci && npm run build:shared && npm run db:generate:transport && npm run db:push:transport && npm run db:seed:transport && npm run dev --workspace=@reserva/transport"
     ports:
       - "4104:4104"
     environment:
       - PORT=4104
       - NODE_ENV=development
-      - DATABASE_URL=file:./transport.db
+      - DATABASE_URL=postgresql://reserva:reserva@postgres:5432/reserva?schema=transport
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - WEB_URL=http://localhost:3001
       - SERVICE_SECRET=${SERVICE_SECRET:-reserva-service-dev}
     volumes:
       - .:/app
-      - reserva-transport:/app/services/transport/prisma
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4104/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   booking:
     image: node:20-alpine
     working_dir: /app
-    command: sh -c "npm ci && npm run db:push --workspace=@reserva/booking && npm run dev --workspace=@reserva/booking"
+    command: sh -c "npm ci && npm run build:shared && npm run db:generate:booking && npm run db:push:booking && npm run dev --workspace=@reserva/booking"
     ports:
       - "4103:4103"
     environment:
       - PORT=4103
       - NODE_ENV=development
-      - DATABASE_URL=file:./booking.db
+      - DATABASE_URL=postgresql://reserva:reserva@postgres:5432/reserva?schema=booking
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - WEB_URL=http://localhost:3001
       - HOTELS_URL=http://hotels:4102
@@ -89,23 +125,15 @@ services:
       - SERVICE_SECRET=${SERVICE_SECRET:-reserva-service-dev}
     volumes:
       - .:/app
-      - reserva-booking:/app/services/booking/prisma
     depends_on:
-      hotels:
-        condition: service_started
-      transport:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4103/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
+      - hotels
+      - transport
     restart: unless-stopped
 
   gateway:
     image: node:20-alpine
     working_dir: /app
-    command: sh -c "npm ci && npm run dev --workspace=@reserva/gateway"
+    command: sh -c "npm ci && npm run build:shared && npm run dev --workspace=@reserva/gateway"
     ports:
       - "4000:4000"
     environment:
@@ -116,6 +144,7 @@ services:
       - HOTELS_URL=http://hotels:4102
       - BOOKING_URL=http://booking:4103
       - TRANSPORT_URL=http://transport:4104
+      - REDIS_URL=redis://redis:6379
     volumes:
       - .:/app
     depends_on:
@@ -123,14 +152,8 @@ services:
       - hotels
       - booking
       - transport
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/sante').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
 
-  # Optionnel : build Next standalone. En local préférer `npm run dev:web` (:3001).
   web:
     image: node:20-alpine
     working_dir: /app
@@ -147,7 +170,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  reserva-db:
-  reserva-hotels:
-  reserva-booking:
-  reserva-transport:
+  reserva-pg:
