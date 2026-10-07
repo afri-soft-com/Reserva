@@ -125,15 +125,19 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api
       - name: Playwright e2e admin (chromium)
+        working-directory: apps/web
         run: |
           npx playwright install --with-deps chromium
-          PORT=3001 npm run start -w apps/web &
+          PORT=3001 npm run start &
           for i in $(seq 1 40); do
             if curl -sf http://127.0.0.1:3001 >/dev/null; then break; fi
             sleep 2
           done
+          if ! curl -sf http://127.0.0.1:3001 >/dev/null; then
+            echo "Web admin non prêt sur :3001"
+            exit 1
+          fi
           npx playwright test --config=e2e/playwright.config.ts --project=chromium
-        working-directory: apps/web
         env:
           CI: true
           NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api
