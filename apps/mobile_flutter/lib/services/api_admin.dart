@@ -71,6 +71,32 @@ class ApiAdmin {
     });
   }
 
+  static Future<Map<String, dynamic>> obtenirKyc(String prestataireId) async {
+    return (await ApiClient.get('/prestataires/admin/$prestataireId/kyc')) as Map<String, dynamic>;
+  }
+
+  static Future<void> reviserKyc({
+    required String prestataireId,
+    required String decision,
+    String? motif,
+    bool approuverProfil = true,
+  }) async {
+    await ApiClient.post('/prestataires/admin/kyc/reviser', body: {
+      'prestataireId': prestataireId,
+      'decision': decision,
+      if (motif != null && motif.isNotEmpty) 'motif': motif,
+      'approuverProfil': approuverProfil,
+    });
+  }
+
+  static Future<Map<String, dynamic>> obtenirExigenceDocuments() async {
+    return (await ApiClient.get('/admin/exigence-documents')) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> enregistrerExigenceDocuments(Map<String, dynamic> body) async {
+    return (await ApiClient.put('/admin/exigence-documents', body: body)) as Map<String, dynamic>;
+  }
+
   static Future<String> telechargerExportCsv(String type) async {
     return ApiClient.getTexte('/admin/export/$type');
   }

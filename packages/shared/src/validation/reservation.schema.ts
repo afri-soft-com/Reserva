@@ -28,6 +28,12 @@ export const schemaRechercheServices = z.object({
 });
 export type RechercheServicesInput = z.infer<typeof schemaRechercheServices>;
 
+const schemaBeneficiaireReservation = z.object({
+  nom: z.string().trim().min(2).max(100),
+  telephone: z.string().trim().min(8).max(20).optional(),
+  lien: z.enum(["ENFANT", "EPOUX", "PARENT", "AMI", "AUTRE"]).default("AUTRE"),
+});
+
 export const schemaCreerReservation = z
   .object({
     serviceId: z.string().uuid("Identifiant de service invalide"),
@@ -36,11 +42,19 @@ export const schemaCreerReservation = z
     reservePourTiers: z.boolean().default(false),
     nomTiers: z.string().trim().min(2).max(100).optional(),
     telephoneTiers: z.string().trim().optional(),
+    /** Kit famille : plusieurs bénéficiaires sur la même réservation */
+    beneficiaires: z.array(schemaBeneficiaireReservation).max(8).optional(),
+    garantieActive: z.boolean().default(true),
+    acomptePourcent: z.coerce.number().int().min(10).max(100).default(30),
+    agentId: z.string().uuid().optional(),
   })
   .refine(
-    (data) => !data.reservePourTiers || (!!data.nomTiers && !!data.telephoneTiers),
+    (data) =>
+      !data.reservePourTiers ||
+      (!!data.nomTiers && !!data.telephoneTiers) ||
+      (data.beneficiaires && data.beneficiaires.length > 0),
     {
-      message: "Le nom et le téléphone du bénéficiaire sont requis pour une réservation pour un tiers",
+      message: "Indiquez un bénéficiaire (tiers ou kit famille)",
       path: ["nomTiers"],
     }
   );
@@ -76,6 +90,7 @@ export const schemaInitierPaiement = z.object({
   telephonePaiement: z.string().trim().optional(),
   montant: z.coerce.number().positive(),
   acompteUniquement: z.boolean().default(false),
+  idempotencyKey: z.string().trim().min(8).max(120).optional(),
 });
 export type InitierPaiementInput = z.infer<typeof schemaInitierPaiement>;
 

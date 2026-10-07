@@ -22,6 +22,7 @@ routesAdmin.get("/statistiques", authentifier, exigerRole("ADMIN"), adminControl
 routesAdmin.get("/statistiques/pdf", authentifier, exigerRole("ADMIN"), adminController.statistiquesPdf);
 routesAdmin.get("/pilotage", authentifier, exigerRole("ADMIN"), adminController.pilotage);
 routesAdmin.get("/reservations", authentifier, exigerRole("ADMIN"), adminController.listerReservations);
+routesAdmin.get("/audits", authentifier, exigerRole("ADMIN"), adminController.listerAudits);
 routesAdmin.get("/prestataires", authentifier, exigerRole("ADMIN"), adminController.listerPrestataires);
 routesAdmin.get("/utilisateurs", authentifier, exigerRole("ADMIN"), adminController.listerUtilisateurs);
 routesAdmin.post("/prestataires/:prestataireId/suspendre", authentifier, exigerRole("ADMIN"), adminController.suspendre);
@@ -46,3 +47,7 @@ routesAdmin.get("/export/:type", authentifier, exigerRole("ADMIN"), adminControl
 
 // Broadcast notifications SYSTEME
 routesAdmin.post("/notifications/broadcast", authentifier, exigerRole("ADMIN"), valider(schemaBroadcast), adminController.envoyerBroadcast);
+
+// Exigence documentaire (KYC différé + délai de blocage)
+routesAdmin.get("/exigence-documents", authentifier, exigerRole("ADMIN"), adminController.obtenirExigenceDocuments);
+routesAdmin.put("/exigence-documents", authentifier, exigerRole("ADMIN"), adminController.enregistrerExigenceDocuments);

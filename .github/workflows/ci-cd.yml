@@ -1,0 +1,370 @@
+name: CI/CD
+
+# Qualité → sécurité → régression → Render → smoke prod → Play Store + App Store
+# Déclenché sur main (clskas/Reserva et afri-soft-com/Reserva)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cicd-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  quality:
+    name: Qualité
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Build shared + lint + builds
+        run: npm run ci:quality
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000/api
+
+  security:
+    name: Sécurité
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: npm audit (prod)
+        run: npm run ci:security
+      - name: Gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --verbose --redact
+
+  regression:
+    name: Régression
+    needs: [quality, security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Setup bases + builds services
+        run: |
+          npm run build:shared
+          npm run db:generate
+          npm run db:seed
+          npm run db:push:hotels
+          npm run db:seed:hotels
+          npm run db:push:booking
+          npm run db:push:transport
+          npm run db:seed:transport
+          npm run build:api
+          npm run build -w @reserva/hotels
+          npm run build -w @reserva/booking
+          npm run build -w @reserva/transport
+          npm run build -w @reserva/gateway
+        env:
+          DATABASE_URL: file:./dev.db
+          JWT_SECRET: ci-jwt-secret-reserva-test-only
+          SERVICE_SECRET: ci-service-secret
+          CRON_SECRET: ci-cron-secret
+          MODE_PAIEMENT: simulation
+          MODE_SMS: simulation
+      - name: Démarrer plateforme (sans web)
+        run: |
+          node scripts/ci-start-platform.mjs > /tmp/platform.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:4000/api/sante >/dev/null; then
+              echo "Gateway prêt"
+              curl -sf http://127.0.0.1:4000/api/sante | head -c 400
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "--- logs plateforme ---"
+          tail -n 200 /tmp/platform.log || true
+          exit 1
+        env:
+          JWT_SECRET: ci-jwt-secret-reserva-test-only
+          SERVICE_SECRET: ci-service-secret
+          CRON_SECRET: ci-cron-secret
+      - name: Vitest + smoke local
+        run: npm run ci:regression
+        env:
+          GATEWAY_URL: http://127.0.0.1:4000/api
+          SMOKE_ADMIN_PHONE: "+243900000001"
+          SMOKE_ADMIN_PIN: "1234"
+          JWT_SECRET: ci-jwt-secret-reserva-test-only
+      - name: Build web admin
+        run: npm run build:web
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api
+      - name: Playwright e2e admin (chromium)
+        run: |
+          npx playwright install --with-deps chromium
+          PORT=3001 npm run start -w apps/web &
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:3001 >/dev/null; then break; fi
+            sleep 2
+          done
+          npx playwright test --config=e2e/playwright.config.ts --project=chromium
+        working-directory: apps/web
+        env:
+          CI: true
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api
+          GATEWAY_URL: http://127.0.0.1:4000/api
+
+  deploy-render:
+    name: Déployer Render
+    needs: [quality, security, regression]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    steps:
+      - name: Trigger Deploy Hooks
+        env:
+          HOOK_CORE: ${{ secrets.RENDER_DEPLOY_HOOK_CORE }}
+          HOOK_HOTELS: ${{ secrets.RENDER_DEPLOY_HOOK_HOTELS }}
+          HOOK_TRANSPORT: ${{ secrets.RENDER_DEPLOY_HOOK_TRANSPORT }}
+          HOOK_BOOKING: ${{ secrets.RENDER_DEPLOY_HOOK_BOOKING }}
+          HOOK_GATEWAY: ${{ secrets.RENDER_DEPLOY_HOOK_GATEWAY }}
+          HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+        run: |
+          set -euo pipefail
+          trigger() {
+            name="$1"
+            url="$2"
+            if [ -z "$url" ]; then
+              echo "Secret manquant pour $name — skip"
+              return 0
+            fi
+            echo "→ Deploy $name"
+            code=$(curl -sS -o /tmp/hook.out -w "%{http_code}" -X POST "$url")
+            echo "  HTTP $code $(head -c 200 /tmp/hook.out)"
+            if [ "$code" != "200" ] && [ "$code" != "201" ] && [ "$code" != "202" ]; then
+              echo "Échec deploy hook $name"
+              exit 1
+            fi
+          }
+          missing=0
+          for v in HOOK_CORE HOOK_HOTELS HOOK_TRANSPORT HOOK_BOOKING HOOK_GATEWAY HOOK_WEB; do
+            if [ -z "${!v}" ]; then echo "⚠ $v vide"; missing=1; fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "Configurez les RENDER_DEPLOY_HOOK_* sur les deux repos GitHub"
+            exit 1
+          fi
+          trigger core "$HOOK_CORE"
+          trigger hotels "$HOOK_HOTELS"
+          trigger transport "$HOOK_TRANSPORT"
+          trigger booking "$HOOK_BOOKING"
+          trigger gateway "$HOOK_GATEWAY"
+          trigger web "$HOOK_WEB"
+          echo "✓ Hooks Render déclenchés"
+
+  smoke-prod:
+    name: Smoke production
+    needs: [deploy-render]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Smoke prod
+        run: npm run smoke:prod
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          SMOKE_ADMIN_PHONE: ${{ secrets.SMOKE_ADMIN_PHONE }}
+          SMOKE_ADMIN_PIN: ${{ secrets.SMOKE_ADMIN_PIN }}
+
+  deploy-android:
+    name: Play Store
+    needs: [smoke-prod]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/mobile_flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Inject versionCode
+        run: |
+          ruby -e "
+            path='pubspec.yaml'
+            t=File.read(path)
+            t=t.sub(/version:\s*([^\+\n]+)\+\d+/, 'version: \\1+${{ github.run_number }}')
+            File.write(path, t)
+            puts File.read(path).lines.grep(/version:/).first
+          "
+      - name: Decode keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+      - name: Build App Bundles (Client + Pro)
+        env:
+          API_URL: ${{ secrets.API_URL_PROD }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+        run: |
+          flutter build appbundle --flavor client -t lib/main.dart --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="${GOOGLE_SERVER_CLIENT_ID:-}"
+          flutter build appbundle --flavor pro -t lib/main_pro.dart --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="${GOOGLE_SERVER_CLIENT_ID:-}"
+      - name: Setup Ruby / Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: apps/mobile_flutter/android
+      - name: Upload Play Store (Client + Pro)
+        working-directory: apps/mobile_flutter/android
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
+          gem install fastlane --no-document
+          fastlane deploy
+
+  deploy-ios:
+    name: App Store
+    needs: [smoke-prod]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: macos-14
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/mobile_flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Inject CFBundleVersion
+        run: |
+          ruby -e "
+            path='pubspec.yaml'
+            t=File.read(path)
+            t=t.sub(/version:\s*([^\+\n]+)\+\d+/, 'version: \\1+${{ github.run_number }}')
+            File.write(path, t)
+            puts File.read(path).lines.grep(/version:/).first
+          "
+      - name: CocoaPods
+        working-directory: apps/mobile_flutter/ios
+        run: pod install --repo-update
+      - name: Import signing + ExportOptions
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+        run: |
+          KEYCHAIN=reserva-ci.keychain-db
+          security create-keychain -p "" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          echo "$IOS_CERTIFICATE_BASE64" | base64 -d > /tmp/cert.p12
+          security import /tmp/cert.p12 -k "$KEYCHAIN" -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed 's/"//g')
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$IOS_PROVISION_PROFILE_BASE64" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/reserva.mobileprovision"
+          cat > ios/ExportOptions.plist <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>app-store</string>
+  <key>teamID</key>
+  <string>${APPLE_TEAM_ID}</string>
+  <key>signingStyle</key>
+  <string>manual</string>
+  <key>uploadSymbols</key>
+  <true/>
+  <key>compileBitcode</key>
+  <false/>
+</dict>
+</plist>
+EOF
+      - name: Build IPA Client + Pro
+        env:
+          API_URL: ${{ secrets.API_URL_PROD }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+        run: |
+          flutter build ipa --flavor client -t lib/main.dart --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="${GOOGLE_SERVER_CLIENT_ID:-}" \
+            --export-options-plist=ios/ExportOptions.plist
+          flutter build ipa --flavor pro -t lib/main_pro.dart --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="${GOOGLE_SERVER_CLIENT_ID:-}" \
+            --export-options-plist=ios/ExportOptions.plist
+      - name: Setup Ruby / Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          working-directory: apps/mobile_flutter/ios
+      - name: Upload App Store (Client + Pro)
+        working-directory: apps/mobile_flutter/ios
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          mkdir -p fastlane
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > fastlane/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
+          gem install fastlane --no-document
+          fastlane deploy

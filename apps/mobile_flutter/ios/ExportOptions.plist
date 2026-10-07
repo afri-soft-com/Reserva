@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>method</key>
-	<string>ad-hoc</string>
+	<string>app-store</string>
 	<key>teamID</key>
 	<string>$(APPLE_TEAM_ID)</string>
 	<key>compileBitcode</key>
@@ -11,6 +11,10 @@
 	<key>signingStyle</key>
 	<string>manual</string>
 	<key>stripSwiftSymbols</key>
+	<true/>
+	<key>uploadBitcode</key>
+	<false/>
+	<key>uploadSymbols</key>
 	<true/>
 	<key>thinning</key>
 	<string>&lt;none&gt;</string>

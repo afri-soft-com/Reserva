@@ -47,8 +47,10 @@ npm run dev:platform
 
 - Admin : http://localhost:3001 — `+243900000001` / PIN `1234`
 - API (gateway) : http://localhost:4000/api/sante
-- Mobile : `npm run pub:mobile` puis `npm run dev:mobile`  
-  (émulateur Android → `http://10.0.2.2:4000/api` ; appareil → `--dart-define=API_URL=http://IP_LAN:4000/api`)
+- Mobile (**2 apps**) :  
+  - Client : `npm run dev:mobile:client -- --dart-define=API_URL=http://IP_LAN:4000/api`  
+  - Pro (prestataire) : `npm run dev:mobile:pro -- --dart-define=API_URL=http://IP_LAN:4000/api`  
+  OTP / SMS : [`docs/otp-afrisoft-sms.md`](docs/otp-afrisoft-sms.md)
 
 Copiez les `.env.example` vers `.env` dans `apps/api`, `apps/web`, `services/*` si besoin.
 
@@ -56,9 +58,20 @@ Copiez les `.env.example` vers `.env` dans `apps/api`, `apps/web`, `services/*` 
 
 ```bash
 npm run smoke:local          # Santé gateway + login admin + catalogues
+npm run smoke:prod           # Smoke post-deploy (GATEWAY_URL + credentials)
+npm run ci:quality           # Lint + builds
+npm run ci:security          # npm audit prod
+npm run db:backup:all        # Backup SQLite core/hotels/booking/transport
 npm run analyze:mobile
 npm run test:e2e -w apps/web # Playwright (plateforme déjà démarrée)
 ```
+
+## CI/CD
+
+Push sur **`main`** (remotes `origin` + `afri-soft-com`) → qualité → sécurité → régression → **Render** → smoke prod → **Play Store** + **App Store**.
+
+Voir [`docs/cicd.md`](docs/cicd.md) (secrets, Blueprint Render, Fastlane).  
+Checklist prod / Mobile Money : [`docs/checklist-production.md`](docs/checklist-production.md).
 
 ## Docker
 
@@ -74,7 +87,8 @@ Pour le quotidien, préférer `npm run dev:platform`.
 - ❌ Vols / suite Trip+Booking (vagues suivantes)
 - ❌ Mobile Money / SMS production (adapters prêts, mode simulation)
 
-## Remotes
+## Remotes / branche
 
+- Branche de déploiement : **`main`**
 - `origin` → github.com/clskas/Reserva  
 - `afri-soft-com` → github.com/afri-soft-com/Reserva

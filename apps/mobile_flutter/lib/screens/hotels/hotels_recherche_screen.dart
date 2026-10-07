@@ -202,7 +202,7 @@ class _HotelsRechercheScreenState extends State<HotelsRechercheScreen> {
     return FlutterMap(
       options: MapOptions(initialCenter: center, initialZoom: 11),
       children: [
-        TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.reserva.reserva'),
+        TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.reserva.client'),
         MarkerLayer(markers: markers),
       ],
     );

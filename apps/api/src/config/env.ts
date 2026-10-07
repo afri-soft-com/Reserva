@@ -18,6 +18,14 @@ export const env = {
   MODE_SMS: lireVariable("MODE_SMS", "simulation") as "simulation" | "production",
   WEB_URL: lireVariable("WEB_URL", "http://localhost:3001"),
   CRON_SECRET: lireVariable("CRON_SECRET"),
+  /** Hub AfriSoft SMS — uniquement serveur (HMAC). Voir docs/otp-afrisoft-sms.md */
+  AFRISOFT_SMS_HUB_URL: lireVariable("AFRISOFT_SMS_HUB_URL", "https://sms.afri-soft.com"),
+  AFRISOFT_HUB_APP_ID: lireVariable("AFRISOFT_HUB_APP_ID", ""),
+  AFRISOFT_HUB_API_KEY: lireVariable("AFRISOFT_HUB_API_KEY", ""),
+  /** Client IDs OAuth Google (Web + Android + iOS), séparés par des virgules */
+  GOOGLE_CLIENT_IDS: lireVariable("GOOGLE_CLIENT_IDS", ""),
+  /** simulation = accepte un idToken de démo `SIM-GOOGLE:...` (dev uniquement) */
+  MODE_GOOGLE: lireVariable("MODE_GOOGLE", "simulation") as "simulation" | "production",
 };
 
 export const estProduction = env.NODE_ENV === "production";

@@ -66,7 +66,18 @@ export const ROLE_UTILISATEUR = {
   CLIENT: "CLIENT",
   PRESTATAIRE: "PRESTATAIRE",
   ADMIN: "ADMIN",
+  /** Agent de quartier : réserve pour autrui, commission */
+  AGENT: "AGENT",
 } as const;
+
+export const STATUT_LITIGE = {
+  OUVERT: "OUVERT",
+  EN_MEDIATION: "EN_MEDIATION",
+  TRANCHE: "TRANCHE",
+  REJETE: "REJETE",
+} as const;
+
+export type StatutLitige = (typeof STATUT_LITIGE)[keyof typeof STATUT_LITIGE];
 
 export type RoleUtilisateur = (typeof ROLE_UTILISATEUR)[keyof typeof ROLE_UTILISATEUR];
 
@@ -78,6 +89,33 @@ export const STATUT_PRESTATAIRE = {
 } as const;
 
 export type StatutPrestataire = (typeof STATUT_PRESTATAIRE)[keyof typeof STATUT_PRESTATAIRE];
+
+/** Parcours KYC prestataire (identité + entreprise) */
+export const STATUT_KYC = {
+  BROUILLON: "BROUILLON",
+  EN_REVUE: "EN_REVUE",
+  INFO_MANQUANTE: "INFO_MANQUANTE",
+  VALIDE: "VALIDE",
+  REFUSE: "REFUSE",
+} as const;
+
+export type StatutKyc = (typeof STATUT_KYC)[keyof typeof STATUT_KYC];
+
+export const LIBELLES_STATUT_KYC: Record<StatutKyc, string> = {
+  BROUILLON: "Brouillon",
+  EN_REVUE: "En revue",
+  INFO_MANQUANTE: "Informations manquantes",
+  VALIDE: "Validé",
+  REFUSE: "Refusé",
+};
+
+export const TYPE_PIECE_IDENTITE = {
+  CNI: "CNI",
+  PASSEPORT: "PASSEPORT",
+  PERMIS: "PERMIS",
+} as const;
+
+export type TypePieceIdentite = (typeof TYPE_PIECE_IDENTITE)[keyof typeof TYPE_PIECE_IDENTITE];
 
 export const DEVISE = {
   CDF: "CDF",
@@ -114,7 +152,7 @@ export const DELAI_ANNULATION_GRATUITE_HEURES_DEFAUT = 24;
 export const FRAIS_ANNULATION_TARDIVE_POURCENT_DEFAUT = 50;
 
 // OTP
-export const DUREE_VALIDITE_OTP_MINUTES = 10;
+export const DUREE_VALIDITE_OTP_MINUTES = 5;
 export const LONGUEUR_OTP = 6;
 export const TENTATIVES_MAX_OTP = 3;
 export const TENTATIVES_MAX_PIN = 3;

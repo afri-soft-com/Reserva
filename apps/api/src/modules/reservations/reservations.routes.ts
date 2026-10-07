@@ -19,11 +19,11 @@ const schemaReproduireReservation = z.object({
   reservationId: z.string().uuid("Identifiant de réservation invalide"),
 });
 
-routesReservations.post("/recurrentes", authentifier, exigerRole("CLIENT", "ADMIN"), valider(schemaReservationRecurrente), reservationsController.creerRecurrentes);
-routesReservations.post("/", authentifier, exigerRole("CLIENT", "ADMIN"), valider(schemaCreerReservation), reservationsController.creer);
+routesReservations.post("/recurrentes", authentifier, exigerRole("CLIENT", "AGENT", "ADMIN"), valider(schemaReservationRecurrente), reservationsController.creerRecurrentes);
+routesReservations.post("/", authentifier, exigerRole("CLIENT", "AGENT", "ADMIN"), valider(schemaCreerReservation), reservationsController.creer);
 routesReservations.post("/modifier", authentifier, valider(schemaModifierReservation), reservationsController.modifier);
 routesReservations.post("/annuler", authentifier, valider(schemaAnnulerReservation), reservationsController.annuler);
-routesReservations.post("/reproduire", authentifier, exigerRole("CLIENT", "ADMIN"), valider(schemaReproduireReservation), reservationsController.reproduire);
+routesReservations.post("/reproduire", authentifier, exigerRole("CLIENT", "AGENT", "ADMIN"), valider(schemaReproduireReservation), reservationsController.reproduire);
 routesReservations.get("/moi", authentifier, reservationsController.mesReservations);
 routesReservations.get("/:reservationId", authentifier, reservationsController.detail);
 

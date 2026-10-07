@@ -15,7 +15,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.reserva.reserva"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -28,11 +28,25 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.reserva.reserva"
-        minSdk = flutter.minSdkVersion
+        applicationId = "com.reserva.client"
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    flavorDimensions += "app"
+    productFlavors {
+        create("client") {
+            dimension = "app"
+            applicationId = "com.reserva.client"
+            resValue("string", "app_name", "RESERVA")
+        }
+        create("pro") {
+            dimension = "app"
+            applicationId = "com.reserva.pro"
+            resValue("string", "app_name", "RESERVA Pro")
+        }
     }
 
     signingConfigs {

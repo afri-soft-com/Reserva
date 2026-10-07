@@ -1,0 +1,5 @@
+# Deux apps iOS (flavors Flutter) — choisir via FASTLANE_APP_IDENTIFIER
+# Client : com.reserva.client
+# Pro    : com.reserva.pro
+app_identifier(ENV.fetch("FASTLANE_APP_IDENTIFIER", "com.reserva.client"))
+team_id(ENV["APPLE_TEAM_ID"])

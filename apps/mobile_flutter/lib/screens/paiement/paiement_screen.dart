@@ -200,7 +200,8 @@ class _PaiementScreenState extends State<PaiementScreen> {
     setState(() => _envoi = true);
     try {
       final montantDeBase = _montantTotalAvecReduction - _detail!.reservation.montantPaye;
-      final montant = _acompte ? montantDeBase * 0.3 : montantDeBase;
+      final pct = (_detail?.reservation.acomptePourcent ?? 30) / 100;
+      final montant = _acompte ? montantDeBase * pct : montantDeBase;
       await ApiPaiements.initierPaiement(
         reservationId: widget.reservationId,
         operateur: _operateur,
@@ -231,7 +232,8 @@ class _PaiementScreenState extends State<PaiementScreen> {
 
     final r = _detail!;
     final montantRestant = _montantTotalAvecReduction - r.reservation.montantPaye;
-    final montantAcompte = montantRestant * 0.3;
+    final pct = (r.reservation.acomptePourcent) / 100;
+    final montantAcompte = montantRestant * pct;
 
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
@@ -485,7 +487,7 @@ class _PaiementScreenState extends State<PaiementScreen> {
                     activeColor: AppCouleurs.primaire,
                   ),
                   Expanded(
-                    child: Text('Payer un acompte (30%) — ${_formaterMontant(montantAcompte, r.reservation.devise)}',
+                    child: Text('Payer un acompte (${r.reservation.acomptePourcent}%) — ${_formaterMontant(montantAcompte, r.reservation.devise)} · solde plus tard',
                       style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                   ),
                 ],

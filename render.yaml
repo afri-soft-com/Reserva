@@ -1,0 +1,155 @@
+# Blueprint Render — marketplace RESERVA
+# Import : Dashboard Render → New → Blueprint
+# autoDeploy: false → déploiement uniquement via Deploy Hooks (CI après gates)
+#
+# Après le premier deploy, renseigner WEB_URL (URL publique reserva-web)
+# et créer un Deploy Hook par service → secrets GitHub RENDER_DEPLOY_HOOK_*.
+
+previewsEnabled: false
+
+envVarGroups:
+  - name: reserva-prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SERVICE_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: 7d
+      - key: MODE_PAIEMENT
+        value: simulation
+      - key: MODE_SMS
+        value: simulation
+      - key: HOLD_MINUTES
+        value: "15"
+
+services:
+  - type: web
+    name: reserva-core
+    runtime: node
+    plan: starter
+    region: frankfurt
+    rootDir: .
+    autoDeploy: false
+    buildCommand: npm ci && npm run build:shared && npm run db:generate && npm run build -w apps/api
+    startCommand: npx prisma db push --schema=apps/api/prisma/schema.prisma --skip-generate && npm run start -w apps/api
+    healthCheckPath: /api/sante
+    disk:
+      name: reserva-core-db
+      mountPath: /opt/render/project/src/apps/api/prisma
+      sizeGB: 1
+    envVars:
+      - fromGroup: reserva-prod
+      - key: DATABASE_URL
+        value: file:./dev.db
+      - key: WEB_URL
+        value: https://reserva-web.onrender.com
+
+  - type: web
+    name: reserva-hotels
+    runtime: node
+    plan: starter
+    region: frankfurt
+    rootDir: .
+    autoDeploy: false
+    buildCommand: npm ci && npm run build:shared && npm run db:generate:hotels && npm run build -w @reserva/hotels
+    startCommand: npm run db:push -w @reserva/hotels && npm run start -w @reserva/hotels
+    healthCheckPath: /api/sante
+    disk:
+      name: reserva-hotels-db
+      mountPath: /opt/render/project/src/services/hotels/prisma
+      sizeGB: 1
+    envVars:
+      - fromGroup: reserva-prod
+      - key: DATABASE_URL
+        value: file:./hotels.db
+      - key: WEB_URL
+        value: https://reserva-web.onrender.com
+
+  - type: web
+    name: reserva-transport
+    runtime: node
+    plan: starter
+    region: frankfurt
+    rootDir: .
+    autoDeploy: false
+    buildCommand: npm ci && npm run build:shared && npm run db:generate:transport && npm run build -w @reserva/transport
+    startCommand: npm run db:push -w @reserva/transport && npm run start -w @reserva/transport
+    healthCheckPath: /api/sante
+    disk:
+      name: reserva-transport-db
+      mountPath: /opt/render/project/src/services/transport/prisma
+      sizeGB: 1
+    envVars:
+      - fromGroup: reserva-prod
+      - key: DATABASE_URL
+        value: file:./transport.db
+      - key: WEB_URL
+        value: https://reserva-web.onrender.com
+
+  - type: web
+    name: reserva-booking
+    runtime: node
+    plan: starter
+    region: frankfurt
+    rootDir: .
+    autoDeploy: false
+    buildCommand: npm ci && npm run build:shared && npm run db:generate:booking && npm run build -w @reserva/booking
+    startCommand: npm run db:push -w @reserva/booking && npm run start -w @reserva/booking
+    healthCheckPath: /api/sante
+    disk:
+      name: reserva-booking-db
+      mountPath: /opt/render/project/src/services/booking/prisma
+      sizeGB: 1
+    envVars:
+      - fromGroup: reserva-prod
+      - key: DATABASE_URL
+        value: file:./booking.db
+      - key: WEB_URL
+        value: https://reserva-web.onrender.com
+      - key: HOTELS_URL
+        value: https://reserva-hotels.onrender.com
+      - key: TRANSPORT_URL
+        value: https://reserva-transport.onrender.com
+
+  - type: web
+    name: reserva-gateway
+    runtime: node
+    plan: starter
+    region: frankfurt
+    rootDir: .
+    autoDeploy: false
+    buildCommand: npm ci && npm run build:shared && npm run build -w @reserva/gateway
+    startCommand: npm run start -w @reserva/gateway
+    healthCheckPath: /api/sante
+    envVars:
+      - fromGroup: reserva-prod
+      - key: WEB_URL
+        value: https://reserva-web.onrender.com
+      - key: CORE_URL
+        value: https://reserva-core.onrender.com
+      - key: HOTELS_URL
+        value: https://reserva-hotels.onrender.com
+      - key: BOOKING_URL
+        value: https://reserva-booking.onrender.com
+      - key: TRANSPORT_URL
+        value: https://reserva-transport.onrender.com
+
+  - type: web
+    name: reserva-web
+    runtime: node
+    plan: starter
+    region: frankfurt
+    rootDir: .
+    autoDeploy: false
+    buildCommand: npm ci && npm run build:shared && npm run build -w apps/web
+    startCommand: npm run start -w apps/web
+    healthCheckPath: /
+    envVars:
+      - fromGroup: reserva-prod
+      - key: NEXT_PUBLIC_API_URL
+        value: https://reserva-gateway.onrender.com/api

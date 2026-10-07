@@ -1,5 +1,5 @@
 import { prisma } from "../../config/prisma";
-import { ErreurNonTrouve, ErreurValidation, ErreurInterdit } from "../../utils/erreurs";
+import { ErreurNonTrouve, ErreurValidation, ErreurInterdit, ErreurConflit } from "../../utils/erreurs";
 import { InitierPaiementInput } from "@reserva/shared";
 import { initierPaiementMobileMoney } from "./mobilemoney.adapter";
 import { ajouterPointsGain } from "../fidelite/fidelite.service";
@@ -39,8 +39,31 @@ export async function initierPaiement(clientId: string, input: InitierPaiementIn
   }
 
   const montantRestant = reservation.montantTotal - reservation.montantPaye;
-  if (input.montant > montantRestant) {
+  // Acompte échelonné : si demandé, plafonner au % acompte de la réservation
+  let montantAPayer = input.montant;
+  if (input.acompteUniquement && reservation.statutPaiement === "EN_ATTENTE") {
+    const pct = reservation.acomptePourcent > 0 ? reservation.acomptePourcent : 30;
+    const plafondAcompte = Math.round((reservation.montantTotal * pct) / 100);
+    if (montantAPayer > plafondAcompte) montantAPayer = plafondAcompte;
+  }
+  if (montantAPayer > montantRestant) {
     throw new ErreurValidation(`Le montant dépasse le solde restant à payer (${montantRestant} ${reservation.devise})`);
+  }
+  input = { ...input, montant: montantAPayer };
+
+  const cleIdempotence = input.idempotencyKey?.trim();
+  if (cleIdempotence) {
+    const existante = await prisma.transaction.findFirst({
+      where: { reservationId: reservation.id, referenceExterne: cleIdempotence },
+    });
+    if (existante) {
+      return {
+        transaction: existante,
+        statutOperateur: existante.statut,
+        messageOperateur: "Paiement déjà enregistré (idempotent)",
+        idempotent: true,
+      };
+    }
   }
 
   const resultatOperateur = await initierPaiementMobileMoney({
@@ -49,6 +72,8 @@ export async function initierPaiement(clientId: string, input: InitierPaiementIn
     montant: input.montant,
   });
 
+  const referenceExterne = cleIdempotence || resultatOperateur.referenceExterne;
+
   const transaction = await prisma.transaction.create({
     data: {
       reservationId: reservation.id,
@@ -56,21 +81,25 @@ export async function initierPaiement(clientId: string, input: InitierPaiementIn
       montant: input.montant,
       devise: reservation.devise,
       statut: resultatOperateur.statut === "PAYE" ? "PAYE" : resultatOperateur.statut === "ECHOUE" ? "ECHOUE" : "EN_ATTENTE",
-      referenceExterne: resultatOperateur.referenceExterne,
+      referenceExterne,
       telephonePaiement: input.telephonePaiement,
     },
   });
 
   // Si le paiement (simulé ou réel) est immédiatement confirmé, met à jour la réservation
   if (resultatOperateur.statut === "PAYE") {
-    const nouveauMontantPaye = reservation.montantPaye + input.montant;
+    const montantAvant = reservation.montantPaye;
+    const nouveauMontantPaye = montantAvant + input.montant;
     const statutPaiement = nouveauMontantPaye >= reservation.montantTotal ? "PAYE" : "PARTIEL";
 
     await prisma.$transaction(async (tx) => {
-      await tx.reservation.update({
-        where: { id: reservation.id },
+      const maj = await tx.reservation.updateMany({
+        where: { id: reservation.id, montantPaye: montantAvant },
         data: { montantPaye: nouveauMontantPaye, statutPaiement },
       });
+      if (maj.count === 0) {
+        throw new ErreurConflit("Paiement concurrent détecté. Vérifiez le solde et réessayez.");
+      }
       await enregistrerPaiementReservation(tx, reservation, input.montant);
     });
 

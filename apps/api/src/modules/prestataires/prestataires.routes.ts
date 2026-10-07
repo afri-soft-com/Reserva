@@ -9,6 +9,7 @@ import {
   schemaCreerServiceOffert,
   schemaModifierServiceOffert,
 } from "./prestataires.schema";
+import { schemaMettreAJourKyc, schemaReviserKyc } from "./kyc.schema";
 
 export const routesPrestataires = Router();
 
@@ -23,6 +24,17 @@ routesPrestataires.get("/moi/tableau-de-bord", authentifier, exigerRole("PRESTAT
 routesPrestataires.get("/moi/calendrier", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.calendrier);
 routesPrestataires.get("/moi/statistiques", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.statistiques);
 routesPrestataires.get("/moi/abonnement", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.monAbonnement);
+
+// KYC complet (identité + entreprise)
+routesPrestataires.get("/moi/kyc", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.monKyc);
+routesPrestataires.patch(
+  "/moi/kyc",
+  authentifier,
+  exigerRole("PRESTATAIRE"),
+  valider(schemaMettreAJourKyc),
+  prestatairesController.mettreAJourKyc
+);
+routesPrestataires.post("/moi/kyc/soumettre", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.soumettreKyc);
 
 // Gestion des services proposés
 routesPrestataires.post(
@@ -49,4 +61,18 @@ routesPrestataires.post(
   exigerRole("ADMIN"),
   valider(schemaValiderPrestataire),
   prestatairesController.valider
+);
+routesPrestataires.get("/admin/kyc", authentifier, exigerRole("ADMIN"), prestatairesController.listerKycEnRevue);
+routesPrestataires.get(
+  "/admin/:prestataireId/kyc",
+  authentifier,
+  exigerRole("ADMIN"),
+  prestatairesController.detailKycAdmin
+);
+routesPrestataires.post(
+  "/admin/kyc/reviser",
+  authentifier,
+  exigerRole("ADMIN"),
+  valider(schemaReviserKyc),
+  prestatairesController.reviserKyc
 );

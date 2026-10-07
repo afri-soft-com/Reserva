@@ -67,6 +67,7 @@ class RoleUtilisateur {
   static const client = 'CLIENT';
   static const prestataire = 'PRESTATAIRE';
   static const admin = 'ADMIN';
+  static const agent = 'AGENT';
 }
 
 class StatutPrestataire {
@@ -74,6 +75,20 @@ class StatutPrestataire {
   static const approuve = 'APPROUVE';
   static const rejete = 'REJETE';
   static const suspendu = 'SUSPENDU';
+}
+
+class StatutKyc {
+  static const brouillon = 'BROUILLON';
+  static const enRevue = 'EN_REVUE';
+  static const infoManquante = 'INFO_MANQUANTE';
+  static const valide = 'VALIDE';
+  static const refuse = 'REFUSE';
+}
+
+class TypePieceIdentite {
+  static const cni = 'CNI';
+  static const passeport = 'PASSEPORT';
+  static const permis = 'PERMIS';
 }
 
 class Devise {

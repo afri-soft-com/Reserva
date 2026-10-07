@@ -1,12 +1,18 @@
 import { clientApi } from "./api-client";
 
-export async function obtenirStatistiquesAdmin() {
-  const { data } = await clientApi.get("/admin/statistiques");
+export async function obtenirStatistiquesAdmin(filtres?: {
+  periode?: string;
+  ville?: string;
+  categorie?: string;
+}) {
+  const { data } = await clientApi.get("/admin/statistiques", { params: filtres });
   return data.donnees as {
+    periode?: string;
     utilisateurs: { total: number; nouveauxCeMois: number };
     prestataires: { total: number; enAttente: number; approuves: number };
     reservations: { total: number; cetteSemaine: number; ceMois: number; parStatut: Record<string, number> };
-    revenus: { ceMois: number };
+    revenus: { ceMois: number; gmv?: number; plateforme?: number };
+    evolution?: { mois: string; revenus: number; reservations: number }[];
   };
 }
 
@@ -135,6 +141,48 @@ export async function validerPrestataireAdmin(input: {
   motifRejet?: string;
 }) {
   const { data } = await clientApi.post("/prestataires/admin/valider", input);
+  return data.donnees;
+}
+
+export async function listerKycEnRevueAdmin() {
+  const { data } = await clientApi.get("/prestataires/admin/kyc");
+  return data.donnees as any[];
+}
+
+export async function obtenirKycAdmin(prestataireId: string) {
+  const { data } = await clientApi.get(`/prestataires/admin/${prestataireId}/kyc`);
+  return data.donnees;
+}
+
+export async function reviserKycAdmin(input: {
+  prestataireId: string;
+  decision: "VALIDER" | "INFO_MANQUANTE" | "REFUSER";
+  motif?: string;
+  approuverProfil?: boolean;
+}) {
+  const { data } = await clientApi.post("/prestataires/admin/kyc/reviser", input);
+  return data.donnees;
+}
+
+export async function obtenirExigenceDocumentsAdmin() {
+  const { data } = await clientApi.get("/admin/exigence-documents");
+  return data.donnees as {
+    config: {
+      actif: boolean;
+      delaiJours: number;
+      activeLe: string | null;
+      documents: Record<string, string[]>;
+    };
+    documentsDisponibles: { id: string; libelle: string }[];
+  };
+}
+
+export async function enregistrerExigenceDocumentsAdmin(input: {
+  actif: boolean;
+  delaiJours: number;
+  documents: Record<string, string[]>;
+}) {
+  const { data } = await clientApi.put("/admin/exigence-documents", input);
   return data.donnees;
 }
 

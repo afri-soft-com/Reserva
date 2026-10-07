@@ -12,6 +12,17 @@ function authentifierServiceOuJwt(req: Request, res: Response, next: NextFunctio
   authentifier(req, res, next);
 }
 
+function exigerSecretService(req: Request, res: Response, next: NextFunction): void {
+  if (req.headers["x-service-secret"] !== env.SERVICE_SECRET) {
+    res.status(401).json({
+      succes: false,
+      erreur: { code: "NON_AUTORISE", message: "Secret service requis" },
+    });
+    return;
+  }
+  next();
+}
+
 export const routesTransport = Router();
 
 routesTransport.get("/sante", asyncHandler(async (_req, res) => {
@@ -56,10 +67,24 @@ routesTransport.post("/inventaire/reserver", authentifierServiceOuJwt, asyncHand
   envoyerSucces(res, await transport.reserverPlaces(parsed.data), 201);
 }));
 
-routesTransport.post("/inventaire/confirmer", authentifierServiceOuJwt, asyncHandler(async (req, res) => {
-  envoyerSucces(res, await transport.confirmerPlaces(req.body));
+routesTransport.post("/inventaire/confirmer", exigerSecretService, asyncHandler(async (req, res) => {
+  const parsed = schemaPlaces.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ succes: false, erreur: { code: "VALIDATION_ECHEC", message: parsed.error.issues[0]?.message } });
+    return;
+  }
+  envoyerSucces(res, await transport.confirmerPlaces(parsed.data));
 }));
 
-routesTransport.post("/inventaire/liberer", authentifierServiceOuJwt, asyncHandler(async (req, res) => {
-  envoyerSucces(res, await transport.libererPlaces(req.body));
+routesTransport.post("/inventaire/liberer", exigerSecretService, asyncHandler(async (req, res) => {
+  const parsed = z.object({
+    trajetId: z.string().uuid(),
+    places: z.coerce.number().int().min(1).max(8),
+    etaitConfirme: z.boolean().optional(),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ succes: false, erreur: { code: "VALIDATION_ECHEC", message: parsed.error.issues[0]?.message } });
+    return;
+  }
+  envoyerSucces(res, await transport.libererPlaces(parsed.data));
 }));

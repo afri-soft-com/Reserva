@@ -21,6 +21,7 @@ import { routesAttentes } from "../modules/attentes/attentes.routes";
 import { routesIndisponibilites } from "../modules/indisponibilites/indisponibilites.routes";
 import { routesPortefeuille } from "../modules/portefeuille/portefeuille.routes";
 import { routesEconomie } from "../modules/economie/economie.routes";
+import { routesInnovations } from "../modules/innovations/innovations.routes";
 
 export const routesApi = Router();
 
@@ -46,3 +47,4 @@ routesApi.use("/attentes", routesAttentes);
 routesApi.use("/indisponibilites", routesIndisponibilites);
 routesApi.use("/portefeuille", routesPortefeuille);
 routesApi.use("/economie", routesEconomie);
+routesApi.use("/innovations", routesInnovations);

@@ -16,6 +16,8 @@ import '../prestataire/calendrier_prestataire_screen.dart';
 import '../prestataire/statistiques_prestataire_screen.dart';
 import '../prestataire/indisponibilites_prestataire_screen.dart';
 import '../prestataire/politique_annulation_screen.dart';
+import '../prestataire/file_terrain_screen.dart';
+import '../prestataire/kyc_screen.dart';
 
 class PrestataireScreen extends StatefulWidget {
   const PrestataireScreen({super.key});
@@ -29,9 +31,13 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
   List<dynamic> _services = [];
   AvisRecusData? _avisData;
   String? _profilStatut;
+  String? _kycStatut;
+  String? _kycMotif;
+  Map<String, dynamic>? _exigenceDocuments;
   Map<String, dynamic>? _abonnement;
   bool _chargement = true;
   int _ongletCourant = 0;
+  String? _moisSelectionne;
 
   @override
   bool get wantKeepAlive => true;
@@ -59,6 +65,10 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
           _avisData = results[2] as AvisRecusData;
           final profil = results[3] as Map<String, dynamic>;
           _profilStatut = profil['statut'] as String?;
+          _kycStatut = profil['kycStatut'] as String?;
+          _kycMotif = profil['kycMotifRejet'] as String?;
+          _exigenceDocuments = profil['exigenceDocuments'] as Map<String, dynamic>?
+              ?? (results[0] as DashboardData).exigenceDocuments;
           _abonnement = results[4] as Map<String, dynamic>?;
         });
       }
@@ -67,6 +77,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
+  }
+
+  Future<void> _ouvrirKyc() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const KycScreen()));
+    if (mounted) _charger();
   }
 
   String _formater(double montant, String devise) {
@@ -91,7 +106,8 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
       );
     }
 
-    if (_profilStatut == 'EN_ATTENTE_VALIDATION') {
+    if (_profilStatut == 'EN_ATTENTE_VALIDATION' || _profilStatut == 'REJETE') {
+      final rejete = _profilStatut == 'REJETE';
       return Scaffold(
         backgroundColor: AppCouleurs.fond,
         appBar: AppBar(title: const Text('Mon espace')),
@@ -101,39 +117,31 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.hourglass_empty, size: 64, color: AppCouleurs.avertissement),
+                Icon(
+                  rejete ? Icons.cancel : Icons.hourglass_empty,
+                  size: 64,
+                  color: rejete ? AppCouleurs.alerte : AppCouleurs.avertissement,
+                ),
                 const SizedBox(height: 16),
-                const Text('Profil en attente de validation',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                const Text('Votre demande de profil prestataire est en cours de vérification par l\'équipe RESERVA.',
+                Text(
+                  rejete ? 'Profil non approuvé' : 'Profil en attente de validation',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppCouleurs.texteSecondaire)),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (_profilStatut == 'REJETE') {
-      return Scaffold(
-        backgroundColor: AppCouleurs.fond,
-        appBar: AppBar(title: const Text('Mon espace')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.cancel, size: 64, color: AppCouleurs.alerte),
-                const SizedBox(height: 16),
-                const Text('Profil non approuvé',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                ),
                 const SizedBox(height: 8),
-                const Text('Contactez l\'équipe RESERVA pour plus d\'informations.',
+                Text(
+                  rejete
+                      ? (_kycMotif ?? 'Contactez l\'équipe RESERVA pour plus d\'informations.')
+                      : 'Votre demande est en cours de vérification. Les documents KYC pourront être exigés plus tard.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppCouleurs.texteSecondaire)),
+                  style: const TextStyle(color: AppCouleurs.texteSecondaire),
+                ),
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  onPressed: _ouvrirKyc,
+                  icon: const Icon(Icons.folder_shared),
+                  label: const Text('Préparer mon dossier KYC'),
+                ),
               ],
             ),
           ),
@@ -178,6 +186,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             tooltip: 'Plus d\'actions',
             onSelected: _gererActionMenu,
             itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'file_terrain',
+                child: ListTile(
+                  leading: Icon(Icons.groups),
+                  title: Text('File terrain'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
               PopupMenuItem(
                 value: 'indisponibilites',
                 child: ListTile(
@@ -237,6 +254,10 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
               _buildBandeauHorsLigne(),
               const SizedBox(height: 8),
             ],
+            if (_exigenceDocuments?['exigenceActive'] == true && _exigenceDocuments?['conforme'] != true) ...[
+              _buildBandeauExigenceDocs(),
+              const SizedBox(height: 8),
+            ],
             _buildStatsRow(stats),
             const SizedBox(height: 8),
             _buildStatsRow2(stats),
@@ -266,19 +287,6 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatsRow(DashboardStats? stats) {
-    if (stats == null) return const SizedBox.shrink();
-    return Row(
-      children: [
-        Expanded(child: _statCard(Icons.today, 'Aujourd\'hui', '${_dashboard?.reservationsAujourdhui.length ?? 0}', AppCouleurs.primaire)),
-        const SizedBox(width: 8),
-        Expanded(child: _statCard(Icons.calendar_month, 'Mois', '${stats.totalReservationsMois}', AppCouleurs.succes)),
-        const SizedBox(width: 8),
-        Expanded(child: _statCard(Icons.monetization_on, 'Revenus', _formater(stats.revenusMoisEnCours, 'CDF'), AppCouleurs.accent)),
-      ],
     );
   }
 
@@ -361,17 +369,96 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     );
   }
 
-  Widget _statCard(IconData icon, String label, String value, Color color) {
-    return Carte(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 6),
-          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
-          Text(label, style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
-        ],
+  Widget _buildBandeauExigenceDocs() {
+    final ex = _exigenceDocuments!;
+    final bloque = ex['bloque'] == true;
+    final jours = ex['joursRestants'];
+    final manquants = (ex['manquantsLibelles'] as List?)?.cast<String>() ?? [];
+    return Material(
+      color: bloque ? AppCouleurs.alerte.withValues(alpha: 0.12) : AppCouleurs.avertissement.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: _ouvrirKyc,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Icon(bloque ? Icons.block : Icons.warning_amber_rounded,
+                  color: bloque ? AppCouleurs.alerte : AppCouleurs.avertissement),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      bloque
+                          ? 'Documents manquants — vous n\'êtes plus visible'
+                          : 'Documents requis${jours != null ? ' — $jours j restant(s)' : ''}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: bloque ? AppCouleurs.alerte : AppCouleurs.avertissement,
+                      ),
+                    ),
+                    if (manquants.isNotEmpty)
+                      Text(manquants.join(', '),
+                          style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                    const Text('Toucher pour compléter le KYC',
+                        style: TextStyle(fontSize: 11, color: AppCouleurs.primaire)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppCouleurs.texteSecondaire),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _statCard(IconData icon, String label, String value, Color color, {VoidCallback? onTap}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRayons.carte),
+        child: Carte(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 6),
+              Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+              Text(label, style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsRow(DashboardStats? stats) {
+    if (stats == null) return const SizedBox.shrink();
+    return Row(
+      children: [
+        Expanded(
+          child: _statCard(Icons.today, 'Aujourd\'hui', '${_dashboard?.reservationsAujourdhui.length ?? 0}', AppCouleurs.primaire,
+              onTap: () => setState(() => _ongletCourant = 0)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _statCard(Icons.calendar_month, 'Mois', '${stats.totalReservationsMois}', AppCouleurs.succes,
+              onTap: () => setState(() => _ongletCourant = 1)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _statCard(Icons.monetization_on, 'Revenus', _formater(stats.revenusMoisEnCours, 'CDF'), AppCouleurs.accent,
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StatistiquesPrestataireScreen()));
+              }),
+        ),
+      ],
     );
   }
 
@@ -379,11 +466,20 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     if (stats == null) return const SizedBox.shrink();
     return Row(
       children: [
-        Expanded(child: _statCard(Icons.percent, 'Occupation', '${stats.tauxOccupation.toStringAsFixed(1)}%', AppCouleurs.avertissement)),
+        Expanded(
+          child: _statCard(Icons.percent, 'Occupation', '${stats.tauxOccupation.toStringAsFixed(1)}%', AppCouleurs.avertissement,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CalendrierPrestataireScreen()))),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _statCard(Icons.trending_up, 'Annuel', _formater(stats.revenusAnnuels, 'CDF'), AppCouleurs.primaire)),
+        Expanded(
+          child: _statCard(Icons.trending_up, 'Annuel', _formater(stats.revenusAnnuels, 'CDF'), AppCouleurs.primaire,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StatistiquesPrestataireScreen()))),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _statCard(Icons.star, 'Meilleur mois', '${stats.meilleurMois}', AppCouleurs.accent)),
+        Expanded(
+          child: _statCard(Icons.star, 'Meilleur mois', '${stats.meilleurMois}', AppCouleurs.accent,
+              onTap: () => setState(() => _ongletCourant = 1)),
+        ),
       ],
     );
   }
@@ -693,37 +789,51 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             children: evolution.map((e) {
               final hauteurRevenus = maxRevenus > 0 ? (e.revenus / maxRevenus) * 80 : 0.0;
               final hauteurReservations = maxReservations > 0 ? (e.reservations / maxReservations) * 80 : 0.0;
+              final selectionne = _moisSelectionne == e.mois;
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
-                child: Column(
-                  children: [
-                    Text('${e.reservations}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 14, height: hauteurRevenus.clamp(4, 80).toDouble(),
-                          decoration: BoxDecoration(
-                            color: AppCouleurs.primaire.withValues(alpha: 0.7),
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                child: InkWell(
+                  onTap: () {
+                    setState(() => _moisSelectionne = e.mois);
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text(e.mois),
+                        content: Text('${e.reservations} réservation(s)\n${_formater(e.revenus, 'CDF')} de revenus'),
+                        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+                      ),
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      Text('${e.reservations}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: selectionne ? AppCouleurs.primaire : null)),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 14, height: hauteurRevenus.clamp(4, 80).toDouble(),
+                            decoration: BoxDecoration(
+                              color: AppCouleurs.primaire.withValues(alpha: selectionne ? 1 : 0.7),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        Container(
-                          width: 14, height: hauteurReservations.clamp(4, 80).toDouble(),
-                          decoration: BoxDecoration(
-                            color: AppCouleurs.accent.withValues(alpha: 0.7),
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                          const SizedBox(width: 4),
+                          Container(
+                            width: 14, height: hauteurReservations.clamp(4, 80).toDouble(),
+                            decoration: BoxDecoration(
+                              color: AppCouleurs.accent.withValues(alpha: selectionne ? 1 : 0.7),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(e.mois, style: const TextStyle(fontSize: 9, color: AppCouleurs.texteSecondaire)),
-                    Text('${e.revenus.toStringAsFixed(0)} FC', style: const TextStyle(fontSize: 8, color: AppCouleurs.texteSecondaire)),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(e.mois, style: TextStyle(fontSize: 9, fontWeight: selectionne ? FontWeight.w700 : FontWeight.w400, color: AppCouleurs.texteSecondaire)),
+                      Text('${e.revenus.toStringAsFixed(0)} FC', style: const TextStyle(fontSize: 8, color: AppCouleurs.texteSecondaire)),
+                    ],
+                  ),
                 ),
               );
             }).toList(),
@@ -1628,6 +1738,12 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
 
   Future<void> _gererActionMenu(String valeur) async {
     switch (valeur) {
+      case 'file_terrain':
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const FileTerrainScreen()),
+        );
+        if (mounted) _charger();
+        break;
       case 'indisponibilites':
         await Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const IndisponibilitesPrestataireScreen()),

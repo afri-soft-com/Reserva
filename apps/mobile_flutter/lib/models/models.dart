@@ -53,6 +53,9 @@ class Prestataire {
   final String statut;
   final double noteMoyenne;
   final int nombreAvis;
+  final double scoreConfiance;
+  final bool badgeVerifieTerrain;
+  final double tauxCompletionPourcent;
   final int delaiAnnulationGratuiteHeures;
   final int fraisAnnulationTardivePourcent;
   final String creeLe;
@@ -71,6 +74,9 @@ class Prestataire {
     required this.statut,
     required this.noteMoyenne,
     required this.nombreAvis,
+    this.scoreConfiance = 50,
+    this.badgeVerifieTerrain = false,
+    this.tauxCompletionPourcent = 100,
     required this.delaiAnnulationGratuiteHeures,
     required this.fraisAnnulationTardivePourcent,
     required this.creeLe,
@@ -78,7 +84,7 @@ class Prestataire {
 
   factory Prestataire.fromJson(Map<String, dynamic> json) => Prestataire(
     id: json['id'] as String,
-    utilisateurId: json['utilisateurId'] as String,
+    utilisateurId: json['utilisateurId'] as String? ?? '',
     nomEntreprise: json['nomEntreprise'] as String,
     categorie: json['categorie'] as String,
     ville: json['ville'] as String,
@@ -90,9 +96,12 @@ class Prestataire {
     statut: json['statut'] as String,
     noteMoyenne: (json['noteMoyenne'] as num?)?.toDouble() ?? 0.0,
     nombreAvis: json['nombreAvis'] as int? ?? 0,
+    scoreConfiance: (json['scoreConfiance'] as num?)?.toDouble() ?? 50,
+    badgeVerifieTerrain: json['badgeVerifieTerrain'] as bool? ?? false,
+    tauxCompletionPourcent: (json['tauxCompletionPourcent'] as num?)?.toDouble() ?? 100,
     delaiAnnulationGratuiteHeures: json['delaiAnnulationGratuiteHeures'] as int? ?? 24,
     fraisAnnulationTardivePourcent: json['fraisAnnulationTardivePourcent'] as int? ?? 50,
-    creeLe: json['creeLe'] as String,
+    creeLe: json['creeLe'] as String? ?? '',
   );
 }
 
@@ -182,6 +191,9 @@ class Reservation {
   final String? nomTiers;
   final String? telephoneTiers;
   final String? recurrenceGroupeId;
+  final bool garantieActive;
+  final bool garantieUtilisee;
+  final int acomptePourcent;
   final String creeLe;
   final String misAJourLe;
 
@@ -205,6 +217,9 @@ class Reservation {
     this.nomTiers,
     this.telephoneTiers,
     this.recurrenceGroupeId,
+    this.garantieActive = true,
+    this.garantieUtilisee = false,
+    this.acomptePourcent = 30,
     required this.creeLe,
     required this.misAJourLe,
   });
@@ -229,6 +244,9 @@ class Reservation {
     nomTiers: json['nomTiers'] as String?,
     telephoneTiers: json['telephoneTiers'] as String?,
     recurrenceGroupeId: json['recurrenceGroupeId'] as String?,
+    garantieActive: json['garantieActive'] as bool? ?? true,
+    garantieUtilisee: json['garantieUtilisee'] as bool? ?? false,
+    acomptePourcent: (json['acomptePourcent'] as num?)?.toInt() ?? 30,
     creeLe: json['creeLe'] as String,
     misAJourLe: json['misAJourLe'] as String,
   );

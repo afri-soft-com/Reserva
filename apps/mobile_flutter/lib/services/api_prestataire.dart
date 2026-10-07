@@ -89,6 +89,7 @@ class DashboardData {
   final DashboardStats statistiques;
   final List<ServicePopulaire> servicesPopulaires;
   final List<RepartitionStatut> parStatut;
+  final Map<String, dynamic>? exigenceDocuments;
 
   DashboardData({
     required this.reservationsAujourdhui,
@@ -96,6 +97,7 @@ class DashboardData {
     this.prochainesReservations = const [],
     this.servicesPopulaires = const [],
     this.parStatut = const [],
+    this.exigenceDocuments,
   });
 }
 
@@ -180,6 +182,7 @@ class ApiPrestataire {
       statistiques: stats,
       servicesPopulaires: servicesPopulaires,
       parStatut: parStatut,
+      exigenceDocuments: data['exigenceDocuments'] as Map<String, dynamic>?,
     );
   }
 
@@ -208,6 +211,18 @@ class ApiPrestataire {
 
   static Future<Map<String, dynamic>> obtenirProfil() async {
     return (await ApiClient.get('/prestataires/moi')) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> obtenirKyc() async {
+    return (await ApiClient.get('/prestataires/moi/kyc')) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> mettreAJourKyc(Map<String, dynamic> body) async {
+    return (await ApiClient.patch('/prestataires/moi/kyc', body: body)) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> soumettreKyc() async {
+    return (await ApiClient.post('/prestataires/moi/kyc/soumettre')) as Map<String, dynamic>;
   }
 
   static Future<List<dynamic>> listerMesServices() async {

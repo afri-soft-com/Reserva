@@ -6,7 +6,11 @@ import { ErreurNonAutorise } from "../../utils/erreurs";
 
 // --- Routes publiques ---
 export const listerPublics = asyncHandler(async (req: Request, res: Response) => {
-  const resultat = await packagesService.listerPackagesPublics(req.query.prestataireId as string | undefined);
+  const corridors = req.query.corridors === "1" || req.query.corridors === "true";
+  const resultat = await packagesService.listerPackagesPublics(
+    req.query.prestataireId as string | undefined,
+    corridors
+  );
   envoyerSucces(res, resultat);
 });
 

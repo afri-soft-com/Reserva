@@ -38,6 +38,9 @@ export async function creerPackage(utilisateurId: string, input: CreerPackageInp
       description: input.description,
       prix: input.prix,
       devise: input.devise,
+      estCorridor: input.estCorridor ?? false,
+      corridorOrigine: input.corridorOrigine,
+      corridorDestination: input.corridorDestination,
       services: {
         create: input.serviceIds.map((serviceId) => ({ serviceId })),
       },
@@ -119,14 +122,28 @@ export async function supprimerPackage(utilisateurId: string, packageId: string)
 }
 
 /** Public : liste les packages actifs (d'un prestataire si précisé) */
-export async function listerPackagesPublics(prestataireId?: string) {
+export async function listerPackagesPublics(prestataireId?: string, corridorsUniquement = false) {
   return prisma.packageService.findMany({
-    where: { actif: true, ...(prestataireId ? { prestataireId } : {}) },
+    where: {
+      actif: true,
+      ...(prestataireId ? { prestataireId } : {}),
+      ...(corridorsUniquement ? { estCorridor: true } : {}),
+    },
     include: {
-      prestataire: { select: { id: true, nomEntreprise: true, ville: true, noteMoyenne: true, nombreAvis: true } },
+      prestataire: {
+        select: {
+          id: true,
+          nomEntreprise: true,
+          ville: true,
+          noteMoyenne: true,
+          nombreAvis: true,
+          scoreConfiance: true,
+          badgeVerifieTerrain: true,
+        },
+      },
       services: { include: { service: true } },
     },
-    orderBy: { prix: "asc" },
+    orderBy: [{ estCorridor: "desc" }, { prix: "asc" }],
   });
 }
 

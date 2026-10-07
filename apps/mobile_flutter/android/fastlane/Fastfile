@@ -1,0 +1,25 @@
+default_platform(:android)
+
+platform :android do
+  desc "Upload AAB Client + Pro sur Google Play (production)"
+  lane :deploy do
+    {
+      "com.reserva.client" => File.expand_path("../../build/app/outputs/bundle/clientRelease/app-client-release.aab", __dir__),
+      "com.reserva.pro" => File.expand_path("../../build/app/outputs/bundle/proRelease/app-pro-release.aab", __dir__),
+    }.each do |package_name, aab|
+      UI.user_error!("AAB introuvable: #{aab}") unless File.exist?(aab)
+      UI.message("→ Play Store #{package_name}")
+      upload_to_play_store(
+        package_name: package_name,
+        track: "production",
+        aab: aab,
+        json_key: "play-service-account.json",
+        skip_upload_metadata: true,
+        skip_upload_images: true,
+        skip_upload_screenshots: true,
+        skip_upload_changelogs: true,
+        release_status: "completed"
+      )
+    end
+  end
+end

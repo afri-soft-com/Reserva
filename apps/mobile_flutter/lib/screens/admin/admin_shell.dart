@@ -7,6 +7,7 @@ import 'stats_screen.dart';
 import 'prestataires_list_screen.dart';
 import 'utilisateurs_list_screen.dart';
 import 'broadcast_screen.dart';
+import 'documents_kyc_screen.dart';
 
 class AdminShell extends StatelessWidget {
   const AdminShell({super.key});
@@ -14,7 +15,7 @@ class AdminShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 7,
+      length: 8,
       child: Scaffold(
         backgroundColor: AppCouleurs.fond,
         appBar: AppBar(
@@ -27,6 +28,7 @@ class AdminShell extends StatelessWidget {
             tabs: [
               Tab(icon: Icon(Icons.dashboard), text: 'Stats'),
               Tab(icon: Icon(Icons.business), text: 'Prestataires'),
+              Tab(icon: Icon(Icons.folder_shared), text: 'Documents'),
               Tab(icon: Icon(Icons.people), text: 'Utilisateurs'),
               Tab(icon: Icon(Icons.card_membership), text: 'Abonnements'),
               Tab(icon: Icon(Icons.layers), text: 'Plans'),
@@ -39,6 +41,7 @@ class AdminShell extends StatelessWidget {
           children: [
             StatsScreen(),
             PrestatairesListScreen(),
+            DocumentsKycScreen(),
             UtilisateursListScreen(),
             AbonnementsScreen(),
             PlansScreen(),

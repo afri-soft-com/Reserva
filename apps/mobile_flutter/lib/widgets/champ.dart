@@ -13,6 +13,7 @@ class Champ extends StatelessWidget {
   final int? maxLines;
   final String? placeholder;
   final ValueChanged<String>? onChanged;
+  final IconData? prefixIcon;
 
   const Champ({
     super.key,
@@ -27,6 +28,7 @@ class Champ extends StatelessWidget {
     this.maxLines,
     this.placeholder,
     this.onChanged,
+    this.prefixIcon,
   });
 
   @override
@@ -53,8 +55,9 @@ class Champ extends StatelessWidget {
             counterText: '',
             errorText: erreur,
             helperText: aide,
+            prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: AppCouleurs.texteSecondaire) : null,
             filled: true,
-            fillColor: AppCouleurs.fondChamp,
+            fillColor: AppCouleurs.blanc,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRayons.champ),
               borderSide: BorderSide(color: erreur != null ? AppCouleurs.alerte : AppCouleurs.bordure),

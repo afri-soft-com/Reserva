@@ -2,6 +2,11 @@ import { prisma } from "../../config/prisma";
 import { ErreurValidation, ErreurNonTrouve, ErreurInterdit } from "../../utils/erreurs";
 import { CreerPrestataireInput, ModifierPrestataireInput, ValiderPrestataireInput, CreerServiceOffertInput, ModifierServiceOffertInput } from "./prestataires.schema";
 import { attribuerPlanGratuit, verifierQuotaServices } from "../economie/economie.service";
+import {
+  obtenirConfigExigenceKyc,
+  estBloqueDocuments,
+  statutExigencePourPrestataire,
+} from "./kyc-exigence.service";
 
 /** Crée un profil prestataire pour l'utilisateur connecté (passe son rôle à PRESTATAIRE en attente de validation) */
 export async function creerProfilPrestataire(utilisateurId: string, input: CreerPrestataireInput) {
@@ -34,7 +39,8 @@ export async function obtenirMonProfilPrestataire(utilisateurId: string) {
   if (!prestataire) {
     throw new ErreurNonTrouve("Profil prestataire non trouvé");
   }
-  return prestataire;
+  const exigenceDocuments = await statutExigencePourPrestataire(prestataire.id).catch(() => null);
+  return { ...prestataire, exigenceDocuments };
 }
 
 /** Met à jour le profil prestataire (par son propriétaire) */
@@ -56,7 +62,7 @@ export async function listerPrestatairesEnAttente() {
   });
 }
 
-/** [ADMIN] Approuve ou rejette un prestataire */
+/** [ADMIN] Approuve ou rejette un prestataire (documents KYC non obligatoires à l'approbation) */
 export async function validerPrestataire(input: ValiderPrestataireInput) {
   const prestataire = await prisma.prestataire.findUnique({ where: { id: input.prestataireId } });
   if (!prestataire) {
@@ -69,6 +75,15 @@ export async function validerPrestataire(input: ValiderPrestataireInput) {
       data: { statut: "APPROUVE", motifRejet: null },
     });
     await attribuerPlanGratuit(approuve.id).catch(() => {});
+    await prisma.notification.create({
+      data: {
+        utilisateurId: prestataire.utilisateurId,
+        titre: "Profil approuvé",
+        message:
+          "Votre profil prestataire est actif. Vous pouvez publier vos services. Pensez à compléter vos documents si l'administration l'exige.",
+        type: "SYSTEME",
+      },
+    }).catch(() => {});
     return approuve;
   }
 
@@ -101,11 +116,15 @@ export async function listerPrestatairesProches(params: {
   if (categorie) where.categorie = categorie;
   if (ville) where.ville = ville;
 
-  return prisma.prestataire.findMany({
+  const liste = await prisma.prestataire.findMany({
     where,
     include: { utilisateur: { select: { nom: true, telephone: true, photoUrl: true } }, services: true },
     orderBy: { noteMoyenne: "desc" },
   });
+
+  const config = await obtenirConfigExigenceKyc();
+  if (!config.actif) return liste;
+  return liste.filter((p) => !estBloqueDocuments(p, config));
 }
 
 /** Vérifie que le prestataire est bien approuvé — utilisé avant toute action sensible (créer un créneau, etc.) */
@@ -117,6 +136,12 @@ async function exigerPrestataireApprouve(utilisateurId: string) {
   if (prestataire.statut !== "APPROUVE") {
     throw new ErreurInterdit(
       "Votre profil prestataire doit être approuvé par l'équipe RESERVA avant de pouvoir proposer des services"
+    );
+  }
+  const config = await obtenirConfigExigenceKyc();
+  if (estBloqueDocuments(prestataire, config)) {
+    throw new ErreurInterdit(
+      "Vos documents obligatoires ne sont pas validés. Complétez votre dossier KYC pour retrouver vos clients."
     );
   }
   return prestataire;
@@ -305,6 +330,8 @@ export async function obtenirTableauDeBord(utilisateurId: string) {
     });
   }
 
+  const exigenceDocuments = await statutExigencePourPrestataire(prestataire.id).catch(() => null);
+
   return {
     reservationsAujourdhui,
     prochainesReservations,
@@ -323,6 +350,7 @@ export async function obtenirTableauDeBord(utilisateurId: string) {
     },
     servicesPopulaires,
     parStatut,
+    exigenceDocuments,
   };
 }
 

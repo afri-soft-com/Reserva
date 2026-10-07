@@ -10,12 +10,14 @@ import {
   VerifierOtpInput,
   ConnexionPinInput,
   DefinirPinInput,
+  AuthGoogleInput,
   DUREE_VALIDITE_OTP_MINUTES,
   TENTATIVES_MAX_OTP,
   TENTATIVES_MAX_PIN,
   DUREE_BLOCAGE_PIN_MINUTES,
   RoleUtilisateur,
 } from "@reserva/shared";
+import { telephoneSynthetiqueGoogle, verifierIdTokenGoogle } from "./google.service";
 
 /** Étape 1 de l'inscription : crée le compte (non vérifié) et envoie un OTP par SMS */
 export async function demarrerInscription(input: InscriptionInput) {
@@ -37,17 +39,35 @@ export async function demarrerInscription(input: InscriptionInput) {
     parraineParId = parrain.id;
   }
 
+  const role = input.role === "PRESTATAIRE" ? "PRESTATAIRE" : "CLIENT";
+
   const utilisateur = await prisma.utilisateur.create({
     data: {
       telephone,
       nom: input.nom,
       email: input.email || null,
       langue: input.langue,
+      role,
       telephoneVerifie: false,
       codeParrainage: genererCodeParrainage(input.nom),
       parraineParId,
     },
   });
+
+  // App Pro : fiche prestataire brouillon (validation admin)
+  if (role === "PRESTATAIRE") {
+    await prisma.prestataire.create({
+      data: {
+        utilisateurId: utilisateur.id,
+        nomEntreprise: input.nom,
+        categorie: "HOTELLERIE",
+        ville: "Kinshasa",
+        quartier: "À compléter",
+        description: "Profil prestataire — à compléter après validation.",
+        statut: "EN_ATTENTE_VALIDATION",
+      },
+    });
+  }
 
   await genererEtEnvoyerOtp(utilisateur.id, telephone);
 
@@ -73,7 +93,10 @@ async function crediterParrainage(parrainId: string, filleulId: string): Promise
   });
   if (dejaCredite) return;
 
-  const POINTS_PARRAINAGE = 200; // = 10 000 FC de valeur (50 FC / point)
+  const { obtenirConfigTarif } = await import("../economie/economie.service");
+  const config = await obtenirConfigTarif();
+  const POINTS_PARRAINAGE = config.pointsParrainage;
+
   const gains = await prisma.pointTransaction.aggregate({
     where: { utilisateurId: parrainId, type: "GAIN" },
     _sum: { montantPoints: true },
@@ -104,8 +127,22 @@ async function crediterParrainage(parrainId: string, filleulId: string): Promise
   });
 }
 
-/** Génère un nouvel OTP, l'enregistre en base et l'envoie par SMS */
+/** Génère un nouvel OTP, l'enregistre en base et l'envoie par SMS (cooldown 60 s / numéro). */
 async function genererEtEnvoyerOtp(utilisateurId: string, telephone: string): Promise<void> {
+  const recent = await prisma.otp.findFirst({
+    where: { utilisateurId, creeLe: { gte: new Date(Date.now() - 60_000) } },
+    orderBy: { creeLe: "desc" },
+  });
+  if (recent) {
+    throw new ErreurValidation("Veuillez patienter 60 secondes avant de renvoyer un SMS.");
+  }
+
+  const depuis = new Date(Date.now() - 15 * 60_000);
+  const count = await prisma.otp.count({ where: { utilisateurId, creeLe: { gte: depuis } } });
+  if (count >= 5) {
+    throw new ErreurValidation("Trop de SMS envoyés. Réessayez dans 15 minutes.");
+  }
+
   const code = genererOtp();
   const expireLe = new Date(Date.now() + DUREE_VALIDITE_OTP_MINUTES * 60 * 1000);
 
@@ -448,6 +485,76 @@ export async function mesParrainages(utilisateurId: string) {
   });
 
   return filleuls.map((f) => ({ id: f.id, nom: f.nom, telephone: f.telephone, creeLe: f.creeLe.toISOString() }));
+}
+
+/**
+ * Inscription / connexion Google.
+ * Si le compte n'a pas encore de PIN → pinRequis=true (écran création PIN, sans SMS).
+ */
+export async function connecterAvecGoogle(input: AuthGoogleInput) {
+  const profil = await verifierIdTokenGoogle(input.idToken);
+  const role = input.role === "PRESTATAIRE" ? "PRESTATAIRE" : "CLIENT";
+
+  let utilisateur = await prisma.utilisateur.findFirst({
+    where: {
+      OR: [{ googleId: profil.googleId }, ...(profil.email ? [{ email: profil.email }] : [])],
+    },
+  });
+
+  if (!utilisateur) {
+    const telephone = telephoneSynthetiqueGoogle(profil.googleId);
+    utilisateur = await prisma.utilisateur.create({
+      data: {
+        telephone,
+        email: profil.email,
+        googleId: profil.googleId,
+        nom: profil.nom,
+        photoUrl: profil.photoUrl || null,
+        role,
+        telephoneVerifie: true,
+        codeParrainage: genererCodeParrainage(profil.nom),
+      },
+    });
+
+    if (role === "PRESTATAIRE") {
+      await prisma.prestataire.create({
+        data: {
+          utilisateurId: utilisateur.id,
+          nomEntreprise: profil.nom,
+          categorie: "HOTELLERIE",
+          ville: "Kinshasa",
+          quartier: "À compléter",
+          description: "Profil prestataire Google — à compléter après validation.",
+          statut: "EN_ATTENTE_VALIDATION",
+        },
+      });
+    }
+  } else {
+    // Lie googleId / email / photo si manquants
+    utilisateur = await prisma.utilisateur.update({
+      where: { id: utilisateur.id },
+      data: {
+        googleId: utilisateur.googleId || profil.googleId,
+        email: utilisateur.email || profil.email,
+        photoUrl: utilisateur.photoUrl || profil.photoUrl || null,
+        telephoneVerifie: true,
+      },
+    });
+  }
+
+  const pinRequis = !utilisateur.pinHash;
+  const token = genererToken({
+    utilisateurId: utilisateur.id,
+    role: utilisateur.role as RoleUtilisateur,
+    telephone: utilisateur.telephone,
+  });
+
+  return {
+    token,
+    pinRequis,
+    nouvelInscrit: pinRequis,
+    utilisateur: formaterUtilisateurPublic(utilisateur),
+  };
 }
 
 /** Formate l'utilisateur pour exposition publique (jamais le pinHash) */

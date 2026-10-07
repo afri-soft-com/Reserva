@@ -67,7 +67,7 @@ export async function rechercherHotels(filtres: {
   commodite?: string;
   annulationGratuite?: boolean;
   petitDejeuner?: boolean;
-  tri?: "prix" | "note" | "etoiles";
+  tri?: "prix" | "note" | "etoiles" | "popularite";
   page?: number;
   parPage?: number;
 }) {
@@ -92,6 +92,19 @@ export async function rechercherHotels(filtres: {
     },
   });
 
+  const chambreIds = hotels.flatMap((h) => h.chambres.map((c) => c.id));
+  const disposAll = nuits.length > 0 && chambreIds.length > 0
+    ? await prisma.disponibiliteJour.findMany({
+        where: { typeChambreId: { in: chambreIds }, jour: { in: nuits } },
+      })
+    : [];
+  const disposParChambre = new Map<string, typeof disposAll>();
+  for (const d of disposAll) {
+    const liste = disposParChambre.get(d.typeChambreId) ?? [];
+    liste.push(d);
+    disposParChambre.set(d.typeChambreId, liste);
+  }
+
   const resultats = [];
   for (const hotel of hotels) {
     if (filtres.commodite) {
@@ -108,9 +121,7 @@ export async function rechercherHotels(filtres: {
       if (tarifs.length === 0) continue;
 
       if (nuits.length > 0) {
-        const dispos = await prisma.disponibiliteJour.findMany({
-          where: { typeChambreId: chambre.id, jour: { in: nuits } },
-        });
+        const dispos = disposParChambre.get(chambre.id) ?? [];
         if (dispos.length < nuits.length) continue;
         const manque = dispos.some((d) => d.total - d.vendues - d.reservees <= 0);
         if (manque) continue;
@@ -134,6 +145,10 @@ export async function rechercherHotels(filtres: {
     }
     if (chambresOk.length === 0) continue;
     const meilleur = chambresOk.reduce((a, b) => (a.totalSejour <= b.totalSejour ? a : b));
+    // Score bayésien : stabilise le ranking quand peu d'avis
+    const prior = 5;
+    const notePrior = 4.0;
+    const scoreNote = (hotel.noteMoyenne * hotel.nombreAvis + notePrior * prior) / (hotel.nombreAvis + prior);
     resultats.push({
       ...serialiserHotel({ ...hotel, chambres: undefined }),
       nombreChambresDispo: chambresOk.length,
@@ -143,14 +158,16 @@ export async function rechercherHotels(filtres: {
       nuits: nuits.length,
       annulationGratuite: chambresOk.some((c) => c.remboursable),
       petitDejeunerDispo: chambresOk.some((c) => c.petitDejeuner),
+      scoreNote: Math.round(scoreNote * 100) / 100,
     });
   }
 
   const tri = filtres.tri ?? "note";
   resultats.sort((a, b) => {
     if (tri === "prix") return a.totalDepuis - b.totalDepuis;
-    if (tri === "etoiles") return b.etoiles - a.etoiles;
-    return b.noteMoyenne - a.noteMoyenne;
+    if (tri === "etoiles") return b.etoiles - a.etoiles || b.scoreNote - a.scoreNote;
+    if (tri === "popularite") return b.nombreAvis - a.nombreAvis || b.scoreNote - a.scoreNote;
+    return b.scoreNote - a.scoreNote || b.nombreAvis - a.nombreAvis;
   });
 
   const total = resultats.length;
@@ -224,13 +241,37 @@ export async function detailHotel(hotelId: string, arrivee?: string, depart?: st
   }
 
   const { avis, ...reste } = hotel;
+  const serialise = serialiserHotel({ ...reste, chambres });
+  // Alias stables pour clients mobile / scripts (typesChambres + plans)
+  const typesChambres = (serialise.chambres || []).map((c: any) => ({
+    ...c,
+    plans: c.tarifs,
+  }));
   return {
-    ...serialiserHotel({ ...reste, chambres }),
+    ...serialise,
+    typesChambres,
     avis,
     arrivee,
     depart,
     nuits: nuits.length,
   };
+}
+
+export async function listerAvisHotel(hotelId: string, page = 1, parPage = 20) {
+  const p = Math.max(1, page);
+  const pp = Math.min(50, Math.max(1, parPage));
+  const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { id: true } });
+  if (!hotel) throw new ErreurNonTrouve("Hôtel introuvable");
+  const [items, total] = await Promise.all([
+    prisma.avisHotel.findMany({
+      where: { hotelId },
+      orderBy: { creeLe: "desc" },
+      skip: (p - 1) * pp,
+      take: pp,
+    }),
+    prisma.avisHotel.count({ where: { hotelId } }),
+  ]);
+  return { items, total, page: p, parPage: pp, totalPages: Math.ceil(total / pp) || 1 };
 }
 
 export async function verifierEtReserver(input: {
@@ -376,8 +417,13 @@ export async function creerAvis(input: {
   sejourId?: string;
 }) {
   if (input.note < 1 || input.note > 5) throw new ErreurValidation("Note entre 1 et 5");
+  if (!input.clientId) throw new ErreurValidation("Authentification requise pour laisser un avis");
+  if (!input.sejourId) throw new ErreurValidation("Un séjour confirmé (sejourId) est requis pour noter l'hôtel");
   const hotel = await prisma.hotel.findUnique({ where: { id: input.hotelId } });
   if (!hotel) throw new ErreurNonTrouve("Hôtel introuvable");
+
+  const deja = await prisma.avisHotel.findUnique({ where: { sejourId: input.sejourId } });
+  if (deja) throw new ErreurConflit("Un avis existe déjà pour ce séjour");
 
   const avis = await prisma.avisHotel.create({
     data: {

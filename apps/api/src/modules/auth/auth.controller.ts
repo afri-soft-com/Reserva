@@ -29,6 +29,11 @@ export const connexion = asyncHandler(async (req: Request, res: Response) => {
   envoyerSucces(res, resultat);
 });
 
+export const connexionGoogle = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await authService.connecterAvecGoogle(req.body);
+  envoyerSucces(res, resultat);
+});
+
 export const profil = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const resultat = await authService.obtenirProfil(req.utilisateur.utilisateurId);

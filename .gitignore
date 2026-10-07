@@ -17,7 +17,7 @@ build/
 *.g.dart
 *.freezed.dart
 
-# Android
+# Android / iOS signing & stores
 apps/mobile_flutter/.gradle/
 apps/mobile_flutter/build/
 apps/mobile_flutter/local.properties
@@ -25,9 +25,21 @@ apps/mobile_flutter/android/.gradle/
 apps/mobile_flutter/android/build/
 apps/mobile_flutter/android/app/build/
 apps/mobile_flutter/android/local.properties
-apps/mobile_flutter/*.iml
+apps/mobile_flutter/android/key.properties
+apps/mobile_flutter/android/*.jks
+apps/mobile_flutter/android/*.keystore
+apps/mobile_flutter/android/play-service-account.json
+apps/mobile_flutter/android/fastlane/report.xml
+apps/mobile_flutter/android/fastlane/README.md
 apps/mobile_flutter/ios/Pods/
 apps/mobile_flutter/ios/.symlinks/
+apps/mobile_flutter/ios/fastlane/report.xml
+apps/mobile_flutter/ios/fastlane/README.md
+apps/mobile_flutter/ios/fastlane/AuthKey_*.p8
+**/*.p8
+**/*.jks
+**/*.keystore
+apps/mobile_flutter/*.iml
 
 # API
 apps/api/node_modules/
@@ -70,3 +82,4 @@ apps/api/logs/
 apps/api/backups/
 apps/api/uploads/
 apps/api/rapports/
+backups/

@@ -28,6 +28,7 @@ const schemaPaiement = z.object({
   operateur: z.enum(["MPESA", "AIRTEL_MONEY", "ORANGE_MONEY", "ESPECES"]),
   telephonePaiement: z.string().optional(),
   montant: z.coerce.number().positive(),
+  idempotencyKey: z.string().trim().min(8).max(120).optional(),
 });
 
 routesBooking.get("/sante", asyncHandler(async (_req, res) => {
@@ -59,7 +60,11 @@ routesBooking.post("/sejours/:id/payer", authentifier, asyncHandler(async (req, 
     return;
   }
   const token = req.headers.authorization?.slice(7) || "";
-  envoyerSucces(res, await booking.payerSejour(req.utilisateur!.utilisateurId, token, req.params.id, parsed.data));
+  const idempotencyKey = (req.headers["idempotency-key"] as string | undefined) || parsed.data.idempotencyKey;
+  envoyerSucces(res, await booking.payerSejour(req.utilisateur!.utilisateurId, token, req.params.id, {
+    ...parsed.data,
+    idempotencyKey,
+  }));
 }));
 
 routesBooking.post("/sejours/:id/annuler", authentifier, asyncHandler(async (req, res) => {
@@ -92,7 +97,11 @@ routesBooking.post("/billets/:id/payer", authentifier, asyncHandler(async (req, 
     return;
   }
   const token = req.headers.authorization?.slice(7) || "";
-  envoyerSucces(res, await booking.payerBillet(req.utilisateur!.utilisateurId, token, req.params.id, parsed.data));
+  const idempotencyKey = (req.headers["idempotency-key"] as string | undefined) || parsed.data.idempotencyKey;
+  envoyerSucces(res, await booking.payerBillet(req.utilisateur!.utilisateurId, token, req.params.id, {
+    ...parsed.data,
+    idempotencyKey,
+  }));
 }));
 
 routesBooking.post("/billets/:id/annuler", authentifier, asyncHandler(async (req, res) => {

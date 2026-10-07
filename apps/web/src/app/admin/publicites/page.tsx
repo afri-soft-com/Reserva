@@ -24,6 +24,10 @@ type Formulaire = {
   dateDebut: string;
   dateFin: string;
   cible: string;
+  modeleFacturation: string;
+  prixCampagne: string;
+  devise: string;
+  annonceurNom: string;
 };
 
 const FORMULAIRE_VIDE: Formulaire = {
@@ -35,6 +39,10 @@ const FORMULAIRE_VIDE: Formulaire = {
   dateDebut: new Date().toISOString().slice(0, 16),
   dateFin: "",
   cible: "TOUS",
+  modeleFacturation: "GRATUIT",
+  prixCampagne: "",
+  devise: "CDF",
+  annonceurNom: "",
 };
 
 const CIBLES = ["TOUS", "CLIENT", "PRESTATAIRE", "ADMIN"];
@@ -90,6 +98,10 @@ export default function PageAdminPublicites() {
       dateDebut: pub.dateDebut ? new Date(pub.dateDebut).toISOString().slice(0, 16) : "",
       dateFin: pub.dateFin ? new Date(pub.dateFin).toISOString().slice(0, 16) : "",
       cible: pub.cible || "TOUS",
+      modeleFacturation: pub.modeleFacturation || "GRATUIT",
+      prixCampagne: pub.prixCampagne != null ? String(pub.prixCampagne) : "",
+      devise: pub.devise || "CDF",
+      annonceurNom: pub.annonceurNom || "",
     });
     setEditionId(pub.id);
     setUploadFichier(null);
@@ -105,6 +117,8 @@ export default function PageAdminPublicites() {
         lienUrl: formulaire.lienUrl || undefined,
         description: formulaire.description || undefined,
         dateFin: formulaire.dateFin || undefined,
+        prixCampagne: formulaire.prixCampagne ? Number(formulaire.prixCampagne) : undefined,
+        annonceurNom: formulaire.annonceurNom || undefined,
       };
       if (editionId) {
         await modifierPublicite(editionId, payload);
@@ -140,7 +154,12 @@ export default function PageAdminPublicites() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Publicités</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Publicités</h1>
+          <p className="text-sm text-gray-500">
+            Tarifs CPM / CPC / forfait : Admin → Tarifications (`PUB_*`). Chaque campagne peut surcharger le prix.
+          </p>
+        </div>
         <Bouton variante="primaire" taille="sm" onClick={ouvrirCreation}>
           <Plus className="h-4 w-4" /> Nouvelle publicité
         </Bouton>
@@ -164,6 +183,8 @@ export default function PageAdminPublicites() {
                 <th className="px-4 py-3">Actif</th>
                 <th className="px-4 py-3">Impr.</th>
                 <th className="px-4 py-3">Clics</th>
+                <th className="px-4 py-3">Facturation</th>
+                <th className="px-4 py-3">Revenu est.</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
@@ -181,6 +202,12 @@ export default function PageAdminPublicites() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">{pub.impressions}</td>
                   <td className="px-4 py-3 text-gray-600">{pub.clics}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">{pub.modeleFacturation || "GRATUIT"}</td>
+                  <td className="px-4 py-3 text-gray-900 text-xs font-medium">
+                    {pub.revenuEstime
+                      ? `${pub.revenuEstime.montant} ${pub.revenuEstime.devise}`
+                      : "—"}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <Bouton variante="fantome" taille="sm" onClick={() => ouvrirEdition(pub)}>
@@ -277,6 +304,38 @@ export default function PageAdminPublicites() {
                     className="w-full rounded-lg border border-gray-300 p-3 text-sm outline-none focus:border-primaire">
                     <option value="true">Oui</option>
                     <option value="false">Non</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Annonceur</label>
+                <input type="text" value={formulaire.annonceurNom} onChange={(e) => setFormulaire({ ...formulaire, annonceurNom: e.target.value })}
+                  placeholder="Nom de l'annonceur / marque"
+                  className="w-full rounded-lg border border-gray-300 p-3 text-sm outline-none focus:border-primaire" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Facturation</label>
+                  <select value={formulaire.modeleFacturation} onChange={(e) => setFormulaire({ ...formulaire, modeleFacturation: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm outline-none focus:border-primaire">
+                    <option value="GRATUIT">Gratuit</option>
+                    <option value="FORFAIT">Forfait</option>
+                    <option value="CPM">CPM (1000 impr.)</option>
+                    <option value="CPC">CPC (par clic)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Prix / tarif</label>
+                  <input type="number" value={formulaire.prixCampagne} onChange={(e) => setFormulaire({ ...formulaire, prixCampagne: e.target.value })}
+                    placeholder="Défaut tarifs"
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm outline-none focus:border-primaire" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Devise</label>
+                  <select value={formulaire.devise} onChange={(e) => setFormulaire({ ...formulaire, devise: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm outline-none focus:border-primaire">
+                    <option value="CDF">CDF</option>
+                    <option value="USD">USD</option>
                   </select>
                 </div>
               </div>

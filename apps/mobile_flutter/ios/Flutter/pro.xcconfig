@@ -1,0 +1,7 @@
+// Flavor RESERVA Pro (prestataires)
+PRODUCT_BUNDLE_IDENTIFIER=com.reserva.pro
+PRODUCT_DISPLAY_NAME=RESERVA Pro
+APP_DISPLAY_NAME=RESERVA Pro
+// Google OAuth iOS (Client ID → reversed URL scheme)
+GID_CLIENT_ID=473749172261-on37lmr3luj1mrmc4r7sqp75fi1d29n8.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID=com.googleusercontent.apps.473749172261-on37lmr3luj1mrmc4r7sqp75fi1d29n8

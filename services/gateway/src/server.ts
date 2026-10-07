@@ -5,9 +5,10 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 import { env } from "./config/env";
 
 const app = express();
+const PROXY_TIMEOUT_MS = 25_000;
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } }));
-app.use(cors({ origin: [env.WEB_URL, "http://localhost:3001", "http://localhost:19006"], credentials: true }));
+app.use(cors({ origin: [env.WEB_URL, "http://localhost:3001", "http://127.0.0.1:3001"], credentials: true }));
 
 async function ping(url: string): Promise<string> {
   try {
@@ -34,12 +35,33 @@ app.get("/api/sante", async (_req, res) => {
   });
 });
 
-const commun = { changeOrigin: true, ws: true };
+function proxyVers(target: string, pathFilter?: string) {
+  return createProxyMiddleware({
+    target,
+    changeOrigin: true,
+    ws: true,
+    pathFilter,
+    proxyTimeout: PROXY_TIMEOUT_MS,
+    timeout: PROXY_TIMEOUT_MS,
+    on: {
+      error(err, _req, res) {
+        console.error("[gateway-proxy]", target, err.message);
+        if (res && "writeHead" in res && typeof res.writeHead === "function" && !res.headersSent) {
+          res.writeHead(504, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({
+            succes: false,
+            erreur: { code: "GATEWAY_TIMEOUT", message: "Service upstream indisponible ou trop lent" },
+          }));
+        }
+      },
+    },
+  });
+}
 
-app.use(createProxyMiddleware({ ...commun, target: env.HOTELS_URL, pathFilter: "/api/hotels" }));
-app.use(createProxyMiddleware({ ...commun, target: env.BOOKING_URL, pathFilter: "/api/checkout" }));
-app.use(createProxyMiddleware({ ...commun, target: env.TRANSPORT_URL, pathFilter: "/api/transport" }));
-app.use(createProxyMiddleware({ ...commun, target: env.CORE_URL }));
+app.use(proxyVers(env.HOTELS_URL, "/api/hotels"));
+app.use(proxyVers(env.BOOKING_URL, "/api/checkout"));
+app.use(proxyVers(env.TRANSPORT_URL, "/api/transport"));
+app.use(proxyVers(env.CORE_URL));
 
 app.listen(env.PORT, () => {
   console.log(`✓ Gateway RESERVA sur http://localhost:${env.PORT}`);

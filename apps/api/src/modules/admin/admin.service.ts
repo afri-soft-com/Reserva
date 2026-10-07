@@ -144,16 +144,40 @@ export async function listerTousPrestataires(page = 1, parPage = 20) {
   return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) };
 }
 
-export async function listerTousUtilisateurs(page = 1, parPage = 20) {
+export async function listerTousUtilisateurs(
+  page = 1,
+  parPage = 20,
+  opts?: { recherche?: string }
+) {
   const skip = (page - 1) * parPage;
+  const where: Record<string, unknown> = {};
+  if (opts?.recherche?.trim()) {
+    const q = opts.recherche.trim();
+    where.OR = [
+      { nom: { contains: q } },
+      { telephone: { contains: q } },
+      { email: { contains: q } },
+    ];
+  }
   const [items, total] = await Promise.all([
     prisma.utilisateur.findMany({
+      where,
       skip,
       take: parPage,
-      select: { id: true, nom: true, telephone: true, email: true, role: true, langue: true, telephoneVerifie: true, creeLe: true },
+      select: {
+        id: true,
+        nom: true,
+        telephone: true,
+        email: true,
+        role: true,
+        langue: true,
+        telephoneVerifie: true,
+        commissionAgentPourcent: true,
+        creeLe: true,
+      },
       orderBy: { creeLe: "desc" },
     }),
-    prisma.utilisateur.count(),
+    prisma.utilisateur.count({ where }),
   ]);
   return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) };
 }
@@ -213,7 +237,12 @@ export async function obtenirPilotageAdmin() {
   ] = await Promise.all([
     obtenirStatistiquesPlateforme({ periode: "mois" }),
     prisma.prestataire.findMany({
-      where: { statut: "EN_ATTENTE_VALIDATION" },
+      where: {
+        OR: [
+          { statut: "EN_ATTENTE_VALIDATION" },
+          { kycStatut: { in: ["EN_REVUE", "INFO_MANQUANTE"] } },
+        ],
+      },
       take: 8,
       orderBy: { creeLe: "desc" },
       select: {
@@ -222,6 +251,8 @@ export async function obtenirPilotageAdmin() {
         ville: true,
         categorie: true,
         creeLe: true,
+        statut: true,
+        kycStatut: true,
         utilisateur: { select: { telephone: true, nom: true } },
       },
     }),

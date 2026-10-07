@@ -4,22 +4,18 @@ name: Mobile iOS
 # Produit un Runner.app non signé en artéfact.
 # Mirror: afri-soft-com/Reserva + clskas/Reserva
 
+# Build iOS unsigned (manuel). La publication App Store est dans ci-cd.yml (push main).
 on:
-  push:
-    branches: [master, main]
-    paths:
-      - "apps/mobile_flutter/**"
-      - ".github/workflows/mobile-ios.yml"
-  pull_request:
-    paths:
-      - "apps/mobile_flutter/**"
-      - ".github/workflows/mobile-ios.yml"
   workflow_dispatch:
     inputs:
       api_url:
         description: "API_URL embarquée (ex: https://api.reserva.cd/api)"
         required: false
-        default: "https://api.reserva.example/api"
+        default: "https://reserva-gateway.onrender.com/api"
+  pull_request:
+    paths:
+      - "apps/mobile_flutter/**"
+      - ".github/workflows/mobile-ios.yml"
 
 concurrency:
   group: mobile-ios-${{ github.ref }}
@@ -63,27 +59,33 @@ jobs:
         working-directory: apps/mobile_flutter/ios
         run: pod install --repo-update
 
-      - name: Build iOS (unsigned)
+      - name: Build + package iOS client & pro (unsigned)
         env:
           API_URL: ${{ github.event.inputs.api_url || 'https://api.reserva.example/api' }}
         run: |
-          flutter build ios --release --no-codesign \
-            --dart-define=API_URL="$API_URL"
-
-      - name: Package Runner.app
-        run: |
           mkdir -p artifacts
+          flutter build ios --flavor client -t lib/main.dart --release --no-codesign \
+            --dart-define=API_URL="$API_URL"
           (
             cd build/ios/iphoneos
             ditto -c -k --sequesterRsrc --keepParent Runner.app \
-              ../../../artifacts/RESERVA-ios-unsigned.zip
+              ../../../artifacts/RESERVA-client-ios-unsigned.zip
+          )
+          flutter build ios --flavor pro -t lib/main_pro.dart --release --no-codesign \
+            --dart-define=API_URL="$API_URL"
+          (
+            cd build/ios/iphoneos
+            ditto -c -k --sequesterRsrc --keepParent Runner.app \
+              ../../../artifacts/RESERVA-pro-ios-unsigned.zip
           )
           ls -lh artifacts/
 
-      - name: Upload iOS artifact
+      - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: RESERVA-ios-unsigned-${{ github.sha }}
-          path: apps/mobile_flutter/artifacts/RESERVA-ios-unsigned.zip
+          path: |
+            apps/mobile_flutter/artifacts/RESERVA-client-ios-unsigned.zip
+            apps/mobile_flutter/artifacts/RESERVA-pro-ios-unsigned.zip
           if-no-files-found: error
           retention-days: 14

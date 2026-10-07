@@ -1,7 +1,19 @@
 import { genererRappels } from "./rappel.service";
 import { expirerAbonnements } from "../modules/admin/admin.service";
+import { appliquerExigenceDocuments } from "../modules/prestataires/kyc-exigence.service";
 
 let intervalle: ReturnType<typeof setInterval> | null = null;
+
+async function tourRappels() {
+  const resultat = await genererRappels();
+  if (resultat.sms > 0) {
+    console.log(`  Rappels générés : ${resultat.sms} SMS`);
+  }
+  const docs = await appliquerExigenceDocuments();
+  if (docs.rappels > 0 || docs.bloques > 0) {
+    console.log(`  Exigence documents : ${docs.rappels} rappel(s), ${docs.bloques} bloqué(s)`);
+  }
+}
 
 export function initialiserRappels() {
   // Exécuter toutes les 30 minutes
@@ -26,12 +38,17 @@ export function initialiserRappels() {
       console.error("  Erreur expiration abonnements (démarrage):", e.message);
     });
 
+  appliquerExigenceDocuments()
+    .then((r) => {
+      if (r.rappels > 0) console.log(`  Rappels documents au démarrage : ${r.rappels}`);
+    })
+    .catch((e) => {
+      console.error("  Erreur exigence documents (démarrage):", e.message);
+    });
+
   intervalle = setInterval(async () => {
     try {
-      const resultat = await genererRappels();
-      if (resultat.sms > 0) {
-        console.log(`  Rappels générés : ${resultat.sms} SMS`);
-      }
+      await tourRappels();
     } catch (e) {
       console.error("Erreur génération rappels:", (e as Error).message);
     }

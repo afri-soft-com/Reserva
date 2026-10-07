@@ -61,6 +61,16 @@ export const listerVersementsAdmin = asyncHandler(async (req: Request, res: Resp
 
 export const traiterVersement = asyncHandler(async (req: Request, res: Response) => {
   const resultat = await economieService.traiterVersementAdmin(req.params.id, req.body);
+  if (req.utilisateur) {
+    const { enregistrerAuditAdmin } = await import("../admin/audit.service");
+    await enregistrerAuditAdmin({
+      adminId: req.utilisateur.utilisateurId,
+      action: req.body.payer ? "VERSEMENT_PAYE" : "VERSEMENT_REFUSE",
+      cibleType: "VersementPrestataire",
+      cibleId: req.params.id,
+      details: { noteAdmin: req.body.noteAdmin },
+    }).catch(() => undefined);
+  }
   envoyerSucces(res, resultat);
 });
 

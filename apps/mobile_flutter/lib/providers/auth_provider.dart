@@ -25,6 +25,9 @@ class AuthProvider extends ChangeNotifier {
   String? get erreur => _erreur;
   bool get estPrestataire => _utilisateur?.role == RoleUtilisateur.prestataire;
   bool get estAdmin => _utilisateur?.role == RoleUtilisateur.admin;
+  bool get estAgent => _utilisateur?.role == RoleUtilisateur.agent;
+  bool get estClientOuAgent =>
+      _utilisateur?.role == RoleUtilisateur.client || _utilisateur?.role == RoleUtilisateur.agent;
   bool get biometrieDisponible => _biometrieDisponible;
   bool get biometrieActivee => _biometrieActivee;
   bool get demandeBiometrieEnCours => _demandeBiometrieEnCours;

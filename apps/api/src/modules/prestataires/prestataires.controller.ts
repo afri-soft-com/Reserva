@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as prestatairesService from "./prestataires.service";
+import * as kycService from "./kyc.service";
 import { envoyerSucces } from "../../utils/reponse";
 import { asyncHandler } from "../../middlewares/erreurs";
 import { ErreurNonAutorise } from "../../utils/erreurs";
@@ -90,5 +91,39 @@ export const monAbonnement = asyncHandler(async (req: Request, res: Response) =>
 export const statistiques = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const resultat = await prestatairesService.obtenirStatistiquesDetaillees(req.utilisateur.utilisateurId);
+  envoyerSucces(res, resultat);
+});
+
+export const monKyc = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await kycService.obtenirMonKyc(req.utilisateur.utilisateurId);
+  envoyerSucces(res, resultat);
+});
+
+export const mettreAJourKyc = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await kycService.mettreAJourKyc(req.utilisateur.utilisateurId, req.body);
+  envoyerSucces(res, resultat);
+});
+
+export const soumettreKyc = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await kycService.soumettreKyc(req.utilisateur.utilisateurId);
+  envoyerSucces(res, resultat);
+});
+
+export const listerKycEnRevue = asyncHandler(async (_req: Request, res: Response) => {
+  const resultat = await kycService.listerDossiersKycEnRevue();
+  envoyerSucces(res, resultat);
+});
+
+export const detailKycAdmin = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await kycService.obtenirDossierKycAdmin(req.params.prestataireId);
+  envoyerSucces(res, resultat);
+});
+
+export const reviserKyc = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await kycService.reviserKyc(req.utilisateur.utilisateurId, req.body);
   envoyerSucces(res, resultat);
 });

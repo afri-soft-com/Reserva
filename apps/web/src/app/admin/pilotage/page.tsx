@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -10,22 +10,58 @@ import {
   Package,
   Wallet,
 } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Carte } from "../../../components/Carte";
 import { toastErreur } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
-import { obtenirPilotageAdmin } from "../../../lib/api-admin";
+import { obtenirPilotageAdmin, obtenirStatistiquesAdmin } from "../../../lib/api-admin";
 import { formaterMontant } from "@reserva/shared";
+
+const COULEURS = ["#F5A623", "#10B981", "#DC2626", "#6B7280", "#1A56DB", "#8B5CF6"];
 
 export default function PageAdminPilotage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof obtenirPilotageAdmin>> | null>(null);
+  const [evolution, setEvolution] = useState<{ mois: string; revenus: number; reservations: number }[]>([]);
+  const [parStatut, setParStatut] = useState<Record<string, number>>({});
+  const [periode, setPeriode] = useState("mois");
+  const [moisActif, setMoisActif] = useState<string | null>(null);
+  const [statutActif, setStatutActif] = useState<string | null>(null);
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
-    obtenirPilotageAdmin()
-      .then(setData)
+    setChargement(true);
+    Promise.all([
+      obtenirPilotageAdmin(),
+      obtenirStatistiquesAdmin({ periode }).catch(() => null),
+    ])
+      .then(([pilotage, stats]) => {
+        setData(pilotage);
+        if (stats?.evolution) setEvolution(stats.evolution);
+        if (stats?.reservations?.parStatut) setParStatut(stats.reservations.parStatut);
+      })
       .catch((e) => toastErreur(extraireMessageErreur(e)))
       .finally(() => setChargement(false));
-  }, []);
+  }, [periode]);
+
+  const donut = useMemo(
+    () =>
+      Object.entries(parStatut).map(([name, value], i) => ({
+        name,
+        value,
+        color: COULEURS[i % COULEURS.length],
+      })),
+    [parStatut]
+  );
 
   if (chargement) return <p className="text-gray-500">Chargement du pilotage…</p>;
   if (!data) return <p className="text-gray-500">Impossible de charger le pilotage.</p>;
@@ -34,37 +70,147 @@ export default function PageAdminPilotage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Vue d&apos;ensemble</h1>
-        <p className="text-sm text-gray-500">
-          Console d&apos;administration RESERVA — opérations, économie et files d&apos;attente ({stats.periode}).
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Vue d&apos;ensemble</h1>
+          <p className="text-sm text-gray-500">
+            Console interactive — cliquez les indicateurs et graphiques pour explorer.
+          </p>
+        </div>
+        <select
+          className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm"
+          value={periode}
+          onChange={(e) => setPeriode(e.target.value)}
+        >
+          <option value="mois">Ce mois</option>
+          <option value="trimestre">90 jours</option>
+          <option value="annee">Cette année</option>
+          <option value="tout">Tout</option>
+        </select>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="/admin/prestataires" className="block transition hover:scale-[1.01]">
+          <Carte>
+            <p className="flex items-center gap-1 text-sm text-gray-500"><Building2 className="h-4 w-4" /> Prestataires</p>
+            <p className="text-2xl font-bold">{stats.prestataires.total}</p>
+            <p className="text-xs text-amber-600">{stats.prestataires.enAttente} en attente</p>
+          </Carte>
+        </Link>
+        <Link href="/admin/reservations" className="block transition hover:scale-[1.01]">
+          <Carte>
+            <p className="flex items-center gap-1 text-sm text-gray-500"><CalendarCheck className="h-4 w-4" /> Réservations</p>
+            <p className="text-2xl font-bold">{stats.reservations.total}</p>
+            <p className="text-xs text-gray-500">{stats.reservations.ceMois} ce mois</p>
+          </Carte>
+        </Link>
+        <Link href="/admin/finances" className="block transition hover:scale-[1.01]">
+          <Carte>
+            <p className="flex items-center gap-1 text-sm text-gray-500"><DollarSign className="h-4 w-4" /> GMV période</p>
+            <p className="text-2xl font-bold text-primaire">{formaterMontant(stats.revenus?.gmv ?? stats.revenus?.ceMois ?? 0, "CDF")}</p>
+            <p className="text-xs text-gray-500">
+              Plateforme {formaterMontant(stats.revenus?.plateforme ?? 0, "CDF")}
+            </p>
+          </Carte>
+        </Link>
+        <Link href="/admin/documents-kyc" className="block transition hover:scale-[1.01]">
+          <Carte>
+            <p className="flex items-center gap-1 text-sm text-gray-500"><AlertTriangle className="h-4 w-4" /> Alertes actives</p>
+            <p className="text-2xl font-bold text-amber-600">
+              {alertes.prestatairesEnAttente + alertes.versementsEnAttente + alertes.abonnementsExpirant}
+            </p>
+            <p className="text-xs text-gray-500">{alertes.paiementsEnAttente} paiements en attente</p>
+          </Carte>
+        </Link>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <Carte>
-          <p className="flex items-center gap-1 text-sm text-gray-500"><Building2 className="h-4 w-4" /> Prestataires</p>
-          <p className="text-2xl font-bold">{stats.prestataires.total}</p>
-          <p className="text-xs text-amber-600">{stats.prestataires.enAttente} en attente</p>
+          <h2 className="mb-3 font-semibold text-gray-900">
+            Évolution {moisActif ? `— ${moisActif}` : "(cliquer une barre)"}
+          </h2>
+          {evolution.length > 0 ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={evolution}>
+                <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar
+                  dataKey="reservations"
+                  name="Réservations"
+                  fill="#1A56DB"
+                  radius={[4, 4, 0, 0]}
+                  cursor="pointer"
+                  onClick={(d: any) => setMoisActif(d?.mois ?? null)}
+                />
+                <Bar
+                  dataKey="revenus"
+                  name="Revenus"
+                  fill="#F5A623"
+                  radius={[4, 4, 0, 0]}
+                  cursor="pointer"
+                  onClick={(d: any) => setMoisActif(d?.mois ?? null)}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-gray-400">Pas encore de série temporelle.</p>
+          )}
+          {moisActif && (
+            <p className="mt-2 text-xs text-gray-600">
+              Mois sélectionné : <strong>{moisActif}</strong> —{" "}
+              {evolution.find((e) => e.mois === moisActif)?.reservations ?? 0} résa ·{" "}
+              {formaterMontant(evolution.find((e) => e.mois === moisActif)?.revenus ?? 0, "CDF")}
+            </p>
+          )}
         </Carte>
+
         <Carte>
-          <p className="flex items-center gap-1 text-sm text-gray-500"><CalendarCheck className="h-4 w-4" /> Réservations</p>
-          <p className="text-2xl font-bold">{stats.reservations.total}</p>
-          <p className="text-xs text-gray-500">{stats.reservations.ceMois} ce mois</p>
-        </Carte>
-        <Carte>
-          <p className="flex items-center gap-1 text-sm text-gray-500"><DollarSign className="h-4 w-4" /> GMV période</p>
-          <p className="text-2xl font-bold text-primaire">{formaterMontant(stats.revenus?.gmv ?? stats.revenus?.ceMois ?? 0, "CDF")}</p>
-          <p className="text-xs text-gray-500">
-            Plateforme {formaterMontant(stats.revenus?.plateforme ?? 0, "CDF")}
-          </p>
-        </Carte>
-        <Carte>
-          <p className="flex items-center gap-1 text-sm text-gray-500"><AlertTriangle className="h-4 w-4" /> Alertes actives</p>
-          <p className="text-2xl font-bold text-amber-600">
-            {alertes.prestatairesEnAttente + alertes.versementsEnAttente + alertes.abonnementsExpirant}
-          </p>
-          <p className="text-xs text-gray-500">{alertes.paiementsEnAttente} paiements en attente</p>
+          <h2 className="mb-3 font-semibold text-gray-900">
+            Statuts {statutActif ? `— ${statutActif}` : "(cliquer un segment)"}
+          </h2>
+          {donut.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={donut}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={48}
+                  outerRadius={80}
+                  onClick={(_, index) => setStatutActif(donut[index]?.name ?? null)}
+                  cursor="pointer"
+                >
+                  {donut.map((entry, i) => (
+                    <Cell
+                      key={i}
+                      fill={entry.color}
+                      stroke={statutActif === entry.name ? "#111827" : undefined}
+                      strokeWidth={statutActif === entry.name ? 2 : 0}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-gray-400">Aucune répartition.</p>
+          )}
+          <div className="mt-2 flex flex-wrap justify-center gap-3">
+            {donut.map((d) => (
+              <button
+                key={d.name}
+                type="button"
+                onClick={() => setStatutActif(d.name)}
+                className={`flex items-center gap-1 text-xs ${statutActif === d.name ? "font-bold text-gray-900" : "text-gray-600"}`}
+              >
+                <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: d.color }} />
+                {d.name}: {d.value}
+              </button>
+            ))}
+          </div>
         </Carte>
       </div>
 

@@ -8,6 +8,7 @@ import '../../models/models.dart';
 import '../../services/api_reservations.dart';
 import '../../services/api_client.dart';
 import '../../services/api_chat.dart';
+import '../../services/api_innovations.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/badge_statut.dart';
@@ -258,6 +259,50 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                   if (result == true) _charger();
                 },
                 icone: Icons.payment,
+              ),
+            ],
+            if (estClient &&
+                r.reservation.garantieActive &&
+                !r.reservation.garantieUtilisee &&
+                (r.reservation.statutPaiement == StatutPaiement.paye ||
+                    r.reservation.statutPaiement == StatutPaiement.partiel)) ...[
+              const SizedBox(height: 16),
+              Bouton(
+                titre: 'Garantie arrivée (crédit)',
+                variante: 'secondaire',
+                onPressed: () async {
+                  try {
+                    final data = await ApiInnovations.reclamerGarantie(
+                      reservationId: widget.reservationId,
+                      motif: 'Prestation non délivrée / problème sur place',
+                    );
+                    if (mounted) {
+                      ToastWidget.show(context, data['message']?.toString() ?? 'Garantie OK', type: 'succes');
+                      _charger();
+                    }
+                  } catch (e) {
+                    if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+                  }
+                },
+                icone: Icons.verified_user,
+              ),
+              const SizedBox(height: 8),
+              Bouton(
+                titre: 'Ouvrir un litige',
+                variante: 'secondaire',
+                onPressed: () async {
+                  try {
+                    await ApiInnovations.ouvrirLitige(
+                      reservationId: widget.reservationId,
+                      motif: 'NON_DELIVRE',
+                      description: 'Demande de médiation RESERVA avec preuves à joindre.',
+                    );
+                    if (mounted) ToastWidget.show(context, 'Litige ouvert — un admin tranche', type: 'succes');
+                  } catch (e) {
+                    if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+                  }
+                },
+                icone: Icons.gavel,
               ),
             ],
             if ((r.reservation.statut == StatutReservation.terminee ||

@@ -18,6 +18,13 @@ const PRESETS = [
   { cle: "FRAIS_SERVICE_MONTANT_CDF", valeur: "5000", type: "MONTANT", description: "Frais de service en CDF" },
   { cle: "VERSEMENT_MINIMUM_CDF", valeur: "20000", type: "MONTANT", description: "Montant minimum de versement (CDF)" },
   { cle: "VERSEMENT_MINIMUM_USD", valeur: "10", type: "MONTANT", description: "Montant minimum de versement (USD)" },
+  { cle: "POINTS_PARRAINAGE", valeur: "200", type: "NOMBRE", description: "Points crédités au parrain" },
+  { cle: "VALEUR_POINT_CDF", valeur: "50", type: "MONTANT", description: "Valeur d'1 point fidélité (CDF)" },
+  { cle: "POINTS_TRANCHE_CDF", valeur: "1000", type: "MONTANT", description: "1 point tous les X CDF payés" },
+  { cle: "COMMISSION_AGENT", valeur: "2", type: "POURCENT", description: "Commission agent de quartier (%)" },
+  { cle: "PUB_CPM_CDF", valeur: "5000", type: "MONTANT", description: "Tarif pub CPM / 1000 impressions (CDF)" },
+  { cle: "PUB_CPC_CDF", valeur: "200", type: "MONTANT", description: "Tarif pub CPC / clic (CDF)" },
+  { cle: "PUB_FORFAIT_CDF", valeur: "50000", type: "MONTANT", description: "Forfait campagne pub défaut (CDF)" },
 ];
 
 export default function PageAdminTarifications() {
@@ -68,7 +75,9 @@ export default function PageAdminTarifications() {
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <CreditCard className="h-6 w-6" /> Tarifications
           </h1>
-          <p className="text-sm text-gray-500">Clés économiques (commission, frais, change, minimums de versement).</p>
+          <p className="text-sm text-gray-500">
+            Commission, frais clients, parrainage, fidélité, agents, tarifs pubs — tout réglable ici.
+          </p>
         </div>
         <Bouton taille="sm" onClick={() => setModalOuvert(true)}><Plus className="h-4 w-4" /> Ajouter</Bouton>
       </div>

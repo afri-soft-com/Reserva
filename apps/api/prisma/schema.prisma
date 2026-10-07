@@ -20,6 +20,7 @@ model Utilisateur {
   id               String   @id @default(uuid())
   telephone        String   @unique
   email            String?  @unique
+  googleId         String?  @unique
   nom              String
   pinHash          String?
   role             String @default("CLIENT")
@@ -51,6 +52,10 @@ model Utilisateur {
   parraines        Utilisateur[]    @relation("Parrainage")
   cartesAchetees   CarteCadeau[]    @relation("CartesAchetees")
   cartesRecues     CarteCadeau[]    @relation("CartesRecues")
+  beneficiaires    Beneficiaire[]
+  litigesOuverts   Litige[]         @relation("LitigesOuverts")
+  reservationsAgent Reservation[]   @relation("ReservationsAgent")
+  commissionAgentPourcent Float     @default(2)
 
   @@map("utilisateurs")
 }
@@ -84,8 +89,33 @@ model Prestataire {
   longitude                       Float?
   statut                          String @default("EN_ATTENTE_VALIDATION")
   motifRejet                      String?
+
+  /// KYC complet — dossier d'identité / entreprise
+  /// BROUILLON | EN_REVUE | INFO_MANQUANTE | VALIDE | REFUSE
+  kycStatut                       String   @default("BROUILLON")
+  pieceIdentiteType               String?  // CNI | PASSEPORT | PERMIS
+  pieceIdentiteNumero             String?
+  pieceIdentiteRectoUrl           String?
+  pieceIdentiteVersoUrl           String?
+  selfieUrl                       String?
+  rccm                            String?
+  nif                             String?
+  adresseLegale                   String?
+  documentRccmUrl                 String?
+  documentNifUrl                  String?
+  attestationUrl                  String?
+  kycSoumisLe                     DateTime?
+  kycValideLe                     DateTime?
+  kycMotifRejet                   String?
+  kycRevuParId                    String?
+
   noteMoyenne                     Float    @default(0)
   nombreAvis                      Int      @default(0)
+  /// Score 0–100 : avis + completion + ponctualité + badge terrain
+  scoreConfiance                  Float    @default(50)
+  tauxCompletionPourcent          Float    @default(100)
+  tauxPonctualitePourcent         Float    @default(100)
+  badgeVerifieTerrain             Boolean  @default(false)
   delaiAnnulationGratuiteHeures   Int      @default(24)
   fraisAnnulationTardivePourcent  Int      @default(50)
   tauxCommissionPourcent          Float    @default(4)
@@ -102,6 +132,8 @@ model Prestataire {
   versements    VersementPrestataire[]
 
   @@index([categorie, ville])
+  @@index([scoreConfiance])
+  @@index([kycStatut])
   @@map("prestataires")
 }
 
@@ -174,6 +206,15 @@ model Reservation {
   reservePourTiers    Boolean  @default(false)
   nomTiers            String?
   telephoneTiers      String?
+  /// JSON : [{ "nom", "telephone", "lien" }] — kit famille / groupe
+  beneficiairesJson   String?
+  /// Garantie arrivée RESERVA (crédit auto si non délivré)
+  garantieActive      Boolean  @default(true)
+  garantieUtilisee    Boolean  @default(false)
+  /// Acompte % demandé à la réservation (solde J-1 / sur place)
+  acomptePourcent     Int      @default(30)
+  agentId             String?
+  agent               Utilisateur? @relation("ReservationsAgent", fields: [agentId], references: [id])
   motifAnnulation     String?
   codePromoId         String?
   codePromo           CodePromo? @relation(fields: [codePromoId], references: [id])
@@ -189,10 +230,12 @@ model Reservation {
   packageId           String?
   package             PackageService? @relation(fields: [packageId], references: [id])
   recurrenceGroupeId  String? // identifiant de la série (réservation récurrente) le cas échéant
+  litiges             Litige[]
 
   @@index([clientId])
   @@index([prestataireId])
   @@index([statut])
+  @@index([agentId])
   @@map("reservations")
 }
 
@@ -231,7 +274,22 @@ model Transaction {
   creeLe           DateTime @default(now())
 
   @@index([reservationId])
+  @@unique([referenceExterne])
   @@map("transactions")
+}
+
+model AuditAdmin {
+  id            String   @id @default(uuid())
+  adminId       String
+  action        String
+  cibleType     String?
+  cibleId       String?
+  details       String?
+  creeLe        DateTime @default(now())
+
+  @@index([adminId, creeLe])
+  @@index([action, creeLe])
+  @@map("audits_admin")
 }
 
 model Avis {
@@ -431,6 +489,11 @@ model Publicite {
   cible       String   @default("TOUS")
   impressions Int      @default(0)
   clics       Int      @default(0)
+  /// GRATUIT | FORFAIT | CPM | CPC
+  modeleFacturation String  @default("GRATUIT")
+  prixCampagne      Float?
+  devise            String  @default("CDF")
+  annonceurNom      String?
   creeLe      DateTime @default(now())
   misAJourLe  DateTime @updatedAt
 
@@ -482,6 +545,10 @@ model PackageService {
   prix            Float
   devise          String   @default("CDF")
   actif           Boolean  @default(true)
+  /// Pack corridor voyage+soins (ex. province → Kin)
+  estCorridor             Boolean  @default(false)
+  corridorOrigine         String?
+  corridorDestination     String?
   creeLe          DateTime @default(now())
   misAJourLe      DateTime @updatedAt
 
@@ -489,6 +556,7 @@ model PackageService {
   reservations    Reservation[]
 
   @@index([prestataireId])
+  @@index([estCorridor])
   @@map("packages_services")
 }
 
@@ -562,4 +630,54 @@ model PeriodeIndisponible {
 
   @@index([prestataireId, dateDebut, dateFin])
   @@map("periodes_indisponibles")
+}
+
+/// Membres du foyer / groupe (kit famille)
+model Beneficiaire {
+  id            String   @id @default(uuid())
+  utilisateurId String
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  nom           String
+  telephone     String?
+  lienParente   String   @default("AUTRE") // ENFANT | EPOUX | PARENT | AMI | AUTRE
+  creeLe        DateTime @default(now())
+
+  @@index([utilisateurId])
+  @@map("beneficiaires")
+}
+
+/// Médiation / litige avec preuves
+model Litige {
+  id              String   @id @default(uuid())
+  reservationId   String
+  reservation     Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  ouvertParId     String
+  ouvertPar       Utilisateur @relation("LitigesOuverts", fields: [ouvertParId], references: [id])
+  motif           String
+  description     String?
+  preuvesJson     String?  // JSON URLs / data-URIs
+  statut          String   @default("OUVERT") // OUVERT | EN_MEDIATION | TRANCHE | REJETE
+  decision        String?
+  montantAvoir    Float?
+  trancheParId    String?
+  creeLe          DateTime @default(now())
+  misAJourLe      DateTime @updatedAt
+
+  @@index([reservationId])
+  @@index([statut])
+  @@map("litiges")
+}
+
+/// Canal SMS/USSD simulé (inbound)
+model CommandeSms {
+  id            String   @id @default(uuid())
+  telephone     String
+  texteBrut     String
+  interpreteJson String?
+  statut        String   @default("RECU") // RECU | TRAITE | ERREUR
+  resultat      String?
+  creeLe        DateTime @default(now())
+
+  @@index([telephone, creeLe])
+  @@map("commandes_sms")
 }

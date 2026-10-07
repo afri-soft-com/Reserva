@@ -34,7 +34,9 @@ async function main() {
   console.log("  ", JSON.stringify(sante).slice(0, 200));
 
   console.log("→ Login admin");
-  const auth = await post("/auth/connexion", { telephone: "+243900000001", pin: "1234" });
+  const telephone = process.env.SMOKE_ADMIN_PHONE || "+243900000001";
+  const pin = process.env.SMOKE_ADMIN_PIN || "1234";
+  const auth = await post("/auth/connexion", { telephone, pin });
   const token = auth.token || auth.accessToken;
   if (!token) throw new Error("Pas de token admin");
   console.log("  OK admin", auth.utilisateur?.nom || auth.utilisateur?.role);

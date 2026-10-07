@@ -1,0 +1,7 @@
+// Flavor RESERVA Client
+PRODUCT_BUNDLE_IDENTIFIER=com.reserva.client
+PRODUCT_DISPLAY_NAME=RESERVA
+APP_DISPLAY_NAME=RESERVA
+// Google OAuth iOS (Client ID → reversed URL scheme)
+GID_CLIENT_ID=473749172261-s5acg7tb2eev81ufgt996hstej3hraun.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID=com.googleusercontent.apps.473749172261-s5acg7tb2eev81ufgt996hstej3hraun

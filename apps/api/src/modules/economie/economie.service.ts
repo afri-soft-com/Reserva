@@ -17,6 +17,20 @@ export const CLES_TARIF = {
   TAUX_USD_CDF: "TAUX_USD_CDF",
   VERSEMENT_MINIMUM_CDF: "VERSEMENT_MINIMUM_CDF",
   VERSEMENT_MINIMUM_USD: "VERSEMENT_MINIMUM_USD",
+  /** Points crédités au parrain quand un filleul active son compte */
+  POINTS_PARRAINAGE: "POINTS_PARRAINAGE",
+  /** Valeur d'1 point fidélité en CDF */
+  VALEUR_POINT_CDF: "VALEUR_POINT_CDF",
+  /** Gain fidélité : 1 point tous les X CDF payés */
+  POINTS_TRANCHE_CDF: "POINTS_TRANCHE_CDF",
+  /** Commission agent de quartier par défaut (%) */
+  COMMISSION_AGENT: "COMMISSION_AGENT",
+  /** Tarif pub : coût pour 1000 impressions (CDF) */
+  PUB_CPM_CDF: "PUB_CPM_CDF",
+  /** Tarif pub : coût par clic (CDF) */
+  PUB_CPC_CDF: "PUB_CPC_CDF",
+  /** Forfait campagne pub par défaut (CDF) */
+  PUB_FORFAIT_CDF: "PUB_FORFAIT_CDF",
 } as const;
 
 const DEFAUTS: Record<string, string> = {
@@ -28,6 +42,13 @@ const DEFAUTS: Record<string, string> = {
   TAUX_USD_CDF: "2800",
   VERSEMENT_MINIMUM_CDF: "20000",
   VERSEMENT_MINIMUM_USD: "10",
+  POINTS_PARRAINAGE: "200",
+  VALEUR_POINT_CDF: "50",
+  POINTS_TRANCHE_CDF: "1000",
+  COMMISSION_AGENT: "2",
+  PUB_CPM_CDF: "5000",
+  PUB_CPC_CDF: "200",
+  PUB_FORFAIT_CDF: "50000",
 };
 
 export interface ConfigTarif {
@@ -38,6 +59,13 @@ export interface ConfigTarif {
   tauxUsdCdf: number;
   versementMinimumCdf: number;
   versementMinimumUsd: number;
+  pointsParrainage: number;
+  valeurPointCdf: number;
+  pointsTrancheCdf: number;
+  commissionAgentDefaut: number;
+  pubCpmCdf: number;
+  pubCpcCdf: number;
+  pubForfaitCdf: number;
 }
 
 function lireNombre(valeur: string | undefined, fallback: number): number {
@@ -50,17 +78,47 @@ export async function obtenirConfigTarif(): Promise<ConfigTarif> {
     where: { actif: true, cle: { in: Object.values(CLES_TARIF) } },
   });
   const map = Object.fromEntries(lignes.map((l) => [l.cle, l.valeur]));
+  const def = (cle: keyof typeof CLES_TARIF, fallback: number) =>
+    lireNombre(map[CLES_TARIF[cle]] ?? DEFAUTS[CLES_TARIF[cle]], fallback);
+
   return {
     commissionPrestataireDefaut: normaliserPourcent(
       lireNombre(map[CLES_TARIF.COMMISSION_PRESTATAIRE] ?? map.COMMISSION_PRESTATAIRE_DEFAUT, 5)
     ),
-    fraisServiceSeuilUsd: lireNombre(map[CLES_TARIF.FRAIS_SERVICE_SEUIL_USD], 50),
-    fraisServiceMontantUsd: lireNombre(map[CLES_TARIF.FRAIS_SERVICE_MONTANT_USD], 2),
-    fraisServiceMontantCdf: lireNombre(map[CLES_TARIF.FRAIS_SERVICE_MONTANT_CDF], 5000),
-    tauxUsdCdf: lireNombre(map[CLES_TARIF.TAUX_USD_CDF], 2800),
-    versementMinimumCdf: lireNombre(map[CLES_TARIF.VERSEMENT_MINIMUM_CDF], 20000),
-    versementMinimumUsd: lireNombre(map[CLES_TARIF.VERSEMENT_MINIMUM_USD], 10),
+    fraisServiceSeuilUsd: def("FRAIS_SERVICE_SEUIL_USD", 50),
+    fraisServiceMontantUsd: def("FRAIS_SERVICE_MONTANT_USD", 2),
+    fraisServiceMontantCdf: def("FRAIS_SERVICE_MONTANT_CDF", 5000),
+    tauxUsdCdf: def("TAUX_USD_CDF", 2800),
+    versementMinimumCdf: def("VERSEMENT_MINIMUM_CDF", 20000),
+    versementMinimumUsd: def("VERSEMENT_MINIMUM_USD", 10),
+    pointsParrainage: Math.round(def("POINTS_PARRAINAGE", 200)),
+    valeurPointCdf: def("VALEUR_POINT_CDF", 50),
+    pointsTrancheCdf: Math.max(1, def("POINTS_TRANCHE_CDF", 1000)),
+    commissionAgentDefaut: normaliserPourcent(def("COMMISSION_AGENT", 2)),
+    pubCpmCdf: def("PUB_CPM_CDF", 5000),
+    pubCpcCdf: def("PUB_CPC_CDF", 200),
+    pubForfaitCdf: def("PUB_FORFAIT_CDF", 50000),
   };
+}
+
+/** Upsert les clés de croissance manquantes (idempotent, safe en prod) */
+export async function assurerClesTarificationCroissance() {
+  const aInserer = [
+    { cle: CLES_TARIF.POINTS_PARRAINAGE, valeur: DEFAUTS.POINTS_PARRAINAGE, description: "Points crédités au parrain (inscription filleul)", type: "NOMBRE" },
+    { cle: CLES_TARIF.VALEUR_POINT_CDF, valeur: DEFAUTS.VALEUR_POINT_CDF, description: "Valeur d'1 point fidélité (CDF)", type: "MONTANT" },
+    { cle: CLES_TARIF.POINTS_TRANCHE_CDF, valeur: DEFAUTS.POINTS_TRANCHE_CDF, description: "1 point fidélité tous les X CDF payés", type: "MONTANT" },
+    { cle: CLES_TARIF.COMMISSION_AGENT, valeur: DEFAUTS.COMMISSION_AGENT, description: "Commission agent de quartier par défaut (%)", type: "POURCENT" },
+    { cle: CLES_TARIF.PUB_CPM_CDF, valeur: DEFAUTS.PUB_CPM_CDF, description: "Tarif pub CPM — 1000 impressions (CDF)", type: "MONTANT" },
+    { cle: CLES_TARIF.PUB_CPC_CDF, valeur: DEFAUTS.PUB_CPC_CDF, description: "Tarif pub CPC — par clic (CDF)", type: "MONTANT" },
+    { cle: CLES_TARIF.PUB_FORFAIT_CDF, valeur: DEFAUTS.PUB_FORFAIT_CDF, description: "Forfait campagne pub par défaut (CDF)", type: "MONTANT" },
+  ];
+  for (const ligne of aInserer) {
+    const exist = await prisma.configurationTarification.findFirst({ where: { cle: ligne.cle } });
+    if (!exist) {
+      await prisma.configurationTarification.create({ data: { ...ligne, actif: true } });
+    }
+  }
+  return aInserer.map((l) => l.cle);
 }
 
 export async function resoudreTauxCommission(prestataireId: string): Promise<number> {

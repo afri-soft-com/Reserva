@@ -1,11 +1,17 @@
 import { prisma } from "../../config/prisma";
 import { ErreurValidation, ErreurNonTrouve, ErreurInterdit } from "../../utils/erreurs";
+import { obtenirConfigTarif } from "../economie/economie.service";
 
-const POINTS_PAR_TRANCHE = 1000;
-const POINTS_PAR_TRANCHE_VALEUR = 1;
-const VALEUR_POINT_FC = 50;
+async function paramsFidelite() {
+  const c = await obtenirConfigTarif();
+  return {
+    valeurPointCdf: c.valeurPointCdf,
+    trancheCdf: c.pointsTrancheCdf,
+  };
+}
 
 export async function obtenirSoldePoints(utilisateurId: string) {
+  const { valeurPointCdf } = await paramsFidelite();
   const gains = await prisma.pointTransaction.aggregate({
     where: { utilisateurId, type: "GAIN" },
     _sum: { montantPoints: true },
@@ -15,7 +21,7 @@ export async function obtenirSoldePoints(utilisateurId: string) {
     _sum: { montantPoints: true },
   });
   const solde = (gains._sum.montantPoints ?? 0) - (depenses._sum.montantPoints ?? 0);
-  return { solde, valeurEnFC: solde * VALEUR_POINT_FC };
+  return { solde, valeurEnFC: solde * valeurPointCdf, valeurPointCdf };
 }
 
 export async function listerTransactionsPoints(utilisateurId: string, page = 1, parPage = 20) {
@@ -33,7 +39,8 @@ export async function listerTransactionsPoints(utilisateurId: string, page = 1, 
 }
 
 export async function ajouterPointsGain(utilisateurId: string, montantPaye: number, reservationId: string) {
-  const pointsGagnes = Math.floor(montantPaye / POINTS_PAR_TRANCHE) * POINTS_PAR_TRANCHE_VALEUR;
+  const { trancheCdf } = await paramsFidelite();
+  const pointsGagnes = Math.floor(montantPaye / trancheCdf);
   if (pointsGagnes <= 0) return null;
 
   const solde = await obtenirSoldePoints(utilisateurId);
@@ -72,14 +79,15 @@ export async function deduirePoints(utilisateurId: string, pointsDepenses: numbe
 }
 
 export async function estimerReduction(points: number) {
-  return { points, reductionFC: points * VALEUR_POINT_FC };
+  const { valeurPointCdf } = await paramsFidelite();
+  return { points, reductionFC: points * valeurPointCdf, valeurPointCdf };
 }
 
 /**
  * [CLIENT] Échange des points de fidélité contre une réduction sur une réservation.
- * La réduction est déduite du montant total et un mouvement DEPENSE est enregistré.
  */
 export async function appliquerPoints(utilisateurId: string, reservationId: string, points: number) {
+  const { valeurPointCdf } = await paramsFidelite();
   const solde = await obtenirSoldePoints(utilisateurId);
   if (solde.solde < points) {
     throw new ErreurValidation("Solde de points insuffisant");
@@ -96,7 +104,7 @@ export async function appliquerPoints(utilisateurId: string, reservationId: stri
     throw new ErreurValidation("Impossible d'appliquer des points sur cette réservation");
   }
 
-  const reduction = points * VALEUR_POINT_FC;
+  const reduction = points * valeurPointCdf;
   const montantBase = reservation.montantTotal + reservation.montantReduction;
   if (reduction > montantBase) {
     throw new ErreurValidation("La réduction dépasse le montant de la réservation");

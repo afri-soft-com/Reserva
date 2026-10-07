@@ -55,6 +55,9 @@ export async function creerAvis(clientId: string, input: CreerAvisInput) {
     return nouvelAvis;
   });
 
+  const { recalculerConfiancePrestataire } = await import("../innovations/confiance.service");
+  await recalculerConfiancePrestataire(reservation.prestataireId);
+
   return avis;
 }
 

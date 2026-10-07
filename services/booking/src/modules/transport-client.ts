@@ -8,7 +8,11 @@ async function appeler<T>(chemin: string, init: RequestInit & { token?: string }
   };
   if (init.token) headers.Authorization = `Bearer ${init.token}`;
   const { token: _t, ...reste } = init;
-  const res = await fetch(`${env.TRANSPORT_URL}${chemin}`, { ...reste, headers });
+  const res = await fetch(`${env.TRANSPORT_URL}${chemin}`, {
+    ...reste,
+    headers,
+    signal: AbortSignal.timeout(12_000),
+  });
   const corps = (await res.json().catch(() => ({}))) as {
     succes?: boolean;
     donnees?: T;

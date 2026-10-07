@@ -22,6 +22,8 @@ import {
   Hotel,
   Scale,
   Download,
+  ScrollText,
+  FileCheck2,
 } from "lucide-react";
 import { useAuthStore } from "../../lib/store-auth";
 import clsx from "clsx";
@@ -52,6 +54,7 @@ const NAV_GROUPES = [
       { href: "/admin/hotels", label: "Hôtels", icon: Hotel },
       { href: "/admin/transport", label: "Transport", icon: Bus },
       { href: "/admin/prestataires", label: "Prestataires", icon: Building2 },
+      { href: "/admin/documents-kyc", label: "Documents & KYC", icon: FileCheck2 },
       { href: "/admin/utilisateurs", label: "Utilisateurs", icon: Users },
     ],
   },
@@ -59,10 +62,13 @@ const NAV_GROUPES = [
     titre: "Croissance",
     items: [
       { href: "/admin/publicites", label: "Publicités", icon: Megaphone },
+      { href: "/admin/agents", label: "Agents quartier", icon: Users },
       { href: "/admin/codes-promos", label: "Codes promo", icon: Tags },
+      { href: "/admin/litiges", label: "Litiges / médiation", icon: Scale },
       { href: "/admin/notifications", label: "Notifications", icon: BellRing },
       { href: "/admin/messages", label: "Messages", icon: MessageCircle },
       { href: "/admin/exports", label: "Exports", icon: Download },
+      { href: "/admin/audits", label: "Audit", icon: ScrollText },
     ],
   },
 ];

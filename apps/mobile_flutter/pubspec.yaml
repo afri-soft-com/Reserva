@@ -25,6 +25,7 @@ dependencies:
   qr_flutter: ^4.1.0
   image_picker: ^1.1.2
   mobile_scanner: ^7.4.0
+  google_sign_in: ^6.2.2
 
 dev_dependencies:
   flutter_test:
@@ -36,8 +37,9 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon.png"
-  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_background: "#1A56DB"
   adaptive_icon_foreground: "assets/icon.png"
+  remove_alpha_ios: true
   min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the

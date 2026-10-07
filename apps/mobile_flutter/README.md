@@ -7,15 +7,21 @@ Application clients & prestataires (Android / iOS).
 - Flutter SDK
 - Plateforme démarrée : `npm run dev:platform` (gateway **:4000**)
 
+## Deux apps (flavors)
+
+| Flavor | Package / Bundle ID | Entrée | Rôle |
+|--------|---------------------|--------|------|
+| `client` | `com.reserva.client` | `lib/main.dart` | CLIENT |
+| `pro` | `com.reserva.pro` | `lib/main_pro.dart` | PRESTATAIRE |
+
 ## Lancer
 
 ```bash
 flutter pub get
-# Émulateur Android (défaut dans lib/config.dart)
-flutter run
-
-# Appareil physique / iOS sim
-flutter run --dart-define=API_URL=http://IP_DE_VOTRE_PC:4000/api
+# Client
+flutter run --flavor client -t lib/main.dart --dart-define=API_URL=http://IP_DE_VOTRE_PC:4000/api
+# Prestataire (RESERVA Pro)
+flutter run --flavor pro -t lib/main_pro.dart --dart-define=API_URL=http://IP_DE_VOTRE_PC:4000/api
 ```
 
 ## Modules Vague 1

@@ -10,6 +10,11 @@ async function demarrer() {
     await prisma.$connect();
     console.log("✓ Connexion à la base de données établie");
 
+    const { assurerClesTarificationCroissance } = await import("./modules/economie/economie.service");
+    await assurerClesTarificationCroissance().catch((e) =>
+      console.warn("⚠ Clés tarification croissance :", e instanceof Error ? e.message : e)
+    );
+
     const serveur = createServer(app);
     initialiserSocket(serveur);
     initialiserRappels();

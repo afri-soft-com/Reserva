@@ -78,6 +78,9 @@ export const entamer = asyncHandler(async (req: Request, res: Response) => {
 
 export const parNumero = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
-  const resultat = await reservationsService.obtenirReservationParNumero(req.params.numero);
+  const resultat = await reservationsService.obtenirReservationParNumero(
+    req.utilisateur.utilisateurId,
+    req.params.numero
+  );
   envoyerSucces(res, resultat);
 });

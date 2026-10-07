@@ -123,6 +123,20 @@ class ProfilScreen extends StatelessWidget {
               child: Column(
                 children: [
                   ListTile(
+                    leading: const Icon(Icons.menu_book_outlined, color: AppCouleurs.primaire),
+                    title: const Text('Manuel utilisateur', style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/manuel'),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.gavel_outlined, color: AppCouleurs.texteSecondaire),
+                    title: const Text('Conditions générales (CGU)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/cgu'),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
                     leading: const BadgeNotification(child: Icon(Icons.notifications_outlined, color: AppCouleurs.primaire)),
                     title: const Text('Notifications', style: TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),
@@ -172,6 +186,21 @@ class ProfilScreen extends StatelessWidget {
                     title: const Text('Cartes cadeaux', style: TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/cartes-cadeaux'),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.family_restroom, color: AppCouleurs.primaire),
+                    title: const Text('Kit famille', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Réserver pour votre foyer'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/famille'),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.route, color: AppCouleurs.accent),
+                    title: const Text('Corridors voyage + soins', style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/corridors'),
                   ),
                   const Divider(height: 1, indent: 56),
                   ListTile(

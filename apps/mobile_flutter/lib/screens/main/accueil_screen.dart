@@ -65,6 +65,42 @@ class _AccueilScreenState extends State<AccueilScreen> {
     return '${montant.toStringAsFixed(0)} FC';
   }
 
+  /// Bandeau confiance type OTA (hold, PIN, QR).
+  Widget _bandeauConfiance() {
+    Widget item(IconData icon, String titre, String sous) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppCouleurs.blanc,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppCouleurs.bordure),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: AppCouleurs.primaire, size: 22),
+              const SizedBox(height: 8),
+              Text(titre, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text(sous, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire, height: 1.25)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        item(Icons.timer_outlined, 'Hold 15 min', 'Comme Booking : réservez sans stress'),
+        const SizedBox(width: 8),
+        item(Icons.pin, 'PIN sécurisé', 'SMS une seule fois à l\'inscription'),
+        const SizedBox(width: 8),
+        item(Icons.qr_code_2, 'QR billet', 'Check-in rapide chez le prestataire'),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     context.watch<LangueProvider>();
@@ -115,6 +151,8 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 _buildServicesRow(services: _recommandations),
                 const SizedBox(height: 24),
               ],
+              _bandeauConfiance(),
+              const SizedBox(height: 20),
               Text(AppTraductions.t('categories'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               _categoriesGrid(context),

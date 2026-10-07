@@ -74,6 +74,17 @@ export async function creerReservation(clientId: string, input: CreerReservation
   if (!creneau.service.actif) {
     throw new ErreurValidation("Ce service n'est plus disponible");
   }
+  if (creneau.service.prestataire.statut !== "APPROUVE") {
+    throw new ErreurValidation("Ce prestataire n'accepte plus de réservations pour le moment");
+  }
+
+  const { obtenirConfigExigenceKyc, estBloqueDocuments } = await import("../prestataires/kyc-exigence.service");
+  const configExigence = await obtenirConfigExigenceKyc();
+  if (estBloqueDocuments(creneau.service.prestataire, configExigence)) {
+    throw new ErreurValidation(
+      "Ce prestataire est temporairement indisponible (documents administratifs en attente)."
+    );
+  }
 
   await exigerCreneauNonBloque(prisma, creneau, creneau.service.prestataireId);
 
@@ -96,6 +107,13 @@ export async function creerReservation(clientId: string, input: CreerReservation
       data: { capaciteReservee: { increment: 1 } },
     });
 
+    const beneficiaires = input.beneficiaires?.length
+      ? input.beneficiaires
+      : input.reservePourTiers && input.nomTiers
+        ? [{ nom: input.nomTiers, telephone: input.telephoneTiers, lien: "AUTRE" as const }]
+        : undefined;
+    const premier = beneficiaires?.[0];
+
     return tx.reservation.create({
       data: {
         numero: genererNumeroReservation(),
@@ -113,9 +131,13 @@ export async function creerReservation(clientId: string, input: CreerReservation
         tauxCommissionApplique: tarif.tauxCommission,
         devise: creneau.service.devise,
         notes: input.notes,
-        reservePourTiers: input.reservePourTiers,
-        nomTiers: input.nomTiers,
-        telephoneTiers: input.telephoneTiers,
+        reservePourTiers: Boolean(input.reservePourTiers || (beneficiaires && beneficiaires.length > 0)),
+        nomTiers: input.nomTiers ?? premier?.nom,
+        telephoneTiers: input.telephoneTiers ?? premier?.telephone,
+        beneficiairesJson: beneficiaires ? JSON.stringify(beneficiaires) : null,
+        garantieActive: input.garantieActive ?? true,
+        acomptePourcent: input.acomptePourcent ?? 30,
+        agentId: input.agentId,
       },
       include: {
         service: true,
@@ -130,7 +152,7 @@ export async function creerReservation(clientId: string, input: CreerReservation
     utilisateurId: clientId,
     reservationId: reservation.id,
     titre: "Réservation créée",
-    message: `Votre réservation ${reservation.numero} chez ${reservation.prestataire.nomEntreprise} est en attente de confirmation.`,
+    message: `Votre réservation ${reservation.numero} chez ${reservation.prestataire.nomEntreprise} est en attente de confirmation. Garantie arrivée ${reservation.garantieActive ? "ON" : "OFF"} · Acompte ${reservation.acomptePourcent}%.`,
     type: "CONFIRMATION",
   });
 
@@ -498,13 +520,17 @@ export async function entamerReservation(utilisateurId: string, reservationId: s
  * Recherche publique par numéro de réservation (utilisé par le prestataire lors du scan QR).
  * N'expose que les informations minimales nécessaires au check-in.
  */
-export async function obtenirReservationParNumero(numero: string) {
+export async function obtenirReservationParNumero(utilisateurId: string, numero: string) {
+  const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
+  if (!prestataire) throw new ErreurInterdit("Profil prestataire requis");
+
   const reservation = await prisma.reservation.findUnique({
     where: { numero: numero.toUpperCase().trim() },
     select: {
       id: true,
       numero: true,
       statut: true,
+      prestataireId: true,
       reservePourTiers: true,
       nomTiers: true,
       telephoneTiers: true,
@@ -517,8 +543,12 @@ export async function obtenirReservationParNumero(numero: string) {
   if (!reservation) {
     throw new ErreurNonTrouve("Aucune réservation ne correspond à ce numéro");
   }
+  if (reservation.prestataireId !== prestataire.id) {
+    throw new ErreurInterdit("Cette réservation n'appartient pas à votre établissement");
+  }
 
-  return reservation;
+  const { prestataireId: _p, ...safe } = reservation;
+  return safe;
 }
 
 /** Utilitaire interne : crée une notification in-app pour un utilisateur */

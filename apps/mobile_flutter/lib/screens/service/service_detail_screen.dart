@@ -285,7 +285,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             children: [
               const Icon(Icons.star, size: 20, color: AppCouleurs.accent),
               const SizedBox(width: 4),
-              Text('${prestataire.noteMoyenne.toStringAsFixed(1)} (${prestataire.nombreAvis} ${AppTraductions.t('avis')})',
+              Text(
+                '${prestataire.noteMoyenne.toStringAsFixed(1)} (${prestataire.nombreAvis} ${AppTraductions.t('avis')})'
+                ' · Confiance ${prestataire.scoreConfiance.toStringAsFixed(0)}/100'
+                '${prestataire.badgeVerifieTerrain ? ' · ✓ terrain' : ''}',
                 style: const TextStyle(fontSize: 14)),
             ],
           ),

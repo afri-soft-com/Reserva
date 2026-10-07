@@ -18,6 +18,8 @@ export const schemaInscription = z.object({
   email: z.string().email("Adresse email invalide").optional().or(z.literal("")),
   langue: z.enum(["fr", "ln", "sw"]).default("fr"),
   codeParrainage: z.string().trim().min(3).max(20).optional(),
+  /** Rôle demandé par l'app (Client vs RESERVA Pro). ADMIN interdit. */
+  role: z.enum(["CLIENT", "PRESTATAIRE"]).default("CLIENT"),
 });
 export type InscriptionInput = z.infer<typeof schemaInscription>;
 
@@ -44,6 +46,13 @@ export const schemaConnexionPin = z.object({
   pin: z.string().length(4).regex(/^\d{4}$/),
 });
 export type ConnexionPinInput = z.infer<typeof schemaConnexionPin>;
+
+/** Connexion / inscription via Google ID token (vérifié côté serveur). */
+export const schemaAuthGoogle = z.object({
+  idToken: z.string().trim().min(20),
+  role: z.enum(["CLIENT", "PRESTATAIRE"]).default("CLIENT"),
+});
+export type AuthGoogleInput = z.infer<typeof schemaAuthGoogle>;
 
 export const schemaPhotoProfil = z.object({
   photoUrl: z.string().url("URL de photo invalide").or(z.string().startsWith("data:image")),

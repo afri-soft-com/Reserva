@@ -1,10 +1,14 @@
 import 'package:go_router/go_router.dart';
 import 'providers/auth_provider.dart';
 import 'screens/splash_screen.dart';
+import 'screens/auth/bienvenue_screen.dart';
 import 'screens/auth/connexion_screen.dart';
 import 'screens/auth/inscription_screen.dart';
 import 'screens/auth/reinitialiser_pin_screen.dart';
+import 'screens/legal/cgu_screen.dart';
+import 'screens/legal/manuel_utilisateur_screen.dart';
 import 'screens/main/main_shell.dart';
+import 'app_flavor.dart';
 import 'screens/main/services_screen.dart';
 import 'screens/service/service_detail_screen.dart';
 import 'screens/reservation/reservation_detail_screen.dart';
@@ -37,6 +41,9 @@ import 'screens/transport/transport_detail_screen.dart';
 import 'screens/transport/transport_checkout_screen.dart';
 import 'screens/transport/transport_billet_screen.dart';
 import 'screens/voyages/voyages_hub_screen.dart';
+import 'screens/famille/beneficiaires_screen.dart';
+import 'screens/innovations/corridors_screen.dart';
+import 'screens/prestataire/kyc_screen.dart';
 
 GoRouter createRouter(AuthProvider auth) {
   return GoRouter(
@@ -50,13 +57,28 @@ GoRouter createRouter(AuthProvider auth) {
       if (chargementInitial) return null;
       if (path == '/splash') return null;
 
-      final routesPubliques = ['/connexion', '/inscription', '/reinitialiser-pin'];
-      final estRoutePublique = routesPubliques.any((r) => path.startsWith(r));
+      final routesPubliques = [
+        '/bienvenue',
+        '/connexion',
+        '/inscription',
+        '/reinitialiser-pin',
+        '/cgu',
+        '/manuel',
+      ];
+      final estRoutePublique = routesPubliques.any((r) => path == r || path.startsWith('$r?'));
 
-      if (!estConnecte && !estRoutePublique) return '/connexion';
-      if (estConnecte && estRoutePublique) return '/accueil';
+      if (!estConnecte && !estRoutePublique) return '/bienvenue';
+      if (estConnecte && (path == '/bienvenue' || path == '/connexion' || path == '/inscription')) {
+        return '/accueil';
+      }
 
       if (path.startsWith('/admin') && !auth.estAdmin) return '/accueil';
+
+      // App Pro : bloquer l'accès client-only aux espaces prestataire inversés n'est pas nécessaire ;
+      // le garde-fou principal est le rôle à la connexion.
+      if (AppFlavorConfig.estClient && path.startsWith('/prestataire')) {
+        return '/accueil';
+      }
 
       return null;
     },
@@ -66,13 +88,16 @@ GoRouter createRouter(AuthProvider auth) {
           if (auth.estConnecte) {
             ctx.go('/accueil');
           } else {
-            ctx.go('/connexion');
+            ctx.go('/bienvenue');
           }
         },
       )),
+      GoRoute(path: '/bienvenue', builder: (ctx, state) => const BienvenueScreen()),
       GoRoute(path: '/connexion', builder: (ctx, state) => const ConnexionScreen()),
       GoRoute(path: '/inscription', builder: (ctx, state) => const InscriptionScreen()),
       GoRoute(path: '/reinitialiser-pin', builder: (ctx, state) => const ReinitialiserPinScreen()),
+      GoRoute(path: '/cgu', builder: (ctx, state) => const CguScreen()),
+      GoRoute(path: '/manuel', builder: (ctx, state) => const ManuelUtilisateurScreen()),
       GoRoute(path: '/accueil', builder: (ctx, state) => const MainShell()),
       GoRoute(
         path: '/reservations',
@@ -156,6 +181,14 @@ GoRouter createRouter(AuthProvider auth) {
         builder: (ctx, state) => const ParrainageScreen(),
       ),
       GoRoute(
+        path: '/famille',
+        builder: (ctx, state) => const BeneficiairesScreen(),
+      ),
+      GoRoute(
+        path: '/corridors',
+        builder: (ctx, state) => const CorridorsScreen(),
+      ),
+      GoRoute(
         path: '/package/:id',
         builder: (ctx, state) => PackageDetailScreen(packageId: state.pathParameters['id']!),
       ),
@@ -170,6 +203,10 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(
         path: '/prestataire/calendrier',
         builder: (ctx, state) => const CalendrierPrestataireScreen(),
+      ),
+      GoRoute(
+        path: '/prestataire/kyc',
+        builder: (ctx, state) => const KycScreen(),
       ),
       GoRoute(path: '/voyages', builder: (ctx, state) => const VoyagesHubScreen()),
       GoRoute(path: '/hotels', builder: (ctx, state) => const HotelsRechercheScreen()),

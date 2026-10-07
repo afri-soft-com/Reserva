@@ -38,6 +38,8 @@ model Hotel {
   avis            AvisHotel[]
 
   @@index([ville, actif])
+  @@index([noteMoyenne])
+  @@index([etoiles])
   @@map("hotels")
 }
 
@@ -105,9 +107,9 @@ model AvisHotel {
   noteProprete Int      @default(0)
   noteEmplacement Int   @default(0)
   commentaire  String?
-  sejourId     String?
+  sejourId     String?  @unique
   creeLe       DateTime @default(now())
 
-  @@index([hotelId])
+  @@index([hotelId, creeLe])
   @@map("avis_hotel")
 }

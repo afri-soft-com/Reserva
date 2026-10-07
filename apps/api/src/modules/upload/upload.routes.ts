@@ -14,13 +14,14 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = /jpeg|jpg|png|gif|webp/i;
-    const extOk = allowed.test(path.extname(file.originalname));
-    const mimeOk = allowed.test(file.mimetype);
+    const allowedExt = /jpeg|jpg|png|gif|webp|pdf/i;
+    const allowedMime = /jpeg|jpg|png|gif|webp|pdf/i;
+    const extOk = allowedExt.test(path.extname(file.originalname));
+    const mimeOk = allowedMime.test(file.mimetype);
     if (extOk && mimeOk) cb(null, true);
-    else cb(new Error("Seules les images (jpg, png, gif, webp) sont autorisées"));
+    else cb(new Error("Formats autorisés : images (jpg, png, gif, webp) ou PDF"));
   },
 });
 

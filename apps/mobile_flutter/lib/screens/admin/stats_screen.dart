@@ -177,36 +177,55 @@ class _StatsScreenState extends State<StatsScreen> {
     return parStatut.entries.map((e) {
       final count = e.value as int? ?? 0;
       final pct = total > 0 ? count / total : 0.0;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            SizedBox(width: 100, child: Text(e.key, style: const TextStyle(fontSize: 12))),
-            const SizedBox(width: 8),
-            Expanded(child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(value: pct, backgroundColor: AppCouleurs.fond, color: AppCouleurs.primaire, minHeight: 10),
-            )),
-            const SizedBox(width: 8),
-            SizedBox(width: 40, child: Text('$count', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-          ],
+      return InkWell(
+        onTap: () => ToastWidget.show(context, '${e.key} : $count (${(pct * 100).toStringAsFixed(0)}%)', type: 'info'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              SizedBox(width: 100, child: Text(e.key, style: const TextStyle(fontSize: 12))),
+              const SizedBox(width: 8),
+              Expanded(child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(value: pct, backgroundColor: AppCouleurs.fond, color: AppCouleurs.primaire, minHeight: 10),
+              )),
+              const SizedBox(width: 8),
+              SizedBox(width: 40, child: Text('$count', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+            ],
+          ),
         ),
       );
     }).toList();
   }
 
-  Widget _carteStat(IconData icon, String label, String valeur, String sousTitre, Color color) {
-    return Carte(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 6),
-          Text(valeur, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
-          if (sousTitre.isNotEmpty)
-            Text(sousTitre, style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
-        ],
+  Widget _carteStat(IconData icon, String label, String valeur, String sousTitre, Color color, {VoidCallback? onTap}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap ?? () {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(label),
+              content: Text('$valeur\n${sousTitre.isEmpty ? 'Touchez les filtres pour affiner.' : sousTitre}'),
+              actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(AppRayons.carte),
+        child: Carte(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(height: 6),
+              Text(valeur, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
+              Text(label, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+              if (sousTitre.isNotEmpty)
+                Text(sousTitre, style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
+            ],
+          ),
+        ),
       ),
     );
   }

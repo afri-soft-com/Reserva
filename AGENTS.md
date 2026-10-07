@@ -31,19 +31,26 @@ npm run db:push:booking
 npm run db:push:transport && npm run db:seed:transport
 ```
 
-## Mobile Flutter
+## Mobile Flutter (2 apps)
 ```bash
 npm run pub:mobile
-npm run analyze:mobile
-npm run dev:mobile
-# Appareil physique :
-cd apps/mobile_flutter && flutter run --dart-define=API_URL=http://192.168.x.x:4000/api
+# Client  → com.reserva.client
+npm run dev:mobile:client -- --dart-define=API_URL=http://192.168.x.x:4000/api
+# Prestataire (RESERVA Pro) → com.reserva.pro
+npm run dev:mobile:pro -- --dart-define=API_URL=http://192.168.x.x:4000/api
 ```
+OTP / SMS AfriSoft : [`docs/otp-afrisoft-sms.md`](docs/otp-afrisoft-sms.md)  
+Google Sign-In : [`docs/auth-google.md`](docs/auth-google.md)
 
 ## Tests / smoke
 ```bash
 npm run smoke:local
+npm run smoke:prod            # GATEWAY_URL + SMOKE_ADMIN_* requis
+npm run ci:quality
+npm run ci:security
 npm run test:e2e -w apps/web   # gateway + web déjà up
 ```
+
+CI/CD (main → Render + stores) : [`docs/cicd.md`](docs/cicd.md).
 
 Admin démo : `+243900000001` / PIN `1234`.

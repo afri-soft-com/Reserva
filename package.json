@@ -16,7 +16,9 @@
     "dev:transport": "npm run dev --workspace=@reserva/transport",
     "dev:gateway": "npm run dev --workspace=@reserva/gateway",
     "dev:web": "npm run dev --workspace=apps/web",
-    "dev:mobile": "cd apps/mobile_flutter && flutter run",
+    "dev:mobile": "cd apps/mobile_flutter && flutter run --flavor client -t lib/main.dart",
+    "dev:mobile:client": "cd apps/mobile_flutter && flutter run --flavor client -t lib/main.dart",
+    "dev:mobile:pro": "cd apps/mobile_flutter && flutter run --flavor pro -t lib/main_pro.dart",
     "dev:platform": "concurrently -n core,hotels,booking,transport,gw,web -c blue,magenta,green,white,yellow,cyan \"npm run dev:core\" \"npm run dev:hotels\" \"npm run dev:booking\" \"npm run dev:transport\" \"npm run dev:gateway\" \"npm run dev:web\"",
     "analyze:mobile": "cd apps/mobile_flutter && dart analyze lib/",
     "pub:mobile": "cd apps/mobile_flutter && flutter pub get",
@@ -36,7 +38,12 @@
     "db:push:transport": "npm run db:push --workspace=@reserva/transport",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "ci:quality": "npm run build:shared && npm run lint && npm run build:api && npm run build --workspace=@reserva/hotels && npm run build --workspace=@reserva/booking && npm run build --workspace=@reserva/transport && npm run build --workspace=@reserva/gateway && npm run build:web",
+    "ci:security": "npm audit --omit=dev --audit-level=high",
+    "ci:regression": "npm test && npm run smoke:local",
     "smoke:local": "node scripts/smoke-local.mjs",
+    "smoke:prod": "node scripts/smoke-production.mjs",
+    "db:backup:all": "node scripts/backup-all.mjs",
     "setup:local": "npm run build:shared && npm run db:generate && npm run db:seed && npm run db:push:hotels && npm run db:seed:hotels && npm run db:push:booking && npm run db:push:transport && npm run db:seed:transport"
   },
   "engines": {

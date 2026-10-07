@@ -1,11 +1,17 @@
 import 'api_client.dart';
 
 class ApiAuth {
-  static Future<Map<String, dynamic>> inscrire(String telephone, String nom, {String? codeParrainage}) async {
+  static Future<Map<String, dynamic>> inscrire(
+    String telephone,
+    String nom, {
+    String? codeParrainage,
+    String role = 'CLIENT',
+  }) async {
     return (await ApiClient.post('/auth/inscription', body: {
       'telephone': telephone,
       'nom': nom,
       'langue': 'fr',
+      'role': role,
       if (codeParrainage != null && codeParrainage.trim().isNotEmpty) 'codeParrainage': codeParrainage.trim(),
     })) as Map<String, dynamic>;
   }
@@ -24,6 +30,14 @@ class ApiAuth {
 
   static Future<Map<String, dynamic>> connecter(String telephone, String pin) async {
     return (await ApiClient.post('/auth/connexion', body: {'telephone': telephone, 'pin': pin})) as Map<String, dynamic>;
+  }
+
+  /// Inscription / connexion Google. Retourne token + pinRequis.
+  static Future<Map<String, dynamic>> connexionGoogle(String idToken, {String role = 'CLIENT'}) async {
+    return (await ApiClient.post('/auth/google', body: {
+      'idToken': idToken,
+      'role': role,
+    })) as Map<String, dynamic>;
   }
 
   static Future<Map<String, dynamic>> verifier2FA(String telephone, String code) async {

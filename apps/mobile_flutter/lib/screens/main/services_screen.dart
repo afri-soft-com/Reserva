@@ -393,9 +393,43 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
               decoration: InputDecoration(
                 hintText: AppTraductions.t('rechercherService'),
                 prefixIcon: const Icon(Icons.search, size: 20),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { _searchCtrl.clear(); _page = 1; _charger(); })
-                    : null,
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Recherche vocale (dictez puis validez)',
+                      icon: const Icon(Icons.mic, size: 20),
+                      onPressed: () async {
+                        final ctrl = TextEditingController(text: _searchCtrl.text);
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Recherche vocale'),
+                            content: TextField(
+                              controller: ctrl,
+                              autofocus: true,
+                              decoration: const InputDecoration(
+                                hintText: 'Ex. clinique Gombe demain, hôtel Lubumbashi…',
+                                helperText: 'Dictez via le clavier vocal, puis OK',
+                              ),
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+                              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('OK')),
+                            ],
+                          ),
+                        );
+                        if (ok == true) {
+                          _searchCtrl.text = ctrl.text.trim();
+                          _page = 1;
+                          _charger();
+                        }
+                      },
+                    ),
+                    if (_searchCtrl.text.isNotEmpty)
+                      IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { _searchCtrl.clear(); _page = 1; _charger(); }),
+                  ],
+                ),
                 filled: true,
                 fillColor: AppCouleurs.blanc,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),

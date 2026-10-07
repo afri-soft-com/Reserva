@@ -1,0 +1,5 @@
+json_key_data(ENV["PLAY_SERVICE_ACCOUNT_JSON"])
+# Deux apps Android — choisir via FASTLANE_PACKAGE_NAME
+# Client : com.reserva.client
+# Pro    : com.reserva.pro
+package_name(ENV.fetch("FASTLANE_PACKAGE_NAME", "com.reserva.client"))

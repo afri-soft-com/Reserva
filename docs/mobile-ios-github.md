@@ -13,7 +13,7 @@ gh workflow run "Mobile iOS" --ref master
 
 ## Artéfact
 
-`RESERVA-ios-unsigned-*.zip` → `Runner.app` non signée (contrôle CI).
+`RESERVA-client-ios-unsigned.zip` + `RESERVA-pro-ios-unsigned.zip` → `Runner.app` non signées (contrôle CI).
 
 Téléchargement : Actions → run → Artifacts (conservé 14 jours).
 
@@ -27,7 +27,17 @@ Il faudra un compte Apple Developer, puis des secrets GitHub :
 | `APPLE_CERTIFICATE_PASSWORD` | mot de passe du `.p12` |
 | `APPLE_PROVISIONING_PROFILE_BASE64` | `.mobileprovision` en base64 |
 
-Bundle ID actuel : `com.reserva.reserva`.
+Deux apps iOS (flavors, comme Android) :
+
+| Flavor | Bundle ID | Nom affiché | Entrée Dart |
+|--------|-----------|-------------|-------------|
+| `client` | `com.reserva.client` | RESERVA | `lib/main.dart` |
+| `pro` | `com.reserva.pro` | RESERVA Pro | `lib/main_pro.dart` |
+
+```bash
+flutter build ios --flavor client -t lib/main.dart --release --no-codesign
+flutter build ios --flavor pro -t lib/main_pro.dart --release --no-codesign
+```
 
 ## Fichiers CI
 

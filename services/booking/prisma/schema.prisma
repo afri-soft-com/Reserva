@@ -56,6 +56,8 @@ model PaiementSejour {
   telephonePaiement String?
   creeLe            DateTime @default(now())
 
+  @@index([sejourId])
+  @@unique([referenceExterne])
   @@map("paiements_sejour")
 }
 
@@ -99,9 +101,10 @@ model PaiementBillet {
   montant           Float
   devise            String
   statut            String
-  referenceExterne  String?
+  referenceExterne  String?  @unique
   telephonePaiement String?
   creeLe            DateTime @default(now())
 
+  @@index([billetId])
   @@map("paiements_billet")
 }

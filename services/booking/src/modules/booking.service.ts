@@ -17,15 +17,17 @@ function numero(prefix: string) {
   return `${prefix}-${s}`;
 }
 
-async function simulerPaiement(operateur: string, _montant: number) {
+async function simulerPaiement(operateur: string, _montant: number, idempotencyKey?: string) {
   await new Promise((r) => setTimeout(r, 300));
+  const reference = idempotencyKey?.trim() || `SIM-${operateur}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   if (operateur === "ESPECES") {
-    return { statut: "EN_ATTENTE" as const, reference: `ESP-${Date.now()}`, message: "À régler sur place" };
+    return { statut: "EN_ATTENTE" as const, reference: idempotencyKey?.trim() || `ESP-${Date.now()}`, message: "À régler sur place" };
   }
-  const ok = Math.random() < 0.94;
+  // Idempotence : même clé → même succès (pas de randomisation sur retry)
+  const ok = idempotencyKey ? true : Math.random() < 0.94;
   return {
     statut: ok ? "PAYE" as const : "ECHOUE" as const,
-    reference: `SIM-${operateur}-${Date.now()}`,
+    reference,
     message: ok ? "Paiement confirmé" : "Le paiement n'est pas passé. Réessayez.",
   };
 }
@@ -100,7 +102,7 @@ export async function payerSejour(
   utilisateurId: string,
   token: string,
   sejourId: string,
-  input: { operateur: string; telephonePaiement?: string; montant: number }
+  input: { operateur: string; telephonePaiement?: string; montant: number; idempotencyKey?: string }
 ) {
   const sejour = await prisma.sejourHotel.findUnique({ where: { id: sejourId } });
   if (!sejour) throw new ErreurNonTrouve("Réservation hôtel introuvable");
@@ -115,46 +117,69 @@ export async function payerSejour(
   const restant = sejour.montantTotal - sejour.montantPaye;
   if (input.montant > restant + 0.01) throw new ErreurValidation("Montant supérieur au solde");
 
-  const resultat = await simulerPaiement(input.operateur, input.montant);
-  const paiement = await prisma.paiementSejour.create({
-    data: {
-      sejourId: sejour.id,
-      operateur: input.operateur,
-      montant: input.montant,
-      devise: sejour.devise,
-      statut: resultat.statut,
-      referenceExterne: resultat.reference,
-      telephonePaiement: input.telephonePaiement,
-    },
-  });
-
-  if (resultat.statut === "PAYE") {
-    const paye = sejour.montantPaye + input.montant;
-    const complet = paye >= sejour.montantTotal - 0.01;
-    if (complet && sejour.statut === "HOLD") {
-      await confirmerInventaire(token, {
-        typeChambreId: sejour.typeChambreId,
-        arrivee: sejour.arrivee,
-        depart: sejour.depart,
-        quantite: sejour.quantite,
-      });
+  if (input.idempotencyKey) {
+    const existant = await prisma.paiementSejour.findUnique({
+      where: { referenceExterne: input.idempotencyKey },
+    });
+    if (existant) {
+      const actuel = await prisma.sejourHotel.findUnique({ where: { id: sejourId } });
+      return { sejour: actuel, paiement: existant, message: "Paiement déjà enregistré (idempotent)", idempotent: true };
     }
-    const maj = await prisma.sejourHotel.update({
-      where: { id: sejour.id },
+  }
+
+  const resultat = await simulerPaiement(input.operateur, input.montant, input.idempotencyKey);
+  const montantAvant = sejour.montantPaye;
+
+  try {
+    const paiement = await prisma.paiementSejour.create({
       data: {
-        montantPaye: paye,
-        statutPaiement: complet ? "PAYE" : "PARTIEL",
-        statut: complet ? "CONFIRME" : sejour.statut,
+        sejourId: sejour.id,
+        operateur: input.operateur,
+        montant: input.montant,
+        devise: sejour.devise,
+        statut: resultat.statut,
+        referenceExterne: resultat.reference,
+        telephonePaiement: input.telephonePaiement,
       },
     });
-    return { sejour: maj, paiement, message: resultat.message };
-  }
 
-  if (resultat.statut === "EN_ATTENTE") {
-    return { sejour, paiement, message: resultat.message };
-  }
+    if (resultat.statut === "PAYE") {
+      const paye = montantAvant + input.montant;
+      const complet = paye >= sejour.montantTotal - 0.01;
+      if (complet && sejour.statut === "HOLD") {
+        await confirmerInventaire(token, {
+          typeChambreId: sejour.typeChambreId,
+          arrivee: sejour.arrivee,
+          depart: sejour.depart,
+          quantite: sejour.quantite,
+        });
+      }
+      const majCount = await prisma.sejourHotel.updateMany({
+        where: { id: sejour.id, montantPaye: montantAvant },
+        data: {
+          montantPaye: paye,
+          statutPaiement: complet ? "PAYE" : "PARTIEL",
+          statut: complet ? "CONFIRME" : sejour.statut,
+        },
+      });
+      if (majCount.count === 0) throw new ErreurConflit("Paiement concurrent détecté");
+      const maj = await prisma.sejourHotel.findUnique({ where: { id: sejour.id } });
+      return { sejour: maj, paiement, message: resultat.message };
+    }
 
-  throw new ErreurConflit(resultat.message);
+    if (resultat.statut === "EN_ATTENTE") {
+      return { sejour, paiement, message: resultat.message };
+    }
+
+    throw new ErreurConflit(resultat.message);
+  } catch (e: any) {
+    if (String(e?.code) === "P2002" && input.idempotencyKey) {
+      const existant = await prisma.paiementSejour.findUnique({ where: { referenceExterne: input.idempotencyKey } });
+      const actuel = await prisma.sejourHotel.findUnique({ where: { id: sejourId } });
+      return { sejour: actuel, paiement: existant, message: "Paiement déjà enregistré (idempotent)", idempotent: true };
+    }
+    throw e;
+  }
 }
 
 export async function annulerSejour(utilisateurId: string, token: string, sejourId: string) {
@@ -256,7 +281,7 @@ export async function payerBillet(
   utilisateurId: string,
   token: string,
   billetId: string,
-  input: { operateur: string; telephonePaiement?: string; montant: number }
+  input: { operateur: string; telephonePaiement?: string; montant: number; idempotencyKey?: string }
 ) {
   const billet = await prisma.billetTransport.findUnique({ where: { id: billetId } });
   if (!billet) throw new ErreurNonTrouve("Billet introuvable");
@@ -271,42 +296,65 @@ export async function payerBillet(
   const restant = billet.montantTotal - billet.montantPaye;
   if (input.montant > restant + 0.01) throw new ErreurValidation("Montant supérieur au solde");
 
-  const resultat = await simulerPaiement(input.operateur, input.montant);
-  const paiement = await prisma.paiementBillet.create({
-    data: {
-      billetId: billet.id,
-      operateur: input.operateur,
-      montant: input.montant,
-      devise: billet.devise,
-      statut: resultat.statut,
-      referenceExterne: resultat.reference,
-      telephonePaiement: input.telephonePaiement,
-    },
-  });
-
-  if (resultat.statut === "PAYE") {
-    const paye = billet.montantPaye + input.montant;
-    const complet = paye >= billet.montantTotal - 0.01;
-    if (complet && billet.statut === "HOLD") {
-      await confirmerPlaces(token, { trajetId: billet.trajetId, places: billet.places });
+  if (input.idempotencyKey) {
+    const existant = await prisma.paiementBillet.findUnique({
+      where: { referenceExterne: input.idempotencyKey },
+    });
+    if (existant) {
+      const actuel = await prisma.billetTransport.findUnique({ where: { id: billetId } });
+      return { billet: actuel, paiement: existant, message: "Paiement déjà enregistré (idempotent)", idempotent: true };
     }
-    const maj = await prisma.billetTransport.update({
-      where: { id: billet.id },
+  }
+
+  const resultat = await simulerPaiement(input.operateur, input.montant, input.idempotencyKey);
+  const montantAvant = billet.montantPaye;
+
+  try {
+    const paiement = await prisma.paiementBillet.create({
       data: {
-        montantPaye: paye,
-        statutPaiement: complet ? "PAYE" : "PARTIEL",
-        statut: complet ? "CONFIRME" : billet.statut,
-        qrCode: complet ? `RESERVA-BUS:${billet.numero}` : billet.qrCode,
+        billetId: billet.id,
+        operateur: input.operateur,
+        montant: input.montant,
+        devise: billet.devise,
+        statut: resultat.statut,
+        referenceExterne: resultat.reference,
+        telephonePaiement: input.telephonePaiement,
       },
     });
-    return { billet: maj, paiement, message: resultat.message };
-  }
 
-  if (resultat.statut === "EN_ATTENTE") {
-    return { billet, paiement, message: resultat.message };
-  }
+    if (resultat.statut === "PAYE") {
+      const paye = montantAvant + input.montant;
+      const complet = paye >= billet.montantTotal - 0.01;
+      if (complet && billet.statut === "HOLD") {
+        await confirmerPlaces(token, { trajetId: billet.trajetId, places: billet.places });
+      }
+      const majCount = await prisma.billetTransport.updateMany({
+        where: { id: billet.id, montantPaye: montantAvant },
+        data: {
+          montantPaye: paye,
+          statutPaiement: complet ? "PAYE" : "PARTIEL",
+          statut: complet ? "CONFIRME" : billet.statut,
+          qrCode: complet ? `RESERVA-BUS:${billet.numero}` : billet.qrCode,
+        },
+      });
+      if (majCount.count === 0) throw new ErreurConflit("Paiement concurrent détecté");
+      const maj = await prisma.billetTransport.findUnique({ where: { id: billet.id } });
+      return { billet: maj, paiement, message: resultat.message };
+    }
 
-  throw new ErreurConflit(resultat.message);
+    if (resultat.statut === "EN_ATTENTE") {
+      return { billet, paiement, message: resultat.message };
+    }
+
+    throw new ErreurConflit(resultat.message);
+  } catch (e: any) {
+    if (String(e?.code) === "P2002" && input.idempotencyKey) {
+      const existant = await prisma.paiementBillet.findUnique({ where: { referenceExterne: input.idempotencyKey } });
+      const actuel = await prisma.billetTransport.findUnique({ where: { id: billetId } });
+      return { billet: actuel, paiement: existant, message: "Paiement déjà enregistré (idempotent)", idempotent: true };
+    }
+    throw e;
+  }
 }
 
 export async function annulerBillet(utilisateurId: string, token: string, billetId: string) {

@@ -96,8 +96,25 @@ async function main() {
       adresse: "12 Avenue de la Paix, Gombe",
       description: "Clinique généraliste avec consultations médicales et laboratoire d'analyses.",
       statut: "APPROUVE",
+      kycStatut: "VALIDE",
+      pieceIdentiteType: "CNI",
+      pieceIdentiteNumero: "CD-KIN-1985-00421",
+      pieceIdentiteRectoUrl: "https://placehold.co/600x400/png?text=CNI-Recto",
+      pieceIdentiteVersoUrl: "https://placehold.co/600x400/png?text=CNI-Verso",
+      selfieUrl: "https://placehold.co/400x400/png?text=Selfie",
+      rccm: "CD/KIN/RCCM/14-B-12345",
+      nif: "A1234567C",
+      adresseLegale: "12 Avenue de la Paix, Gombe, Kinshasa",
+      documentRccmUrl: "https://placehold.co/600x800/png?text=RCCM",
+      documentNifUrl: "https://placehold.co/600x800/png?text=NIF",
+      kycSoumisLe: new Date(),
+      kycValideLe: new Date(),
       noteMoyenne: 4.5,
       nombreAvis: 12,
+      scoreConfiance: 88,
+      badgeVerifieTerrain: true,
+      tauxCompletionPourcent: 95,
+      tauxPonctualitePourcent: 92,
       latitude: -4.3050,
       longitude: 15.3050,
     },
@@ -111,6 +128,21 @@ async function main() {
       dureeMinutes: 30,
       prix: 15000,
       devise: "CDF",
+    },
+  });
+
+  // Pack corridor démo (voyage + soins) — services de la même clinique pour le mock
+  await prisma.packageService.create({
+    data: {
+      prestataireId: clinique.id,
+      nom: "Corridor province → Kin (soins)",
+      description: "Pack corridor : consultation + suivi. Combinez avec bus/hôtel dans Voyages.",
+      prix: 45000,
+      devise: "CDF",
+      estCorridor: true,
+      corridorOrigine: "Mbuji-Mayi",
+      corridorDestination: "Kinshasa",
+      services: { create: [{ serviceId: consultationGenerale.id }] },
     },
   });
 
@@ -136,6 +168,17 @@ async function main() {
       adresse: "Gare routière de Limete",
       description: "Trajets interurbains réguliers Kinshasa - Matadi - Boma",
       statut: "APPROUVE",
+      kycStatut: "VALIDE",
+      pieceIdentiteType: "PASSEPORT",
+      pieceIdentiteNumero: "OP1234567",
+      pieceIdentiteRectoUrl: "https://placehold.co/600x400/png?text=Passeport",
+      selfieUrl: "https://placehold.co/400x400/png?text=Selfie-Transport",
+      rccm: "CD/KIN/RCCM/18-B-77881",
+      nif: "B7654321D",
+      adresseLegale: "Gare routière de Limete, Kinshasa",
+      documentRccmUrl: "https://placehold.co/600x800/png?text=RCCM-Bus",
+      kycSoumisLe: new Date(),
+      kycValideLe: new Date(),
       noteMoyenne: 4.2,
       nombreAvis: 38,
       latitude: -4.3400,
@@ -176,6 +219,19 @@ async function main() {
       adresse: "45 Boulevard du 30 Juin, Gombe",
       description: "Hôtel 3 étoiles avec vue sur le fleuve Congo, idéal pour voyages d'affaires",
       statut: "APPROUVE",
+      kycStatut: "VALIDE",
+      pieceIdentiteType: "CNI",
+      pieceIdentiteNumero: "CD-KIN-1990-11220",
+      pieceIdentiteRectoUrl: "https://placehold.co/600x400/png?text=CNI-Hotel",
+      pieceIdentiteVersoUrl: "https://placehold.co/600x400/png?text=CNI-Hotel-V",
+      selfieUrl: "https://placehold.co/400x400/png?text=Selfie-Hotel",
+      rccm: "CD/KIN/RCCM/20-B-33441",
+      nif: "C9988776E",
+      adresseLegale: "45 Boulevard du 30 Juin, Gombe, Kinshasa",
+      documentRccmUrl: "https://placehold.co/600x800/png?text=RCCM-Hotel",
+      attestationUrl: "https://placehold.co/600x800/png?text=Attestation",
+      kycSoumisLe: new Date(),
+      kycValideLe: new Date(),
       noteMoyenne: 4.7,
       nombreAvis: 56,
       delaiAnnulationGratuiteHeures: 48,
@@ -216,6 +272,18 @@ async function main() {
       quartier: "Centre-ville",
       description: "Restaurant gastronomique congolais et international",
       statut: "EN_ATTENTE_VALIDATION",
+      kycStatut: "EN_REVUE",
+      pieceIdentiteType: "CNI",
+      pieceIdentiteNumero: "CD-LSHI-1988-00991",
+      pieceIdentiteRectoUrl: "https://placehold.co/600x400/png?text=CNI-Resto",
+      pieceIdentiteVersoUrl: "https://placehold.co/600x400/png?text=CNI-Resto-V",
+      selfieUrl: "https://placehold.co/400x400/png?text=Selfie-Resto",
+      rccm: "CD/LSHI/RCCM/22-B-55667",
+      nif: "D5544332F",
+      adresseLegale: "Avenue Mama Yemo, Centre-ville, Lubumbashi",
+      documentRccmUrl: "https://placehold.co/600x800/png?text=RCCM-Resto",
+      documentNifUrl: "https://placehold.co/600x800/png?text=NIF-Resto",
+      kycSoumisLe: new Date(),
       latitude: -11.6600,
       longitude: 27.4800,
     },
@@ -349,10 +417,17 @@ async function main() {
       { cle: "SEUIL_ANNULE_GRATUIT_HEURES", valeur: "24", description: "Délai annulation gratuite (heures)", type: "NOMBRE" },
       { cle: "FRAIS_ENVOI_SMS", valeur: "150", description: "Coût unitaire par SMS (CDF)", type: "MONTANT" },
       { cle: "LIMITE_RECHERCHE_RADIUS_KM", valeur: "50", description: "Rayon de recherche par défaut (km)", type: "NOMBRE" },
+      { cle: "POINTS_PARRAINAGE", valeur: "200", description: "Points crédités au parrain", type: "NOMBRE" },
+      { cle: "VALEUR_POINT_CDF", valeur: "50", description: "Valeur d'1 point fidélité (CDF)", type: "MONTANT" },
+      { cle: "POINTS_TRANCHE_CDF", valeur: "1000", description: "1 point tous les X CDF payés", type: "MONTANT" },
+      { cle: "COMMISSION_AGENT", valeur: "2", description: "Commission agent de quartier (%)", type: "POURCENT" },
+      { cle: "PUB_CPM_CDF", valeur: "5000", description: "Tarif pub CPM / 1000 impressions (CDF)", type: "MONTANT" },
+      { cle: "PUB_CPC_CDF", valeur: "200", description: "Tarif pub CPC / clic (CDF)", type: "MONTANT" },
+      { cle: "PUB_FORFAIT_CDF", valeur: "50000", description: "Forfait campagne pub défaut (CDF)", type: "MONTANT" },
     ],
   });
 
-  console.log("✓ 12 configurations de tarification créées");
+  console.log("✓ configurations de tarification créées (économie + croissance)");
 
   console.log("Création d'avis clients pour les prestataires...");
 
@@ -705,10 +780,24 @@ async function main() {
 
   console.log(`✓ ${reservationsPayees.length} réservations passées au grand livre`);
 
+  // Agent de quartier (réserve pour autrui)
+  const agent = await prisma.utilisateur.create({
+    data: {
+      telephone: "+243960000001",
+      nom: "Agent Quartier Gombe",
+      role: "AGENT",
+      telephoneVerifie: true,
+      pinHash: pinHashDefaut,
+      commissionAgentPourcent: 2,
+      codeParrainage: codeParrainage("Agent"),
+    },
+  });
+
   console.log("\n=== Comptes de démonstration (PIN universel : 1234) ===");
   console.log("Admin       :", admin.telephone);
   console.log("Client 1    :", clientPatrick.telephone);
   console.log("Client 2    :", clienteGrace.telephone);
+  console.log("Agent       :", agent.telephone, "(commission 2%)");
   console.log("Clinique    :", utilisateurClinique.telephone);
   console.log("Transport   :", utilisateurTransport.telephone);
   console.log("Hôtel       :", utilisateurHotel.telephone);

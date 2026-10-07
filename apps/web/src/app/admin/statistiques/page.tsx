@@ -148,80 +148,88 @@ export default function PageAdminStatistiques() {
       <p className="text-sm text-gray-500">Période affichée : {stats.periode}</p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Carte>
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primaire-50">
-              <Users className="h-6 w-6 text-primaire" />
+        <button type="button" className="text-left transition hover:scale-[1.01]" onClick={() => setFiltres({ ...filtres, periode: "mois" })}>
+          <Carte>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primaire-50">
+                <Users className="h-6 w-6 text-primaire" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{stats.utilisateurs.total}</p>
+                <p className="text-sm text-gray-500">Utilisateurs</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.utilisateurs.total}</p>
-              <p className="text-sm text-gray-500">Utilisateurs</p>
-            </div>
-          </div>
-          <p className="mt-2 flex items-center gap-1 text-xs text-emerald-600">
-            <TrendingUp className="h-3 w-3" /> +{stats.utilisateurs.nouveauxCeMois} ce mois
-          </p>
-        </Carte>
+            <p className="mt-2 flex items-center gap-1 text-xs text-emerald-600">
+              <TrendingUp className="h-3 w-3" /> +{stats.utilisateurs.nouveauxCeMois} ce mois
+            </p>
+          </Carte>
+        </button>
 
-        <Carte>
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primaire-50">
-              <Building2 className="h-6 w-6 text-primaire" />
+        <button type="button" className="text-left transition hover:scale-[1.01]" onClick={() => setFiltres({ ...filtres, categorie: "" })}>
+          <Carte>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primaire-50">
+                <Building2 className="h-6 w-6 text-primaire" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{stats.prestataires.total}</p>
+                <p className="text-sm text-gray-500">Prestataires</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.prestataires.total}</p>
-              <p className="text-sm text-gray-500">Prestataires</p>
+            <div className="mt-2 flex gap-3 text-xs">
+              <span className="text-emerald-600">{stats.prestataires.approuves} approuvés</span>
+              <span className="text-amber-600">{stats.prestataires.enAttente} en attente</span>
             </div>
-          </div>
-          <div className="mt-2 flex gap-3 text-xs">
-            <span className="text-emerald-600">{stats.prestataires.approuves} approuvés</span>
-            <span className="text-amber-600">{stats.prestataires.enAttente} en attente</span>
-          </div>
-        </Carte>
+          </Carte>
+        </button>
 
-        <Carte>
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primaire-50">
-              <CalendarCheck className="h-6 w-6 text-primaire" />
+        <button type="button" className="text-left transition hover:scale-[1.01]" onClick={() => setFiltres({ ...filtres, periode: "trimestre" })}>
+          <Carte>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primaire-50">
+                <CalendarCheck className="h-6 w-6 text-primaire" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{stats.reservations.total}</p>
+                <p className="text-sm text-gray-500">Réservations</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.reservations.total}</p>
-              <p className="text-sm text-gray-500">Réservations</p>
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-gray-500">
-            {stats.reservations.cetteSemaine} cette semaine · {stats.reservations.ceMois} ce mois
-          </p>
-        </Carte>
+            <p className="mt-2 text-xs text-gray-500">
+              {stats.reservations.cetteSemaine} cette semaine · {stats.reservations.ceMois} ce mois
+            </p>
+          </Carte>
+        </button>
 
-        <Carte>
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primaire-50">
-              <DollarSign className="h-6 w-6 text-primaire" />
+        <button type="button" className="text-left transition hover:scale-[1.01]" onClick={() => setFiltres({ ...filtres, periode: "annee" })}>
+          <Carte>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primaire-50">
+                <DollarSign className="h-6 w-6 text-primaire" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{formaterMontant(stats.revenus.ceMois, "CDF")}</p>
+                <p className="text-sm text-gray-500">Revenus ce mois</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{formaterMontant(stats.revenus.ceMois, "CDF")}</p>
-              <p className="text-sm text-gray-500">Revenus ce mois</p>
-            </div>
-          </div>
-        </Carte>
+          </Carte>
+        </button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Carte>
-          <h2 className="mb-4 font-bold text-gray-900">Évolution mensuelle</h2>
+          <h2 className="mb-4 font-bold text-gray-900">Évolution mensuelle (interactive)</h2>
           {stats.evolution && stats.evolution.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={stats.evolution}>
                 <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="reservations" name="Réservations" fill="#1A56DB" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="revenus" name="Revenus" fill="#F5A623" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="reservations" name="Réservations" fill="#1A56DB" radius={[4, 4, 0, 0]} cursor="pointer" />
+                <Bar dataKey="revenus" name="Revenus" fill="#F5A623" radius={[4, 4, 0, 0]} cursor="pointer" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-gray-400">Aucune donnée d'évolution disponible.</p>
+            <p className="text-sm text-gray-400">Aucune donnée d&apos;évolution disponible.</p>
           )}
         </Carte>
 
@@ -231,7 +239,16 @@ export default function PageAdminStatistiques() {
             {donneesDonut.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-                  <Pie data={donneesDonut} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                  <Pie
+                    data={donneesDonut}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    dataKey="value"
+                    label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                    cursor="pointer"
+                  >
                     {donneesDonut.map((entry, i) => (
                       <Cell key={i} fill={entry.color} />
                     ))}
@@ -244,10 +261,15 @@ export default function PageAdminStatistiques() {
             )}
             <div className="mt-2 flex flex-wrap justify-center gap-3">
               {donneesDonut.map((d, i) => (
-                <div key={i} className="flex items-center gap-1 text-xs text-gray-600">
+                <button
+                  key={i}
+                  type="button"
+                  className="flex items-center gap-1 text-xs text-gray-600 hover:font-semibold"
+                  onClick={() => toastSucces(`${d.name} : ${d.value} réservation(s)`)}
+                >
                   <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: d.color }} />
                   {d.name}: {d.value}
-                </div>
+                </button>
               ))}
             </div>
           </div>
