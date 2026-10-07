@@ -58,6 +58,8 @@ apps/api/prisma/*.db-journal
 # Shared
 packages/shared/node_modules/
 packages/shared/dist/
+packages/service-kit/dist/
+services/**/backups/
 
 # Services
 services/**/node_modules/

@@ -36,7 +36,7 @@ services:
     rootDir: .
     autoDeploy: false
     buildCommand: npm ci && npm run build:shared && npm run db:generate && npm run build -w apps/api
-    startCommand: npx prisma db push --schema=apps/api/prisma/schema.prisma --skip-generate && npm run start -w apps/api
+    startCommand: node scripts/backup-service.mjs core --allow-empty && npx prisma db push --schema=apps/api/prisma/schema.prisma --skip-generate && npm run start -w apps/api
     healthCheckPath: /api/sante
     disk:
       name: reserva-core-db
@@ -57,7 +57,7 @@ services:
     rootDir: .
     autoDeploy: false
     buildCommand: npm ci && npm run build:shared && npm run db:generate:hotels && npm run build -w @reserva/hotels
-    startCommand: npm run db:push -w @reserva/hotels && npm run start -w @reserva/hotels
+    startCommand: node scripts/backup-service.mjs hotels --allow-empty && npm run db:push -w @reserva/hotels && npm run start -w @reserva/hotels
     healthCheckPath: /api/sante
     disk:
       name: reserva-hotels-db
@@ -78,7 +78,7 @@ services:
     rootDir: .
     autoDeploy: false
     buildCommand: npm ci && npm run build:shared && npm run db:generate:transport && npm run build -w @reserva/transport
-    startCommand: npm run db:push -w @reserva/transport && npm run start -w @reserva/transport
+    startCommand: node scripts/backup-service.mjs transport --allow-empty && npm run db:push -w @reserva/transport && npm run start -w @reserva/transport
     healthCheckPath: /api/sante
     disk:
       name: reserva-transport-db
@@ -99,7 +99,7 @@ services:
     rootDir: .
     autoDeploy: false
     buildCommand: npm ci && npm run build:shared && npm run db:generate:booking && npm run build -w @reserva/booking
-    startCommand: npm run db:push -w @reserva/booking && npm run start -w @reserva/booking
+    startCommand: node scripts/backup-service.mjs booking --allow-empty && npm run db:push -w @reserva/booking && npm run start -w @reserva/booking
     healthCheckPath: /api/sante
     disk:
       name: reserva-booking-db

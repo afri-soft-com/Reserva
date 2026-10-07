@@ -28,10 +28,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - name: Build shared + lint + builds
+      - name: Build shared + lint + unit tests + builds
         run: npm run ci:quality
         env:
           NEXT_PUBLIC_API_URL: http://localhost:4000/api
+          DATABASE_URL: file:./dev.db
+          JWT_SECRET: ci-jwt-secret-reserva-test-only
 
   security:
     name: Sécurité
@@ -70,11 +72,16 @@ jobs:
         run: |
           npm run build:shared
           npm run db:generate
+          # Backup avant toute migration / db push (ignoré si DB absente)
+          node scripts/backup-service.mjs core --allow-empty
           DATABASE_URL=file:./dev.db npm run db:push
           DATABASE_URL=file:./dev.db npm run db:seed
+          node scripts/backup-service.mjs hotels --allow-empty
           DATABASE_URL=file:./hotels.db npm run db:push:hotels
           DATABASE_URL=file:./hotels.db npm run db:seed:hotels
+          node scripts/backup-service.mjs booking --allow-empty
           DATABASE_URL=file:./booking.db npm run db:push:booking
+          node scripts/backup-service.mjs transport --allow-empty
           DATABASE_URL=file:./transport.db npm run db:push:transport
           DATABASE_URL=file:./transport.db npm run db:seed:transport
           npm run build:api

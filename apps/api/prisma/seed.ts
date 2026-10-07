@@ -38,12 +38,12 @@ async function main() {
 
   const pinHashDefaut = await bcrypt.hash("1234", 10);
 
-  // --- Administrateur ---
+  // --- Superadmin ---
   const admin = await prisma.utilisateur.create({
     data: {
       telephone: "+243900000001",
-      nom: "Admin RESERVA",
-      email: "admin@reserva.cd",
+      nom: "Superadmin RESERVA",
+      email: "celestinkas@gmail.com",
       role: "ADMIN",
       telephoneVerifie: true,
       pinHash: pinHashDefaut,

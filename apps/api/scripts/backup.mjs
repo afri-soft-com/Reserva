@@ -40,7 +40,13 @@ for (const fichier of fichiers) {
   console.log(`OK ${fichier} -> ${destination}`);
 }
 
+const allowEmpty = process.argv.includes("--allow-empty") || process.env.BACKUP_ALLOW_EMPTY === "1";
+
 if (copies === 0) {
+  if (allowEmpty) {
+    console.log("Aucune base trouvée — backup ignoré (allow-empty).");
+    process.exit(0);
+  }
   console.error("Aucune base trouvée dans", dossierDb);
   process.exit(1);
 }

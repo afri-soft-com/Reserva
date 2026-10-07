@@ -33,7 +33,13 @@ for (const src of sources) {
   }
 }
 
+const allowEmpty = process.argv.includes("--allow-empty") || process.env.BACKUP_ALLOW_EMPTY === "1";
+
 if (copies === 0) {
+  if (allowEmpty) {
+    console.log("Aucune base SQLite trouvée — backup ignoré (allow-empty).");
+    process.exit(0);
+  }
   console.error("Aucune base SQLite trouvée.");
   process.exit(1);
 }
