@@ -29,6 +29,7 @@
     "db:generate:hotels": "npm run db:generate --workspace=@reserva/hotels",
     "db:generate:booking": "npm run db:generate --workspace=@reserva/booking",
     "db:generate:transport": "npm run db:generate --workspace=@reserva/transport",
+    "db:push": "npm run db:push --workspace=apps/api",
     "db:migrate": "npm run db:migrate --workspace=apps/api",
     "db:seed": "npm run db:seed --workspace=apps/api",
     "db:seed:hotels": "npm run db:seed --workspace=@reserva/hotels",
@@ -44,7 +45,7 @@
     "smoke:local": "node scripts/smoke-local.mjs",
     "smoke:prod": "node scripts/smoke-production.mjs",
     "db:backup:all": "node scripts/backup-all.mjs",
-    "setup:local": "npm run build:shared && npm run db:generate && npm run db:seed && npm run db:push:hotels && npm run db:seed:hotels && npm run db:push:booking && npm run db:push:transport && npm run db:seed:transport"
+    "setup:local": "npm run build:shared && npm run db:generate && npm run db:push && npm run db:seed && npm run db:push:hotels && npm run db:seed:hotels && npm run db:push:booking && npm run db:push:transport && npm run db:seed:transport"
   },
   "engines": {
     "node": ">=18.0.0"

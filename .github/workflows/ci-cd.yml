@@ -70,19 +70,19 @@ jobs:
         run: |
           npm run build:shared
           npm run db:generate
-          npm run db:seed
-          npm run db:push:hotels
-          npm run db:seed:hotels
-          npm run db:push:booking
-          npm run db:push:transport
-          npm run db:seed:transport
+          DATABASE_URL=file:./dev.db npm run db:push
+          DATABASE_URL=file:./dev.db npm run db:seed
+          DATABASE_URL=file:./hotels.db npm run db:push:hotels
+          DATABASE_URL=file:./hotels.db npm run db:seed:hotels
+          DATABASE_URL=file:./booking.db npm run db:push:booking
+          DATABASE_URL=file:./transport.db npm run db:push:transport
+          DATABASE_URL=file:./transport.db npm run db:seed:transport
           npm run build:api
           npm run build -w @reserva/hotels
           npm run build -w @reserva/booking
           npm run build -w @reserva/transport
           npm run build -w @reserva/gateway
         env:
-          DATABASE_URL: file:./dev.db
           JWT_SECRET: ci-jwt-secret-reserva-test-only
           SERVICE_SECRET: ci-service-secret
           CRON_SECRET: ci-cron-secret
