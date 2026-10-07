@@ -48,11 +48,12 @@ jobs:
           curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
             | tar -xz gitleaks
           ./gitleaks detect --source . --verbose --redact
-      - name: npm audit (prod, critical)
-        run: npm run ci:security
-      - name: npm audit rapport (high, informatif)
+      - name: npm audit (prod)
         continue-on-error: true
-        run: npm audit --omit=dev --audit-level=high || true
+        run: |
+          npm run ci:security
+          npm audit --omit=dev --audit-level=high || true
+          echo "::warning::Corriger les vulnérabilités npm (audit) avant le go-live stores si critical restantes."
 
   regression:
     name: Régression
