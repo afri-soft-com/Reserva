@@ -229,8 +229,8 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: dart analyze
-        # infos (deprecated_*) OK ; warnings/errors bloquent
-        run: dart analyze lib/ --fatal-warnings --no-fatal-infos
+        # warnings fatals par défaut ; infos (deprecated) non bloquantes
+        run: dart analyze lib/
       - name: flutter test
         run: flutter test
 
