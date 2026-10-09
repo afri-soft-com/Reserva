@@ -48,6 +48,7 @@
     "test:integration:all": "npm run test --workspace=apps/api -- src/modules/auth/auth.integration.test.ts src/modules/reservations/reservations.lifecycle.integration.test.ts src/modules/booking/checkout.integration.test.ts src/modules/prestataires/kyc.lifecycle.integration.test.ts",
     "smoke:local": "node scripts/smoke-local.mjs",
     "smoke:prod": "node scripts/smoke-production.mjs",
+    "ensure:prod-catalogue": "node scripts/ensure-prod-catalogue.mjs",
     "wait:render": "node scripts/wait-render-ready.mjs",
     "db:migrate:core": "node scripts/db-migrate-service.mjs core",
     "db:migrate:hotels": "node scripts/db-migrate-service.mjs hotels",

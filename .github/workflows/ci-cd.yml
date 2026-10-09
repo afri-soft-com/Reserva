@@ -329,6 +329,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Ensure catalogue prod (seed si vide)
+        run: npm run ensure:prod-catalogue
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
       - name: Smoke prod (strict lecture+écriture — bloque stores)
         run: npm run smoke:prod
         env:
