@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.reserva.reserva"
     compileSdk = 38
-    ndkVersion = "27.0.12077973"
+    // ndkVersion: laisser Flutter/AGP choisir (pin NDK 27.0.12077973 échoue souvent sur runners)
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
