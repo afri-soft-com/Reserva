@@ -13,8 +13,11 @@ async function main() {
     phone: process.env.SMOKE_ADMIN_PHONE || "+243900000001",
     pin: process.env.SMOKE_ADMIN_PIN || "1234",
     waitHealth: "short",
+    ecriture: true,
+    clientPhone: process.env.SMOKE_CLIENT_PHONE || "+243991234567",
+    proPhone: process.env.SMOKE_PRO_PHONE || "+243970000001",
   });
-  console.log("\n✓ Smoke local OK");
+  console.log("\n✓ Smoke local OK (lecture + écriture)");
 }
 
 main().catch((e) => {

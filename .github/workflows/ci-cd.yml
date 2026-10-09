@@ -122,6 +122,8 @@ jobs:
       MODE_PAIEMENT: simulation
       MODE_SMS: simulation
       MIGRATE_FALLBACK_PUSH: "1"
+      PAIEMENT_SIM_DETERMINISTE: "1"
+      SMOKE_WRITE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -172,11 +174,15 @@ jobs:
       - name: Vitest + intégration + smoke + OpenAPI + perf
         run: |
           npm run ci:regression
-          GATEWAY_URL=http://127.0.0.1:4000/api npm run test:integration
+          GATEWAY_URL=http://127.0.0.1:4000/api npm run test:integration:all
         env:
           GATEWAY_URL: http://127.0.0.1:4000/api
           SMOKE_ADMIN_PHONE: "+243900000001"
           SMOKE_ADMIN_PIN: "1234"
+          SMOKE_CLIENT_PHONE: "+243991234567"
+          SMOKE_PRO_PHONE: "+243970000001"
+          SMOKE_WRITE: "1"
+          PAIEMENT_SIM_DETERMINISTE: "1"
           DATABASE_URL: ${{ env.DATABASE_URL_CORE }}
           PERF_FAIL_ON_SLOW: "0"
       - name: Build web admin
@@ -317,12 +323,16 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci --ignore-scripts
-      - name: Smoke prod (strict — bloque stores)
+      - name: Smoke prod (strict lecture+écriture — bloque stores)
         run: npm run smoke:prod
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
           SMOKE_ADMIN_PHONE: ${{ secrets.SMOKE_ADMIN_PHONE }}
           SMOKE_ADMIN_PIN: ${{ secrets.SMOKE_ADMIN_PIN }}
+          SMOKE_CLIENT_PHONE: ${{ secrets.SMOKE_CLIENT_PHONE }}
+          SMOKE_PRO_PHONE: ${{ secrets.SMOKE_PRO_PHONE }}
+          SMOKE_WRITE: "1"
+          PAIEMENT_SIM_DETERMINISTE: "1"
       - name: Contrat OpenAPI prod
         run: node scripts/check-openapi-contrat.mjs
         env:

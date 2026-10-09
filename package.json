@@ -45,6 +45,7 @@
     "test:coverage": "npm run test:coverage --workspace=apps/api",
     "test:integration": "npm run test --workspace=apps/api -- src/modules/auth/auth.integration.test.ts",
     "ci:regression": "npm run test:unit && npm run smoke:local && node scripts/check-openapi-contrat.mjs && node scripts/perf-smoke.mjs",
+    "test:integration:all": "npm run test --workspace=apps/api -- src/modules/auth/auth.integration.test.ts src/modules/reservations/reservations.lifecycle.integration.test.ts src/modules/booking/checkout.integration.test.ts src/modules/prestataires/kyc.lifecycle.integration.test.ts",
     "smoke:local": "node scripts/smoke-local.mjs",
     "smoke:prod": "node scripts/smoke-production.mjs",
     "wait:render": "node scripts/wait-render-ready.mjs",

@@ -67,7 +67,12 @@ async function simulerPaiement(
   // Petite latence artificielle pour imiter un appel réseau réel
   await new Promise((resolve) => setTimeout(resolve, 400));
 
-  const succes = Math.random() < 0.92;
+  // CI / smoke : succès déterministe pour éviter flakiness (92 % aléatoire hors CI)
+  const deterministe =
+    process.env.CI === "true" ||
+    process.env.PAIEMENT_SIM_DETERMINISTE === "1" ||
+    process.env.SMOKE_WRITE === "1";
+  const succes = deterministe ? true : Math.random() < 0.92;
   const reference = `SIM-${operateur}-${Date.now()}`;
 
   console.log(

@@ -15,6 +15,10 @@ async function main() {
   if (!PHONE || !PIN) throw new Error("SMOKE_ADMIN_PHONE et SMOKE_ADMIN_PIN requis");
 
   console.log("→ Smoke production", GATEWAY);
+  // Écriture activée par défaut en prod CI (désactiver avec SMOKE_WRITE=0)
+  const write =
+    process.env.SMOKE_WRITE !== "0" && process.env.SMOKE_WRITE !== "false";
+
   await executerParcoursSmoke({
     gateway: GATEWAY,
     phone: PHONE,
@@ -22,6 +26,9 @@ async function main() {
     waitHealth: true,
     maxAttempts: Number(process.env.SMOKE_HEALTH_ATTEMPTS || 42),
     delayMs: Number(process.env.SMOKE_HEALTH_DELAY_MS || 10000),
+    ecriture: write,
+    clientPhone: process.env.SMOKE_CLIENT_PHONE || "+243991234567",
+    proPhone: process.env.SMOKE_PRO_PHONE || "+243970000001",
   });
   console.log("\n✓ Smoke production OK — stores autorisés");
 }

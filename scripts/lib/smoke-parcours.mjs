@@ -144,5 +144,23 @@ export async function executerParcoursSmoke(opts) {
   const sim = await get(gateway, "/economie/simulation?montant=10000&devise=CDF", token);
   console.log("  sim", JSON.stringify(sim).slice(0, 120));
 
+  const ecriture =
+    opts.ecriture === true ||
+    (opts.ecriture !== false &&
+      (process.env.SMOKE_WRITE === "1" || process.env.SMOKE_WRITE === "true" || opts.ecriture === "auto"));
+
+  if (ecriture) {
+    const { executerParcoursEcriture } = await import("./smoke-parcours-ecriture.mjs");
+    await executerParcoursEcriture({
+      gateway,
+      pin,
+      adminPhone: phone,
+      clientPhone: opts.clientPhone || process.env.SMOKE_CLIENT_PHONE,
+      proPhone: opts.proPhone || process.env.SMOKE_PRO_PHONE,
+    });
+  } else {
+    console.log("→ Écriture métier désactivée (SMOKE_WRITE≠1)");
+  }
+
   return { token, profil };
 }

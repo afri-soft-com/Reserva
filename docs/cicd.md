@@ -47,15 +47,24 @@ npm run db:migrate:core
 
 Prod stricte (optionnel) : `BACKUP_REQUIRE=1` pour refuser le démarrage sans dump.
 
-## Smoke élargi
+## Smoke élargi (lecture + écriture)
 
-Parcours partagé [`scripts/lib/smoke-parcours.mjs`](../scripts/lib/smoke-parcours.mjs) :
+Parcours lecture [`scripts/lib/smoke-parcours.mjs`](../scripts/lib/smoke-parcours.mjs) :
 
 - `/sante`, OpenAPI UI, login admin, profil
 - pilotage, stats, réservations, prestataires
 - KYC admin, exigence documents
 - finances + plans + simulation tarif
 - hotels + transport villes
+
+Parcours **écriture** [`scripts/lib/smoke-parcours-ecriture.mjs`](../scripts/lib/smoke-parcours-ecriture.mjs) (bloquant, `SMOKE_WRITE=1`) :
+
+1. Client crée réservation SANTE → pro accepte → paiement MPESA sim → annulation
+2. Admin KYC `INFO_MANQUANTE` sur dossier EN_REVUE
+3. Hôtel hold → payer → annuler
+4. Transport billet hold → payer → annuler
+
+Comptes seed : admin `+243900000001`, client `+243991234567`, pro `+243970000001` (PIN `1234`).
 
 ## Superadmin
 
