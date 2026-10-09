@@ -1,6 +1,7 @@
 /**
  * Attend que les services Render soient live après un deploy déclenché.
  * Env: RENDER_API_KEY, RENDER_SERVICE_* (IDs), optionnel GATEWAY_URL pour ping.
+ * Sur échec build : affiche un extrait des logs build.
  */
 const API = "https://api.render.com/v1";
 const key = process.env.RENDER_API_KEY;
@@ -22,15 +23,40 @@ if (services.length === 0) {
   process.exit(1);
 }
 
+const headers = { Authorization: `Bearer ${key}`, Accept: "application/json" };
+
 async function dernierDeploy(serviceId) {
-  const res = await fetch(`${API}/services/${serviceId}/deploys?limit=1`, {
-    headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
-  });
+  const res = await fetch(`${API}/services/${serviceId}/deploys?limit=1`, { headers });
   if (!res.ok) throw new Error(`deploys ${serviceId} → ${res.status}`);
   const data = await res.json();
-  const item = Array.isArray(data) ? data[0] : data[0]?.deploy || data?.deploys?.[0];
-  const deploy = item?.deploy || item;
-  return deploy;
+  const item = Array.isArray(data) ? data[0] : data;
+  return item?.deploy || item;
+}
+
+async function ownerIdOf(serviceId) {
+  const res = await fetch(`${API}/services/${serviceId}`, { headers });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const s = data.service || data;
+  return s.ownerId || null;
+}
+
+async function dumpBuildLogs(serviceId, name) {
+  try {
+    const ownerId = await ownerIdOf(serviceId);
+    if (!ownerId) return;
+    const end = new Date();
+    const start = new Date(end.getTime() - 10 * 60 * 1000);
+    const url = `${API}/logs?ownerId=${ownerId}&resource=${serviceId}&type=build&startTime=${encodeURIComponent(start.toISOString())}&endTime=${encodeURIComponent(end.toISOString())}&limit=80`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) return;
+    const data = await res.json();
+    const lines = (data.logs || []).map((l) => l.message).filter(Boolean);
+    console.error(`\n── Logs build ${name} (extrait) ──`);
+    console.error(lines.slice(-40).join("\n"));
+  } catch (e) {
+    console.error(`  (logs ${name} indisponibles: ${e.message})`);
+  }
 }
 
 async function main() {
@@ -42,6 +68,7 @@ async function main() {
   while (pending.size > 0) {
     if (Date.now() - start > maxMs) {
       console.error("Timeout Render. Restants:", [...pending.keys()].join(", "));
+      for (const [name, id] of pending) await dumpBuildLogs(id, name);
       process.exit(1);
     }
     for (const [name, id] of [...pending.entries()]) {
@@ -51,11 +78,12 @@ async function main() {
         console.log(`  ${name}: ${status}`);
         if (status === "live") pending.delete(name);
         if (["build_failed", "update_failed", "canceled", "deactivated"].includes(status)) {
+          await dumpBuildLogs(id, name);
           throw new Error(`Deploy ${name} en échec: ${status}`);
         }
       } catch (e) {
         console.error(`  ${name}: ${e.message}`);
-        if (String(e.message).includes("échec")) throw e;
+        if (/échec|build_failed|update_failed/.test(String(e.message))) throw e;
       }
     }
     if (pending.size === 0) break;

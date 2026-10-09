@@ -59,7 +59,7 @@
     "setup:local": "npm run build:shared && npm run db:generate && npm run db:push && npm run db:seed && npm run db:push:hotels && npm run db:seed:hotels && npm run db:push:booking && npm run db:push:transport && npm run db:seed:transport"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "22.x"
   },
   "dependencies": {
     "styled-jsx": "^5.1.7"
