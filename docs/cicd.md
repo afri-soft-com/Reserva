@@ -10,48 +10,68 @@ Pipeline GitHub Actions : [`.github/workflows/ci-cd.yml`](../.github/workflows/c
 push main
   → Qualité + Sécurité (parallèle)
   → Régression (intégration + smoke local + Playwright)
-  → Render (Deploy Hooks) — backup SQLite puis db push au démarrage
+  → Render (API) — backup Postgres (pg_dump) puis db push au démarrage
   → Smoke production
-  → Play Store (Client + Pro) + App Store (Client + Pro)
+  → Play Store + App Store (Client + Pro)
 ```
 
 | Étape | Contenu |
 |-------|---------|
-| **Qualité** | build packages, Prisma generate, lint (tsc), **tests unitaires** (`vitest` API), builds api/services/web |
-| **Sécurité** | Gitleaks + npm audit (audit soft-fail tant que deps critiques non upgradées) |
-| **Régression** | **backup** → db push/seed → plateforme éphémère → unit + **smoke local** (intégration API) → Playwright admin |
-| **Render** | Deploy API (`RENDER_API_KEY` + IDs services) après gates verts |
-| **Smoke prod** | `smoke:prod` contre `GATEWAY_URL` |
-| **Stores** | Fastlane Client+Pro (secrets Play/iOS encore à fournir) |
+| **Qualité** | Prisma generate, lint, **unitaires** Vitest, builds |
+| **Sécurité** | Gitleaks + npm audit (soft-fail) |
+| **Régression** | backup → db push/seed → plateforme → smoke local + Playwright |
+| **Render** | Deploy API après gates verts |
+| **Smoke prod** | `smoke:prod` (santé + login) |
+| **Stores** | Fastlane Client + Pro |
 
-Les PR sur `main` exécutent seulement Qualité → Sécurité → Régression.
+Les PR sur `main` : Qualité → Sécurité → Régression seulement.
 
-## Tests : unitaires vs intégration
+## Backup avant migration (déjà en place)
 
-| Type | Où | Commande | Exemples |
-|------|-----|----------|----------|
-| **Unitaires** | Qualité (+ rejoués en régression) | `npm run test:unit` | `apps/api/**/*.test.ts` (ex. tarification) |
-| **Intégration / smoke** | Régression | `npm run smoke:local` | Auth admin, santé gateway, parcours API |
-| **E2E UI** | Régression | Playwright chromium | Connexion admin web |
-| **Smoke prod** | Après Render | `npm run smoke:prod` | Santé + login sur URL prod |
+| Contexte | Comportement |
+|----------|----------------|
+| **CI régression** | `backup-service.mjs` avant chaque `db:push` (`--allow-empty` si DB neuve) |
+| **Render start** | idem dans `startCommand` (core/hotels/booking/transport) |
+| **Local** | `node scripts/backup-service.mjs core` (nécessite `pg_dump`) |
 
-### Comment enrichir le pipeline
+**Limite actuelle :** sur Render, le dump est écrit sur le disque éphémère du conteneur → à renforcer (disque persistant `/backups` ou upload S3/R2) pour un vrai disaster recovery.
 
-1. **Plus d’unitaires** — ajouter `*.test.ts` / `*.spec.ts` sous `apps/api` (Vitest) ou workspaces services ; ils passent automatiquement via `test:unit`.
-2. **Tests d’intégration API** — étendre `scripts/smoke-local.mjs` (réservation, KYC, hotels/booking) ou un dossier `apps/api/tests/integration/`.
-3. **Couverture** — `vitest --coverage` + seuil dans Qualité (bloquer si &lt; X %).
-4. **Mobile** — job `flutter test` / `dart analyze` avant Play/App Store.
-5. **Contrats** — schéma OpenAPI validé contre réponses smoke.
-6. **Performance** — k6/artillery léger après smoke prod (non bloquant d’abord).
-7. **Migrations** — remplacer `db push` par `prisma migrate deploy` + backup obligatoire (déjà branché via `backup-service.mjs`).
+`--allow-empty` = premier déploiement OK ; en prod, si `pg_dump` échoue sans allow-empty, le démarrage doit **bloquer** (à durcir).
 
-## Backup avant migration
+## Tests aujourd’hui vs à ajouter (anti-régression)
 
-- **CI régression** : `node scripts/backup-service.mjs <service> --allow-empty` avant chaque `db:push`.
-- **Render** : même script dans `startCommand` (core/hotels/booking/transport) avant `db push`.
-- **Local** : `npm run db:backup:all` ou `node scripts/backup-service.mjs core`.
+### Déjà couvert
+- Lint / build TypeScript
+- 1 fichier unitaire économie (`vitest`)
+- Smoke API local + smoke prod (santé, auth admin)
+- E2E admin Playwright (connexion / pilotage)
+- Sécurité basique (gitleaks, audit)
 
-`--allow-empty` évite l’échec au premier déploiement (pas encore de fichier `.db`).
+### À ajouter — priorité pour ne pas casser la prod
+
+| Priorité | Ajout | Pourquoi |
+|----------|--------|----------|
+| **P0** | Smoke prod **élargie** (réservation, KYC, hotels, paiement simulation) + **échec = stop stores** | Détecte une API prod cassée avant clients mobiles |
+| **P0** | Backup prod **persistant** (disk Render ou S3) + `pg_dump` garanti dans l’image | Restauration après mauvaise migration |
+| **P0** | `prisma migrate deploy` (migrations versionnées) à la place de `db push` en prod | Schéma contrôlé, rollback possible |
+| **P1** | Parcours d’intégration API : auth → créer réservation → paiement sim → annulation | Cœur métier |
+| **P1** | Job `flutter analyze` + `flutter test` avant Play/App Store | Apps mobiles non cassées |
+| **P1** | Couverture Vitest (seuil ex. 40 % modules critiques) | Empêche les régressions silencieuses |
+| **P2** | Contrat OpenAPI : réponses smoke vs schéma | Gateway / clients alignés |
+| **P2** | Canary / health post-deploy (attente Ready Render + retry smoke) | Évite smoke trop tôt |
+| **P2** | Perf légère (k6) non bloquante | Détecte timeouts |
+| **P3** | Preview env / staging Render avant `main` | Tester hors prod |
+
+### Règle d’or déploiement
+```
+Qualité + Sécurité + Régression OK
+  → backup DB prod
+  → migrate
+  → deploy
+  → smoke prod STRICT (doit être vert)
+  → seulement alors Play / App Store
+```
+Aujourd’hui cette chaîne existe déjà ; le maillon faible est surtout **la profondeur des tests métier** (peu d’unitaires / smoke trop mince) et **la pérennité des backups**.
 
 ## Superadmin
 
