@@ -1,23 +1,28 @@
+import crypto from "node:crypto";
 import { env } from "../../config/env";
 import { OperateurMobileMoney } from "@reserva/shared";
+import { obtenirConfigTarif } from "../economie/economie.service";
+import {
+  initierPaiementViaHubAfriSoft,
+  referenceHubPaiement,
+  uuidDepuisCle,
+} from "./afrisoft-pay.hub";
 
 /**
- * Adaptateur Mobile Money — abstrait les appels aux API des opérateurs congolais
- * (M-Pesa/Vodacom, Airtel Money, Orange Money). En mode "simulation", aucune clé
- * API réelle n'est nécessaire : les paiements sont automatiquement approuvés après
- * un court délai, ce qui permet de développer et démontrer le flux complet sans
- * compte marchand réel.
- *
- * Pour passer en production : renseigner les clés API dans .env (MODE_PAIEMENT=production)
- * et implémenter les appels HTTP réels vers les API de chaque opérateur dans les
- * fonctions correspondantes ci-dessous.
+ * Adaptateur Mobile Money — simulation locale, ou hub AfriSoft (pay.afri-soft.com) en production.
+ * Ne jamais appeler SerdiPay / CinetPay directement depuis RESERVA (IP non whitelistée).
  */
 
 export interface ResultatInitiationPaiement {
   succes: boolean;
   referenceExterne: string;
+  /** payment_id hub (webhook / polling) */
+  paymentId?: string;
+  paymentUrl?: string;
   statut: "EN_ATTENTE" | "PAYE" | "ECHOUE";
   messageOperateur?: string;
+  /** Montant réellement envoyé au hub (CDF entier) — pour fail-closed webhook */
+  amountCdf?: number;
 }
 
 export interface ResultatRemboursement {
@@ -26,14 +31,28 @@ export interface ResultatRemboursement {
   messageOperateur?: string;
 }
 
+/** Convertit un montant métier (CDF ou USD) en francs congolais entiers pour le hub */
+export async function montantVersCdf(montant: number, devise: string): Promise<number> {
+  const d = (devise || "CDF").toUpperCase();
+  if (d === "CDF" || d === "FC") return Math.round(montant);
+  if (d === "USD" || d === "$") {
+    const { tauxUsdCdf } = await obtenirConfigTarif();
+    return Math.round(montant * tauxUsdCdf);
+  }
+  throw new Error(`Devise non supportée pour Mobile Money : ${devise}`);
+}
+
 /** Initie un paiement Mobile Money auprès de l'opérateur choisi */
 export async function initierPaiementMobileMoney(params: {
   operateur: OperateurMobileMoney;
   telephonePaiement: string;
   montant: number;
+  devise?: string;
+  reservationId?: string;
+  idempotencyKey?: string;
+  metadata?: Record<string, unknown>;
 }): Promise<ResultatInitiationPaiement> {
   if (params.operateur === "ESPECES") {
-    // Paiement en espèces : aucun appel externe, statut en attente jusqu'à confirmation manuelle au point de service
     return {
       succes: true,
       referenceExterne: `ESP-${Date.now()}`,
@@ -46,17 +65,79 @@ export async function initierPaiementMobileMoney(params: {
     return simulerPaiement(params.operateur, params.montant);
   }
 
-  // Mode production : appels réels aux API des opérateurs
-  switch (params.operateur) {
-    case "MPESA":
-      throw new Error("Intégration M-Pesa production non implémentée. Renseignez MPESA_API_KEY et complétez ce bloc.");
-    case "AIRTEL_MONEY":
-      throw new Error("Intégration Airtel Money production non implémentée. Renseignez AIRTEL_MONEY_API_KEY et complétez ce bloc.");
-    case "ORANGE_MONEY":
-      throw new Error("Intégration Orange Money production non implémentée. Renseignez ORANGE_MONEY_API_KEY et complétez ce bloc.");
-    default:
-      throw new Error(`Opérateur de paiement non supporté : ${params.operateur}`);
+  if (!params.telephonePaiement?.trim()) {
+    return {
+      succes: false,
+      referenceExterne: "",
+      statut: "ECHOUE",
+      messageOperateur: "Numéro Mobile Money requis pour le paiement",
+    };
   }
+
+  const amountCdf = await montantVersCdf(params.montant, params.devise || "CDF");
+  if (amountCdf < 500) {
+    return {
+      succes: false,
+      referenceExterne: "",
+      statut: "ECHOUE",
+      messageOperateur: `Montant trop faible pour Mobile Money (${amountCdf} FC). Minimum hub : 500 FC.`,
+    };
+  }
+
+  const appId = env.AFRISOFT_HUB_APP_ID.trim().toLowerCase() || "reserva";
+  const uuid = params.idempotencyKey
+    ? uuidDepuisCle(`pay:${params.idempotencyKey}`)
+    : crypto.randomUUID();
+  const reference = referenceHubPaiement(appId, "pay", uuid);
+  const idempotencyKey =
+    params.idempotencyKey ||
+    (params.reservationId
+      ? `${appId}:reservation:${params.reservationId}:${amountCdf}`
+      : undefined);
+
+  const hub = await initierPaiementViaHubAfriSoft({
+    operateur: params.operateur,
+    telephone: params.telephonePaiement,
+    amountCdf,
+    reference,
+    purpose: "pay",
+    kind: "C2B",
+    idempotencyKey,
+    metadata: {
+      ...(params.metadata || {}),
+      reservation_id: params.reservationId,
+      montant_metier: params.montant,
+      devise: params.devise || "CDF",
+    },
+  });
+
+  if (!hub.succes) {
+    return {
+      succes: false,
+      referenceExterne: hub.reference || reference,
+      paymentId: hub.paymentId,
+      statut: "ECHOUE",
+      messageOperateur: hub.message || "Échec initiation Mobile Money",
+      amountCdf,
+    };
+  }
+
+  const statut: ResultatInitiationPaiement["statut"] =
+    hub.statut === "COMPLETED" ? "PAYE" : hub.statut === "FAILED" ? "ECHOUE" : "EN_ATTENTE";
+
+  return {
+    succes: statut !== "ECHOUE",
+    referenceExterne: hub.reference || reference,
+    paymentId: hub.paymentId,
+    paymentUrl: hub.paymentUrl,
+    statut,
+    messageOperateur:
+      hub.message ||
+      (statut === "EN_ATTENTE"
+        ? "Confirmez le paiement sur votre téléphone Mobile Money."
+        : undefined),
+    amountCdf: hub.amountCdf ?? amountCdf,
+  };
 }
 
 /** Simule un paiement Mobile Money — 92% de taux de succès, pour tester aussi les cas d'échec */
@@ -64,10 +145,8 @@ async function simulerPaiement(
   operateur: OperateurMobileMoney,
   montant: number
 ): Promise<ResultatInitiationPaiement> {
-  // Petite latence artificielle pour imiter un appel réseau réel
   await new Promise((resolve) => setTimeout(resolve, 400));
 
-  // CI / smoke : succès déterministe pour éviter flakiness (92 % aléatoire hors CI)
   const deterministe =
     process.env.CI === "true" ||
     process.env.PAIEMENT_SIM_DETERMINISTE === "1" ||
@@ -89,11 +168,13 @@ async function simulerPaiement(
   };
 }
 
-/** Initie un remboursement vers le compte Mobile Money du client */
+/** Initie un remboursement vers le compte Mobile Money du client (B2C hub) */
 export async function rembourserMobileMoney(params: {
   operateur: OperateurMobileMoney;
   telephonePaiement: string;
   montant: number;
+  devise?: string;
+  reservationId?: string;
 }): Promise<ResultatRemboursement> {
   if (params.operateur === "ESPECES") {
     return {
@@ -106,9 +187,47 @@ export async function rembourserMobileMoney(params: {
   if (env.MODE_PAIEMENT === "simulation") {
     await new Promise((resolve) => setTimeout(resolve, 300));
     const reference = `REMB-SIM-${Date.now()}`;
-    console.log(`\n[REMBOURSEMENT SIMULÉ] ${params.operateur} — Montant: ${params.montant} — Réf: ${reference}\n`);
-    return { succes: true, referenceExterne: reference, messageOperateur: "Remboursement approuvé (simulation)" };
+    console.log(
+      `\n[REMBOURSEMENT SIMULÉ] ${params.operateur} — Montant: ${params.montant} — Réf: ${reference}\n`
+    );
+    return {
+      succes: true,
+      referenceExterne: reference,
+      messageOperateur: "Remboursement approuvé (simulation)",
+    };
   }
 
-  throw new Error(`Remboursement production non implémenté pour ${params.operateur}. Complétez ce bloc avec l'API réelle.`);
+  const amountCdf = await montantVersCdf(params.montant, params.devise || "CDF");
+  if (amountCdf < 500) {
+    return {
+      succes: false,
+      referenceExterne: "",
+      messageOperateur: `Montant trop faible pour remboursement Mobile Money (${amountCdf} FC).`,
+    };
+  }
+
+  const appId = env.AFRISOFT_HUB_APP_ID.trim().toLowerCase() || "reserva";
+  const reference = referenceHubPaiement(appId, "refund");
+  const hub = await initierPaiementViaHubAfriSoft({
+    operateur: params.operateur,
+    telephone: params.telephonePaiement,
+    amountCdf,
+    reference,
+    purpose: "refund",
+    kind: "B2C",
+    idempotencyKey: params.reservationId
+      ? `${appId}:refund:${params.reservationId}:${amountCdf}:${Math.floor(Date.now() / 60_000)}`
+      : undefined,
+    metadata: {
+      reservation_id: params.reservationId,
+      montant_metier: params.montant,
+      devise: params.devise || "CDF",
+    },
+  });
+
+  return {
+    succes: hub.succes,
+    referenceExterne: hub.reference || hub.paymentId || reference,
+    messageOperateur: hub.message,
+  };
 }

@@ -1,7 +1,9 @@
 import { prisma } from "../../config/prisma";
+import { env } from "../../config/env";
 import { ErreurNonTrouve, ErreurValidation, ErreurInterdit, ErreurConflit } from "../../utils/erreurs";
 import { InitierPaiementInput } from "@reserva/shared";
 import { initierPaiementMobileMoney } from "./mobilemoney.adapter";
+import { referenceHubPaiement, uuidDepuisCle } from "./afrisoft-pay.hub";
 import { ajouterPointsGain } from "../fidelite/fidelite.service";
 import { enregistrerPaiementReservation } from "../economie/economie.service";
 
@@ -52,9 +54,19 @@ export async function initierPaiement(clientId: string, input: InitierPaiementIn
   input = { ...input, montant: montantAPayer };
 
   const cleIdempotence = input.idempotencyKey?.trim();
+  // Référence hub déterministe si clé client → lookup local avant appel opérateur
+  let referenceAttendue: string | undefined;
   if (cleIdempotence) {
+    const appId = env.AFRISOFT_HUB_APP_ID.trim().toLowerCase() || "reserva";
+    referenceAttendue = referenceHubPaiement(appId, "pay", uuidDepuisCle(`pay:${cleIdempotence}`));
     const existante = await prisma.transaction.findFirst({
-      where: { reservationId: reservation.id, referenceExterne: cleIdempotence },
+      where: {
+        reservationId: reservation.id,
+        OR: [
+          { referenceExterne: cleIdempotence },
+          { referenceExterne: referenceAttendue },
+        ],
+      },
     });
     if (existante) {
       return {
@@ -70,9 +82,21 @@ export async function initierPaiement(clientId: string, input: InitierPaiementIn
     operateur: input.operateur,
     telephonePaiement: input.telephonePaiement ?? "",
     montant: input.montant,
+    devise: reservation.devise,
+    reservationId: reservation.id,
+    idempotencyKey: cleIdempotence,
+    metadata: { numero_reservation: reservation.numero, client_id: clientId },
   });
 
-  const referenceExterne = cleIdempotence || resultatOperateur.referenceExterne;
+  // Simulation : conserver la clé client comme référence pour l'idempotence locale.
+  // Production : référence hub (`{app}_pay_{uuid}`) pour le matching webhook.
+  const referenceExterne =
+    env.MODE_PAIEMENT === "simulation" && cleIdempotence
+      ? cleIdempotence
+      : resultatOperateur.referenceExterne ||
+        referenceAttendue ||
+        resultatOperateur.paymentId ||
+        `TX-${Date.now()}`;
 
   const transaction = await prisma.transaction.create({
     data: {
@@ -80,47 +104,177 @@ export async function initierPaiement(clientId: string, input: InitierPaiementIn
       operateur: input.operateur,
       montant: input.montant,
       devise: reservation.devise,
-      statut: resultatOperateur.statut === "PAYE" ? "PAYE" : resultatOperateur.statut === "ECHOUE" ? "ECHOUE" : "EN_ATTENTE",
+      statut:
+        resultatOperateur.statut === "PAYE"
+          ? "PAYE"
+          : resultatOperateur.statut === "ECHOUE"
+            ? "ECHOUE"
+            : "EN_ATTENTE",
       referenceExterne,
       telephonePaiement: input.telephonePaiement,
     },
   });
 
-  // Si le paiement (simulé ou réel) est immédiatement confirmé, met à jour la réservation
   if (resultatOperateur.statut === "PAYE") {
-    const montantAvant = reservation.montantPaye;
-    const nouveauMontantPaye = montantAvant + input.montant;
-    const statutPaiement = nouveauMontantPaye >= reservation.montantTotal ? "PAYE" : "PARTIEL";
+    await appliquerPaiementConfirme(transaction.id);
+  }
 
-    await prisma.$transaction(async (tx) => {
-      const maj = await tx.reservation.updateMany({
-        where: { id: reservation.id, montantPaye: montantAvant },
-        data: { montantPaye: nouveauMontantPaye, statutPaiement },
-      });
-      if (maj.count === 0) {
-        throw new ErreurConflit("Paiement concurrent détecté. Vérifiez le solde et réessayez.");
-      }
-      await enregistrerPaiementReservation(tx, reservation, input.montant);
+  const maj = await prisma.transaction.findUnique({ where: { id: transaction.id } });
+
+  return {
+    transaction: maj ?? transaction,
+    statutOperateur: resultatOperateur.statut,
+    messageOperateur: resultatOperateur.messageOperateur,
+    paymentUrl: resultatOperateur.paymentUrl,
+    paymentId: resultatOperateur.paymentId,
+  };
+}
+
+/**
+ * Applique un paiement confirmé (simulation immédiate ou webhook hub COMPLETED).
+ * Idempotent : ignore si la transaction n'est plus EN_ATTENTE.
+ */
+export async function appliquerPaiementConfirme(transactionId: string) {
+  const transaction = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    include: { reservation: true },
+  });
+  if (!transaction) {
+    throw new ErreurNonTrouve("Transaction non trouvée");
+  }
+  if (transaction.statut === "PAYE") {
+    return { dejaTraite: true, transaction };
+  }
+  if (transaction.statut !== "EN_ATTENTE") {
+    throw new ErreurValidation(`Transaction non confirmable (statut ${transaction.statut})`);
+  }
+
+  const reservation = transaction.reservation;
+  const montantAvant = reservation.montantPaye;
+  const nouveauMontantPaye = montantAvant + transaction.montant;
+  const statutPaiement = nouveauMontantPaye >= reservation.montantTotal ? "PAYE" : "PARTIEL";
+
+  await prisma.$transaction(async (tx) => {
+    const majTx = await tx.transaction.updateMany({
+      where: { id: transaction.id, statut: "EN_ATTENTE" },
+      data: { statut: "PAYE" },
     });
+    if (majTx.count === 0) return;
 
+    const maj = await tx.reservation.updateMany({
+      where: { id: reservation.id, montantPaye: montantAvant },
+      data: { montantPaye: nouveauMontantPaye, statutPaiement },
+    });
+    if (maj.count === 0) {
+      throw new ErreurConflit("Paiement concurrent détecté. Vérifiez le solde et réessayez.");
+    }
+    await enregistrerPaiementReservation(tx, reservation, transaction.montant);
+  });
+
+  await prisma.notification.create({
+    data: {
+      utilisateurId: reservation.clientId,
+      reservationId: reservation.id,
+      titre: "Paiement confirmé",
+      message: `Votre paiement de ${transaction.montant} ${reservation.devise} pour la réservation ${reservation.numero} a été confirmé.`,
+      type: "PAIEMENT",
+    },
+  });
+
+  await ajouterPointsGain(reservation.clientId, transaction.montant, reservation.id).catch(() => {});
+
+  const maj = await prisma.transaction.findUnique({ where: { id: transaction.id } });
+  return { dejaTraite: false, transaction: maj };
+}
+
+/** Marque une transaction en échec (webhook payment.failed) — idempotent */
+export async function marquerPaiementEchoue(transactionId: string, motif?: string) {
+  const transaction = await prisma.transaction.findUnique({ where: { id: transactionId } });
+  if (!transaction) throw new ErreurNonTrouve("Transaction non trouvée");
+  if (transaction.statut === "PAYE" || transaction.statut === "ECHOUE") {
+    return { dejaTraite: true, transaction };
+  }
+  const maj = await prisma.transaction.update({
+    where: { id: transactionId },
+    data: { statut: "ECHOUE" },
+  });
+  if (motif) {
     await prisma.notification.create({
       data: {
-        utilisateurId: clientId,
-        reservationId: reservation.id,
-        titre: "Paiement confirmé",
-        message: `Votre paiement de ${input.montant} ${reservation.devise} pour la réservation ${reservation.numero} a été confirmé.`,
+        utilisateurId: (
+          await prisma.reservation.findUniqueOrThrow({
+            where: { id: transaction.reservationId },
+            select: { clientId: true },
+          })
+        ).clientId,
+        reservationId: transaction.reservationId,
+        titre: "Paiement échoué",
+        message: motif.slice(0, 400),
         type: "PAIEMENT",
       },
     });
+  }
+  return { dejaTraite: false, transaction: maj };
+}
 
-    await ajouterPointsGain(clientId, input.montant, reservation.id).catch(() => {});
+/**
+ * Traite un webhook hub AfriSoft (payment.completed / payment.failed).
+ * Fail-closed sur le montant CDF attendu (métadonnée ou conversion).
+ */
+export async function traiterWebhookAfriSoft(payload: {
+  event?: string;
+  payment_id?: string;
+  status?: string;
+  reference?: string;
+  amount_cdf?: number;
+  purpose?: string;
+  failure_reason?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const purpose = String(payload.purpose || "pay").toLowerCase();
+  // Les payouts (refund) sont suivis séparément — pas de crédit réservation
+  if (purpose === "withdraw" || purpose === "refund") {
+    return { ignore: true, raison: "payout" };
   }
 
-  return {
-    transaction,
-    statutOperateur: resultatOperateur.statut,
-    messageOperateur: resultatOperateur.messageOperateur,
-  };
+  const refs = [payload.reference, payload.payment_id].filter(Boolean) as string[];
+  if (refs.length === 0) {
+    throw new ErreurValidation("Webhook sans reference / payment_id");
+  }
+
+  const transaction = await prisma.transaction.findFirst({
+    where: { referenceExterne: { in: refs } },
+    include: { reservation: true },
+  });
+  if (!transaction) {
+    // Accepter 200 pour éviter les retries infinis sur orphelins inconnus
+    return { ignore: true, raison: "transaction_introuvable" };
+  }
+
+  const status = String(payload.status || "").toUpperCase();
+  const event = String(payload.event || "").toLowerCase();
+
+  if (status === "FAILED" || event.includes("failed")) {
+    return marquerPaiementEchoue(transaction.id, payload.failure_reason || "Paiement refusé par l'opérateur");
+  }
+
+  if (status !== "COMPLETED" && !event.includes("completed")) {
+    return { ignore: true, raison: "statut_non_final" };
+  }
+
+  // Fail-closed : si le hub envoie amount_cdf, vérifier vs montant métier converti
+  if (typeof payload.amount_cdf === "number" && Number.isFinite(payload.amount_cdf)) {
+    const { montantVersCdf } = await import("./mobilemoney.adapter");
+    const attendu = await montantVersCdf(transaction.montant, transaction.devise);
+    if (Math.abs(payload.amount_cdf - attendu) > 1) {
+      console.error(
+        `[WEBHOOK PAY] montant mismatch tx=${transaction.id} hub=${payload.amount_cdf} attendu=${attendu}`
+      );
+      throw new ErreurValidation("Montant webhook incohérent avec la transaction");
+    }
+  }
+
+  return appliquerPaiementConfirme(transaction.id);
 }
 
 /** Liste l'historique des transactions d'une réservation */

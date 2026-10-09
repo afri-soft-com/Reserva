@@ -1,35 +1,37 @@
-# Checklist production marketplace RESERVA
+﻿# Checklist production marketplace RESERVA
 
 ## Fait (robustesse Vague 1+)
 
-- [x] Isolation prestataire sur lookup réservation par numéro (anti-IDOR)
-- [x] Inventaire hotels/transport : confirmer/libérer réservés au `SERVICE_SECRET`
-- [x] Avis hôtel : `sejourId` obligatoire + unique (anti-spam)
-- [x] Ranking hôtels bayésien + tri popularité + moins de N+1 dispo
+- [x] Isolation prestataire sur lookup rÃ©servation par numÃ©ro (anti-IDOR)
+- [x] Inventaire hotels/transport : confirmer/libÃ©rer rÃ©servÃ©s au `SERVICE_SECRET`
+- [x] Avis hÃ´tel : `sejourId` obligatoire + unique (anti-spam)
+- [x] Ranking hÃ´tels bayÃ©sien + tri popularitÃ© + moins de N+1 dispo
 - [x] Gateway timeouts / 504 JSON
 - [x] Timeouts fetch inter-services booking
 - [x] Paiements booking + core : idempotence (`Idempotency-Key` / `idempotencyKey`)
-- [x] Unicité `referenceExterne` paiements
+- [x] UnicitÃ© `referenceExterne` paiements
 - [x] Audit admin (suspensions, versements)
 - [x] Backup SQLite multi-services (`npm run db:backup:all`)
-- [x] Web admin-only + marketplace documenté
+- [x] Web admin-only + marketplace documentÃ©
 
-## Demain — Mobile Money réel
+## Mobile Money (hub AfriSoft)
 
-- [ ] Brancher adaptateurs MPESA / Airtel / Orange en `MODE_PAIEMENT=production`
-- [ ] Webhooks de confirmation (statut async EN_ATTENTE → PAYE)
-- [ ] Reconciliation des `referenceExterne` opérateurs
-- [ ] Secrets opérateurs hors `.env` commités (vault / CI secrets)
+- [x] Adaptateur production via pay.afri-soft.com (HMAC)
+- [x] Webhooks de confirmation (EN_ATTENTE -> PAYE / ECHOUE)
+- [x] Idempotence + fail-closed montant CDF
+- [ ] Secrets hub poses en prod (AFRISOFT_HUB_*, MODE_PAIEMENT=production)
+- [ ] Webhook URL enregistree chez AfriSoft
 
 ## Avant mise en prod publique
 
-- [x] Pipeline CI/CD (`docs/cicd.md`) : qualité / sécurité / régression / Render / smoke / stores
-- [ ] Secrets GitHub posés sur `clskas/Reserva` **et** `afri-soft-com/Reserva`
-- [ ] Blueprint Render importé + Deploy Hooks branchés
+- [x] Pipeline CI/CD (`docs/cicd.md`) : qualitÃ© / sÃ©curitÃ© / rÃ©gression / Render / smoke / stores
+- [ ] Secrets GitHub posÃ©s sur `clskas/Reserva` **et** `afri-soft-com/Reserva`
+- [ ] Blueprint Render importÃ© + Deploy Hooks branchÃ©s
 - [ ] `JWT_SECRET`, `SERVICE_SECRET`, `CRON_SECRET` forts et uniques (groupe `reserva-prod`)
-- [ ] SQLite → PostgreSQL (disques Render en interim)
+- [ ] SQLite â†’ PostgreSQL (disques Render en interim)
 - [ ] Domaine custom gateway / web
-- [ ] Monitoring (uptime gateway `/api/sante`, logs structurés)
-- [ ] Rate limits renforcés sur auth / paiement
+- [ ] Monitoring (uptime gateway `/api/sante`, logs structurÃ©s)
+- [ ] Rate limits renforcÃ©s sur auth / paiement
 - [ ] SMS production (`MODE_SMS=production`)
-- [ ] Catalogue volume + onboarding prestataires à l’échelle
+- [ ] Catalogue volume + onboarding prestataires Ã  lâ€™Ã©chelle
+

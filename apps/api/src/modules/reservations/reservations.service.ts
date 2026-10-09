@@ -367,6 +367,8 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
           operateur: derniereTransactionReussie.operateur as OperateurMobileMoney,
           telephonePaiement: derniereTransactionReussie.telephonePaiement ?? reservation.client.telephone,
           montant: montantRembourse,
+          devise: reservation.devise,
+          reservationId: reservation.id,
         });
       }
       if (avoirsRestitues > 0) {

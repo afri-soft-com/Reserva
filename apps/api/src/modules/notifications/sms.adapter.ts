@@ -16,6 +16,12 @@ export async function envoyerSms(telephone: string, message: string, purpose = "
     return { succes: true, referenceExterne: `SIM-${Date.now()}` };
   }
 
+  if (!env.AFRISOFT_HUB_APP_ID || !env.AFRISOFT_HUB_API_KEY) {
+    throw new Error(
+      "MODE_SMS=production mais AFRISOFT_HUB_APP_ID / AFRISOFT_HUB_API_KEY manquants"
+    );
+  }
+
   return envoyerSmsViaHubAfriSoft({ telephone, text: message, purpose });
 }
 

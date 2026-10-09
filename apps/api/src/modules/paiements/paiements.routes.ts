@@ -6,6 +6,10 @@ import { schemaInitierPaiement } from "@reserva/shared";
 
 export const routesPaiements = Router();
 
+/** Public — hub AfriSoft (HMAC). Enregistrer cette URL côté AfriSoft. */
+routesPaiements.post("/webhooks/afrisoft", paiementsController.webhookAfriSoft);
+routesPaiements.post("/webhooks/afrisoft-payments", paiementsController.webhookAfriSoft);
+
 routesPaiements.post("/", authentifier, valider(schemaInitierPaiement), paiementsController.initier);
 routesPaiements.get("/reservations/:reservationId/transactions", authentifier, paiementsController.transactions);
 routesPaiements.get("/reservations/:reservationId/recu", authentifier, paiementsController.recu);

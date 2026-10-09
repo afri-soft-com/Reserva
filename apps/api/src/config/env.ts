@@ -21,8 +21,12 @@ export const env = {
   CRON_SECRET: lireVariable("CRON_SECRET"),
   /** Hub AfriSoft SMS — uniquement serveur (HMAC). Voir docs/otp-afrisoft-sms.md */
   AFRISOFT_SMS_HUB_URL: lireVariable("AFRISOFT_SMS_HUB_URL", "https://sms.afri-soft.com"),
+  /** Hub AfriSoft Paiements — HMAC. Voir docs/mobile-money-afrisoft-pay.md */
+  AFRISOFT_PAY_HUB_URL: lireVariable("AFRISOFT_PAY_HUB_URL", "https://pay.afri-soft.com"),
   AFRISOFT_HUB_APP_ID: lireVariable("AFRISOFT_HUB_APP_ID", ""),
   AFRISOFT_HUB_API_KEY: lireVariable("AFRISOFT_HUB_API_KEY", ""),
+  /** Secret webhooks hub → API (sinon AFRISOFT_HUB_API_KEY) */
+  AFRISOFT_HUB_WEBHOOK_SECRET: lireVariable("AFRISOFT_HUB_WEBHOOK_SECRET", ""),
   /** Client IDs OAuth Google (Web + Android + iOS), séparés par des virgules */
   GOOGLE_CLIENT_IDS: lireVariable("GOOGLE_CLIENT_IDS", ""),
   /** simulation = accepte un idToken de démo `SIM-GOOGLE:...` (dev uniquement) */

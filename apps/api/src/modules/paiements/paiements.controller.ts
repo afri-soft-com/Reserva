@@ -56,3 +56,34 @@ export const recuPdf = asyncHandler(async (req: Request, res: Response) => {
   res.setHeader("Content-Disposition", `attachment; filename="recu-${req.params.reservationId}.pdf"`);
   res.send(pdf);
 });
+
+/** Webhook public hub AfriSoft → confirmation / échec Mobile Money (HMAC) */
+export const webhookAfriSoft = asyncHandler(async (req: Request, res: Response) => {
+  const { secretWebhookAfriSoft, verifierSignatureWebhookAfriSoft } = await import("./afrisoft-pay.hub");
+  const secret = secretWebhookAfriSoft();
+  const timestamp = String(req.headers["x-afrisoft-timestamp"] || "");
+  const signature = String(req.headers["x-afrisoft-signature"] || "");
+  const rawBody =
+    typeof (req as Request & { rawBody?: string }).rawBody === "string"
+      ? (req as Request & { rawBody?: string }).rawBody!
+      : JSON.stringify(req.body ?? {});
+  const path = (req.originalUrl || req.url || "").split("?")[0];
+
+  if (
+    !secret ||
+    !verifierSignatureWebhookAfriSoft({
+      secret,
+      timestamp,
+      method: "POST",
+      path,
+      rawBody,
+      signature,
+    })
+  ) {
+    res.status(401).json({ ok: false, error: "signature_invalide" });
+    return;
+  }
+
+  const resultat = await paiementsService.traiterWebhookAfriSoft(req.body ?? {});
+  res.status(200).json({ ok: true, ...resultat });
+});

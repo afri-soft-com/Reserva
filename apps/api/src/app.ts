@@ -39,7 +39,18 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: "2mb" }));
+app.use(
+  express.json({
+    limit: "2mb",
+    verify: (req, _res, buf) => {
+      // Corps brut requis pour vérifier le HMAC des webhooks AfriSoft
+      const url = (req as { originalUrl?: string; url?: string }).originalUrl || req.url || "";
+      if (url.includes("/webhooks/afrisoft")) {
+        (req as { rawBody?: string }).rawBody = buf?.length ? buf.toString("utf8") : "";
+      }
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan(env.NODE_ENV === "development" ? "dev" : "combined"));
 app.use(morgan(formatLogsJson, { stream: fluxLogsJson }));

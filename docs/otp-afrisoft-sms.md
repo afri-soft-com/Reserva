@@ -19,9 +19,11 @@
 MODE_SMS=simulation   # local : log console
 # MODE_SMS=production
 AFRISOFT_SMS_HUB_URL=https://sms.afri-soft.com
-AFRISOFT_HUB_APP_ID=afrisoft-partenaire
-AFRISOFT_HUB_API_KEY=   # canal privé — jamais committer
+AFRISOFT_HUB_APP_ID=reserva   # fourni à l'onboarding AfriSoft (souvent partagé avec le pay hub)
+AFRISOFT_HUB_API_KEY=         # canal privé — jamais committer
 ```
+
+Paiements Mobile Money (même app_id / clé si multi-produit) : voir [`mobile-money-afrisoft-pay.md`](./mobile-money-afrisoft-pay.md).
 
 ## Deux applications (Android + iOS)
 
