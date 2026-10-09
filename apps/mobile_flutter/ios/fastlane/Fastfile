@@ -11,9 +11,10 @@ platform :ios do
       in_house: false
     )
 
-    # flutter build ipa → build/ios/ipa/*.ipa (Client + Pro)
-    ipas = Dir.glob("../build/ios/ipa/*.ipa")
-    UI.user_error!("Aucun IPA sous build/ios/ipa") if ipas.empty?
+    # cwd fastlane = ios/fastlane → remonter vers apps/mobile_flutter/build/ios/ipa
+    ipa_dir = File.expand_path("../../build/ios/ipa", __dir__)
+    ipas = Dir.glob(File.join(ipa_dir, "*.ipa"))
+    UI.user_error!("Aucun IPA sous #{ipa_dir} (#{Dir.glob(File.join(ipa_dir, '*')).inspect})") if ipas.empty?
 
     # 1er upload : metadata/screenshots incomplets → pas de submit auto review
     submit = ENV.fetch("ASC_SUBMIT_FOR_REVIEW", "false") == "true"

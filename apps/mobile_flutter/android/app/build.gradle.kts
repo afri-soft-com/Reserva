@@ -15,7 +15,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.reserva.reserva"
-    compileSdk = 36
+    compileSdk = 35
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -30,7 +30,8 @@ android {
     defaultConfig {
         applicationId = "com.reserva.client"
         minSdk = 24
-        targetSdk = flutter.targetSdkVersion
+        // Play Console rejette targetSdk 37 ("too low") avec Flutter 3.32 — pin 35
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
