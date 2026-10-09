@@ -404,20 +404,28 @@ jobs:
           keyAlias=$ANDROID_KEY_ALIAS
           storeFile=upload-keystore.jks
           EOF
-      - name: Install Android SDK platform 36
+      - name: Ensure Android SDK platform 36
         run: |
           set -euo pipefail
           SDKROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "SDKROOT=$SDKROOT"
+          if [ -d "$SDKROOT/platforms/android-36" ]; then
+            echo "platforms/android-36 déjà présent"
+            ls "$SDKROOT/platforms"
+            exit 0
+          fi
           SM=$(find "$SDKROOT" -type f -name sdkmanager 2>/dev/null | head -n1 || true)
           if [ -z "$SM" ]; then
-            echo "sdkmanager introuvable sous $SDKROOT — flutter precache android"
             flutter precache --android
-            SM=$(find "$SDKROOT" "$HOME/Android" /usr/lib/android-sdk -type f -name sdkmanager 2>/dev/null | head -n1 || true)
+            SM=$(find "$SDKROOT" "$HOME/Android" /usr/lib/android-sdk /usr/local/lib/android/sdk -type f -name sdkmanager 2>/dev/null | head -n1 || true)
           fi
           test -n "$SM"
-          echo "sdkmanager=$SM SDKROOT=$SDKROOT"
-          yes | "$SM" --sdk_root="$SDKROOT" --licenses >/dev/null || true
+          echo "sdkmanager=$SM — installation platforms;android-36"
+          # yes écrit dans un pipe fermé → exit 141 ; on ignore tant que le dossier existe
+          set +o pipefail
+          yes | "$SM" --sdk_root="$SDKROOT" --licenses >/dev/null 2>&1 || true
           yes | "$SM" --sdk_root="$SDKROOT" "platforms;android-36"
+          set -o pipefail
           test -d "$SDKROOT/platforms/android-36"
           ls "$SDKROOT/platforms"
       - name: Build App Bundles (Client + Pro)
