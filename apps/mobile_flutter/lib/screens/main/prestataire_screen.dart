@@ -31,7 +31,6 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
   List<dynamic> _services = [];
   AvisRecusData? _avisData;
   String? _profilStatut;
-  String? _kycStatut;
   String? _kycMotif;
   Map<String, dynamic>? _exigenceDocuments;
   Map<String, dynamic>? _abonnement;
@@ -65,7 +64,6 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
           _avisData = results[2] as AvisRecusData;
           final profil = results[3] as Map<String, dynamic>;
           _profilStatut = profil['statut'] as String?;
-          _kycStatut = profil['kycStatut'] as String?;
           _kycMotif = profil['kycMotifRejet'] as String?;
           _exigenceDocuments = profil['exigenceDocuments'] as Map<String, dynamic>?
               ?? (results[0] as DashboardData).exigenceDocuments;

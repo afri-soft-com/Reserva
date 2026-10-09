@@ -114,7 +114,10 @@ export async function executerParcoursEcriture(opts) {
     },
     client.token
   );
-  console.log("  statut", annulee.statut || "ANNULEE");
+  if (!annulee.annule && annulee.statut !== "ANNULEE") {
+    throw new Error(`Annulation inattendue: ${JSON.stringify(annulee).slice(0, 200)}`);
+  }
+  console.log("  annule", annulee.annule, "remboursé", annulee.montantRembourse);
 
   // --- 2. KYC admin ---
   console.log("→ KYC admin reviser (si dossier EN_REVUE)");

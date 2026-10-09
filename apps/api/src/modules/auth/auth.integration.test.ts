@@ -54,7 +54,7 @@ describe.skipIf(!run)("intégration API gateway", () => {
     expect(hotels.status).toBe(200);
     const villes = await api("GET", "/transport/villes", undefined, token);
     expect(villes.status).toBe(200);
-    const sim = await api("GET", "/economie/simulation?montant=10000&devise=CDF", undefined, token);
+    const sim = await api("GET", "/economie/simulation?prix=10000&devise=CDF", undefined, token);
     expect(sim.status).toBe(200);
     expect(sim.json.succes !== false).toBe(true);
   });

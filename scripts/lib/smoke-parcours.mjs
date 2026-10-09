@@ -141,7 +141,7 @@ export async function executerParcoursSmoke(opts) {
   console.log("  villes", Array.isArray(villes) ? villes.length : villes);
 
   console.log("→ Simulation tarification");
-  const sim = await get(gateway, "/economie/simulation?montant=10000&devise=CDF", token);
+  const sim = await get(gateway, "/economie/simulation?prix=10000&devise=CDF", token);
   console.log("  sim", JSON.stringify(sim).slice(0, 120));
 
   const ecriture =

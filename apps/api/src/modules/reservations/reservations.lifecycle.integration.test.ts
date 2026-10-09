@@ -85,6 +85,10 @@ describe.skipIf(!run)("cycle réservation → paiement → annulation", () => {
       clientToken
     );
     expect(cancel.status).toBeLessThan(400);
-    expect(cancel.data.statut).toBe("ANNULEE");
+    expect(cancel.data.annule).toBe(true);
+
+    const detail = await api("GET", `/reservations/${reservationId}`, undefined, clientToken);
+    expect(detail.status).toBeLessThan(400);
+    expect(detail.data.statut).toBe("ANNULEE");
   });
 });
