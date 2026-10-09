@@ -2,30 +2,21 @@
  * Checkout hôtel + transport — skip si GATEWAY_URL absent.
  */
 import { describe, it, expect, beforeAll } from "vitest";
+import { apiFetch } from "../../test/http";
 
 const GATEWAY = (process.env.GATEWAY_URL || "").replace(/\/$/, "");
 const PIN = process.env.SMOKE_ADMIN_PIN || "1234";
 const CLIENT = process.env.SMOKE_CLIENT_PHONE || "+243991234567";
 const run = Boolean(GATEWAY);
 
+const api = (method: string, path: string, body?: unknown, token?: string) =>
+  apiFetch(GATEWAY, method, path, body, token);
+
 function datePlus(jours: number) {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + jours);
   return d.toISOString().slice(0, 10);
-}
-
-async function api(method: string, path: string, body?: unknown, token?: string) {
-  const res = await fetch(`${GATEWAY}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  return { status: res.status, json, data: json.donnees ?? json };
 }
 
 describe.skipIf(!run)("checkout hôtel + transport", () => {

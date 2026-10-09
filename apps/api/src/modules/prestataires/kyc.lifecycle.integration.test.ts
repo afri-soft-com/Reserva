@@ -2,24 +2,15 @@
  * KYC admin reviser — skip si GATEWAY_URL absent.
  */
 import { describe, it, expect, beforeAll } from "vitest";
+import { apiFetch } from "../../test/http";
 
 const GATEWAY = (process.env.GATEWAY_URL || "").replace(/\/$/, "");
 const ADMIN = process.env.SMOKE_ADMIN_PHONE || "+243900000001";
 const PIN = process.env.SMOKE_ADMIN_PIN || "1234";
 const run = Boolean(GATEWAY);
 
-async function api(method: string, path: string, body?: unknown, token?: string) {
-  const res = await fetch(`${GATEWAY}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  return { status: res.status, data: json.donnees ?? json };
-}
+const api = (method: string, path: string, body?: unknown, token?: string) =>
+  apiFetch(GATEWAY, method, path, body, token);
 
 describe.skipIf(!run)("KYC admin", () => {
   let token = "";

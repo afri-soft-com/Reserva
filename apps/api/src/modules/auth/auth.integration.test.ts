@@ -1,48 +1,38 @@
 /**
- * Tests d'intégration API (HTTP) — nécessitent GATEWAY_URL ou API locale démarrée.
- * Skippés automatiquement si GATEWAY_URL absent (unitaires CI quality).
+ * Tests d'intégration API (HTTP) — nécessitent GATEWAY_URL.
+ * Skippés automatiquement si GATEWAY_URL absent.
  */
 import { describe, it, expect, beforeAll } from "vitest";
+import { apiFetch } from "../../test/http";
 
 const GATEWAY = (process.env.GATEWAY_URL || "").replace(/\/$/, "");
 const PHONE = process.env.SMOKE_ADMIN_PHONE || "+243900000001";
 const PIN = process.env.SMOKE_ADMIN_PIN || "1234";
 const run = Boolean(GATEWAY);
 
-async function api(method: string, path: string, body?: unknown, token?: string) {
-  const res = await fetch(`${GATEWAY}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  return { status: res.status, json };
-}
+const api = (method: string, path: string, body?: unknown, token?: string) =>
+  apiFetch(GATEWAY, method, path, body, token);
 
 describe.skipIf(!run)("intégration API gateway", () => {
   let token = "";
 
   beforeAll(async () => {
-    const { status, json } = await api("POST", "/auth/connexion", { telephone: PHONE, pin: PIN });
+    const { status, data } = await api("POST", "/auth/connexion", { telephone: PHONE, pin: PIN });
     expect(status).toBeLessThan(400);
-    token = json.donnees?.token || json.donnees?.accessToken || json.token;
+    token = String(data.token || data.accessToken || "");
     expect(token).toBeTruthy();
   });
 
   it("GET /sante opérationnel", async () => {
-    const { status, json } = await api("GET", "/sante");
+    const { status, data } = await api("GET", "/sante");
     expect(status).toBe(200);
-    const d = json.donnees || json;
-    expect(d.statut || d.base).toBeTruthy();
+    expect(data.statut || data.base).toBeTruthy();
   });
 
   it("profil admin authentifié", async () => {
-    const { status, json } = await api("GET", "/auth/profil", undefined, token);
+    const { status, data } = await api("GET", "/auth/profil", undefined, token);
     expect(status).toBe(200);
-    expect(json.donnees?.role || json.role).toBeTruthy();
+    expect(data.role).toBeTruthy();
   });
 
   it("pilotage + réservations admin", async () => {
@@ -69,3 +59,4 @@ describe.skipIf(!run)("intégration API gateway", () => {
     expect(sim.json.succes !== false).toBe(true);
   });
 });
+
