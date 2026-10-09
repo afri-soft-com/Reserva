@@ -461,7 +461,10 @@ jobs:
           "
       - name: CocoaPods
         working-directory: apps/mobile_flutter/ios
-        run: pod install --repo-update
+        run: |
+          flutter precache --ios
+          rm -f Podfile.lock
+          pod install --repo-update
       - name: Import signing + ExportOptions (Client + Pro)
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
