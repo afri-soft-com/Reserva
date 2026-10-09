@@ -59,7 +59,7 @@ services:
     region: frankfurt
     rootDir: .
     autoDeploy: false
-    buildCommand: npm ci && npm run build:shared && npm run db:generate && npm run build -w apps/api
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build:shared && npm run db:generate && npm run build -w apps/api
     startCommand: node scripts/backup-service.mjs core --allow-empty && node scripts/db-migrate-service.mjs core && npm run start -w apps/api
     healthCheckPath: /api/sante
     envVars:
@@ -80,7 +80,7 @@ services:
     region: frankfurt
     rootDir: .
     autoDeploy: false
-    buildCommand: npm ci && npm run build:shared && npm run db:generate:hotels && npm run build -w @reserva/hotels
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build:shared && npm run db:generate:hotels && npm run build -w @reserva/hotels
     startCommand: node scripts/backup-service.mjs hotels --allow-empty && node scripts/db-migrate-service.mjs hotels && npm run start -w @reserva/hotels
     healthCheckPath: /api/sante
     envVars:
@@ -99,7 +99,7 @@ services:
     region: frankfurt
     rootDir: .
     autoDeploy: false
-    buildCommand: npm ci && npm run build:shared && npm run db:generate:transport && npm run build -w @reserva/transport
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build:shared && npm run db:generate:transport && npm run build -w @reserva/transport
     startCommand: node scripts/backup-service.mjs transport --allow-empty && node scripts/db-migrate-service.mjs transport && npm run start -w @reserva/transport
     healthCheckPath: /api/sante
     envVars:
@@ -118,7 +118,7 @@ services:
     region: frankfurt
     rootDir: .
     autoDeploy: false
-    buildCommand: npm ci && npm run build:shared && npm run db:generate:booking && npm run build -w @reserva/booking
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build:shared && npm run db:generate:booking && npm run build -w @reserva/booking
     startCommand: node scripts/backup-service.mjs booking --allow-empty && node scripts/db-migrate-service.mjs booking && npm run start -w @reserva/booking
     healthCheckPath: /api/sante
     envVars:
@@ -141,7 +141,7 @@ services:
     region: frankfurt
     rootDir: .
     autoDeploy: false
-    buildCommand: npm ci && npm run build:shared && npm run build -w @reserva/gateway
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build:shared && npm run build -w @reserva/gateway
     startCommand: npm run start -w @reserva/gateway
     healthCheckPath: /api/sante
     envVars:
@@ -164,7 +164,7 @@ services:
     region: frankfurt
     rootDir: .
     autoDeploy: false
-    buildCommand: npm ci && npm run build:shared && npm run build -w apps/web
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build:shared && npm run build -w apps/web
     startCommand: npm run start -w apps/web
     healthCheckPath: /
     envVars:
