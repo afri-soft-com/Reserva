@@ -1,22 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:reserva/main.dart';
+import 'package:reserva/app_flavor.dart';
+import 'package:reserva/bootstrap.dart';
 import 'package:reserva/providers/auth_provider.dart';
+import 'package:reserva/providers/langue_provider.dart';
 import 'package:reserva/providers/theme_provider.dart';
 import 'package:reserva/theme.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    AppFlavorConfig.initialiser(AppFlavor.client);
+  });
+
   testWidgets('Lancer l\'app affiche le splash', (WidgetTester tester) async {
+    final auth = AuthProvider();
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider(create: (_) => AuthProvider()),
-          ChangeNotifierProvider(create: (_) => ThemeProvider()..initialiser()),
+          ChangeNotifierProvider.value(value: auth),
+          ChangeNotifierProvider(create: (_) => LangueProvider()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ],
-        child: const ReservaApp(),
+        child: ReservaApp(auth: auth),
       ),
     );
+    await tester.pump();
 
     expect(find.text('RESERVA'), findsOneWidget);
     expect(find.text('Réservez. Sereinement.'), findsOneWidget);
