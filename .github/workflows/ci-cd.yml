@@ -60,6 +60,11 @@ jobs:
           DATABASE_URL: postgresql://reserva:reserva@localhost:5432/reserva?schema=core
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: ci-jwt-secret-reserva-test-only
+          CRON_SECRET: ci-cron-secret
+          SERVICE_SECRET: ci-service-secret
+          MODE_PAIEMENT: simulation
+          MODE_SMS: simulation
+          PAIEMENT_SIM_DETERMINISTE: "1"
 
   security:
     name: Sécurité
