@@ -404,19 +404,22 @@ jobs:
           keyAlias=$ANDROID_KEY_ALIAS
           storeFile=upload-keystore.jks
           EOF
-      - name: Install Android SDK platform 38
+      - name: Install Android SDK platform 36
         run: |
           set -euo pipefail
-          SDKROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
+          SDKROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           SM=$(find "$SDKROOT" -type f -name sdkmanager 2>/dev/null | head -n1 || true)
           if [ -z "$SM" ]; then
             echo "sdkmanager introuvable sous $SDKROOT — flutter precache android"
             flutter precache --android
             SM=$(find "$SDKROOT" "$HOME/Android" /usr/lib/android-sdk -type f -name sdkmanager 2>/dev/null | head -n1 || true)
           fi
-          echo "sdkmanager=$SM"
-          yes | "$SM" --sdk_root="$SDKROOT" "platforms;android-38" "platforms;android-36" || true
-          ls "$SDKROOT/platforms" || true
+          test -n "$SM"
+          echo "sdkmanager=$SM SDKROOT=$SDKROOT"
+          yes | "$SM" --sdk_root="$SDKROOT" --licenses >/dev/null || true
+          yes | "$SM" --sdk_root="$SDKROOT" "platforms;android-36"
+          test -d "$SDKROOT/platforms/android-36"
+          ls "$SDKROOT/platforms"
       - name: Build App Bundles (Client + Pro)
         env:
           API_URL: ${{ secrets.API_URL_PROD }}

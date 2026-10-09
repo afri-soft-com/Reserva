@@ -15,8 +15,9 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.reserva.reserva"
-    compileSdk = 38
-    // ndkVersion: laisser Flutter/AGP choisir (pin NDK 27.0.12077973 échoue souvent sur runners)
+    // Play (août 2026+) exige API 36 ; platforms;android-38 n'existe pas encore
+    compileSdk = 36
+    // ndkVersion: laisser Flutter/AGP choisir (pin NDK échoue souvent sur runners)
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -30,8 +31,7 @@ android {
     defaultConfig {
         applicationId = "com.reserva.client"
         minSdk = 24
-        // Play (oct 2026) : targetSdk 37 rejeté « too low » → 38
-        targetSdk = 38
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
