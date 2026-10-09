@@ -9,7 +9,7 @@ platform :android do
     }.each do |package_name, aab|
       UI.user_error!("AAB introuvable: #{aab}") unless File.exist?(aab)
       UI.message("→ Play Store #{package_name}")
-      # internal = piste fiable CI ; PLAY_TRACK=production pour prod directe
+      # internal + draft = upload CI fiable ; PLAY_TRACK / PLAY_RELEASE_STATUS pour override
       upload_to_play_store(
         package_name: package_name,
         track: ENV.fetch("PLAY_TRACK", "internal"),
@@ -19,7 +19,8 @@ platform :android do
         skip_upload_images: true,
         skip_upload_screenshots: true,
         skip_upload_changelogs: true,
-        release_status: ENV.fetch("PLAY_RELEASE_STATUS", "completed")
+        release_status: ENV.fetch("PLAY_RELEASE_STATUS", "draft"),
+        ack_bundle_installation_warning: true
       )
     end
   end
