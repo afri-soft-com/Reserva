@@ -18,10 +18,6 @@ android {
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
-    buildFeatures {
-        resValues = true
-    }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
