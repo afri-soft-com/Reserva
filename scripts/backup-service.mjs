@@ -2,14 +2,18 @@
 /**
  * Backup PostgreSQL d'un schéma/service avant migration / db push.
  * Usage: node scripts/backup-service.mjs <core|hotels|booking|transport> [--allow-empty]
- * Env: DATABASE_URL (ou DATABASE_URL_CORE, etc.)
+ * Env:
+ *   DATABASE_URL (ou DATABASE_URL_CORE, etc.)
+ *   BACKUP_DIR — dossier persistant (ex. /var/data/backups sur disk Render)
+ *   BACKUP_KEEP — nb de dumps à conserver (défaut 40)
+ *   BACKUP_REQUIRE=1 — échoue si pg_dump indisponible (prod stricte)
  */
 import { spawnSync } from "node:child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const allowEmpty = process.argv.includes("--allow-empty");
+const allowEmpty = process.argv.includes("--allow-empty") && process.env.BACKUP_REQUIRE !== "1";
 const service = process.argv.slice(2).find((a) => !a.startsWith("-"));
 
 const envKeys = {
@@ -25,7 +29,9 @@ if (!service || !envKeys[service]) {
 }
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const backupDir = path.join(racine, "backups");
+const backupDir = process.env.BACKUP_DIR
+  ? path.resolve(process.env.BACKUP_DIR)
+  : path.join(racine, "backups");
 fs.mkdirSync(backupDir, { recursive: true });
 
 let url;
@@ -62,14 +68,22 @@ if (result.status !== 0) {
   process.exit(1);
 }
 
-console.log(`OK backup ${service} → ${dest}`);
+const size = fs.statSync(dest).size;
+console.log(`OK backup ${service} → ${dest} (${size} octets)`);
 
+const keep = Number(process.env.BACKUP_KEEP || 40);
 const anciens = fs
   .readdirSync(backupDir)
   .map((f) => path.join(backupDir, f))
-  .filter((p) => fs.statSync(p).isFile())
+  .filter((p) => {
+    try {
+      return fs.statSync(p).isFile() && p.endsWith(".sql");
+    } catch {
+      return false;
+    }
+  })
   .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
 
-for (const ancien of anciens.slice(40)) {
+for (const ancien of anciens.slice(keep)) {
   fs.unlinkSync(ancien);
 }

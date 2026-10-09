@@ -1,7 +1,7 @@
 name: CI/CD
 
-# Qualité → sécurité → régression → Render → smoke prod → Play Store + App Store
-# Déclenché sur main (clskas/Reserva et afri-soft-com/Reserva)
+# Qualité → sécurité → régression → mobile → Render → wait → smoke prod → stores
+# Dépôt prod : afri-soft-com/Reserva (branche main)
 
 on:
   push:
@@ -53,7 +53,7 @@ jobs:
       - run: npm ci
       - name: Init schémas Postgres
         run: PGPASSWORD=reserva psql -h localhost -U reserva -d reserva -f scripts/init-postgres.sql
-      - name: Build shared + lint + unit tests + builds
+      - name: Build shared + lint + coverage + builds
         run: npm run ci:quality
         env:
           NEXT_PUBLIC_API_URL: http://localhost:4000/api
@@ -121,6 +121,7 @@ jobs:
       CRON_SECRET: ci-cron-secret
       MODE_PAIEMENT: simulation
       MODE_SMS: simulation
+      MIGRATE_FALLBACK_PUSH: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -130,23 +131,24 @@ jobs:
       - run: npm ci
       - name: Init schémas Postgres
         run: PGPASSWORD=reserva psql -h localhost -U reserva -d reserva -f scripts/init-postgres.sql
-      - name: Setup bases + builds services
+      - name: Setup bases (backup → migrate) + builds
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
           npm run build:shared
           npm run db:generate
           npm run db:generate:hotels
           npm run db:generate:booking
           npm run db:generate:transport
           node scripts/backup-service.mjs core --allow-empty
-          DATABASE_URL="$DATABASE_URL_CORE" npm run db:push
+          DATABASE_URL="$DATABASE_URL_CORE" npm run db:migrate:core
           DATABASE_URL="$DATABASE_URL_CORE" npm run db:seed
           node scripts/backup-service.mjs hotels --allow-empty
-          DATABASE_URL="$DATABASE_URL_HOTELS" npm run db:push:hotels
+          DATABASE_URL="$DATABASE_URL_HOTELS" npm run db:migrate:hotels
           DATABASE_URL="$DATABASE_URL_HOTELS" npm run db:seed:hotels
           node scripts/backup-service.mjs booking --allow-empty
-          DATABASE_URL="$DATABASE_URL_BOOKING" npm run db:push:booking
+          DATABASE_URL="$DATABASE_URL_BOOKING" npm run db:migrate:booking
           node scripts/backup-service.mjs transport --allow-empty
-          DATABASE_URL="$DATABASE_URL_TRANSPORT" npm run db:push:transport
+          DATABASE_URL="$DATABASE_URL_TRANSPORT" npm run db:migrate:transport
           DATABASE_URL="$DATABASE_URL_TRANSPORT" npm run db:seed:transport
           npm run build:api
           npm run build -w @reserva/hotels
@@ -167,13 +169,16 @@ jobs:
           echo "--- logs plateforme ---"
           tail -n 200 /tmp/platform.log || true
           exit 1
-      - name: Vitest + smoke local
-        run: npm run ci:regression
+      - name: Vitest + intégration + smoke + OpenAPI + perf
+        run: |
+          npm run ci:regression
+          GATEWAY_URL=http://127.0.0.1:4000/api npm run test:integration
         env:
           GATEWAY_URL: http://127.0.0.1:4000/api
           SMOKE_ADMIN_PHONE: "+243900000001"
           SMOKE_ADMIN_PIN: "1234"
           DATABASE_URL: ${{ env.DATABASE_URL_CORE }}
+          PERF_FAIL_ON_SLOW: "0"
       - name: Build web admin
         run: npm run build:web
         env:
@@ -198,9 +203,28 @@ jobs:
           GATEWAY_URL: http://127.0.0.1:4000/api
           DATABASE_URL: ${{ env.DATABASE_URL_CORE }}
 
+  mobile-quality:
+    name: Mobile (analyze + test)
+    needs: [quality, security]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile_flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: dart analyze
+        run: dart analyze lib/
+      - name: flutter test
+        run: flutter test
+
   deploy-render:
     name: Déployer Render
-    needs: [quality, security, regression]
+    needs: [quality, security, regression, mobile-quality]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
@@ -250,8 +274,8 @@ jobs:
           deploy web "$SRV_WEB"
           echo "✓ Déploiements Render déclenchés via API"
 
-  smoke-prod:
-    name: Smoke production
+  wait-render:
+    name: Attendre Render Ready
     needs: [deploy-render]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -264,17 +288,56 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm ci
-      - name: Smoke prod
+      - run: npm ci --ignore-scripts
+      - name: Wait services live + ping gateway
+        run: npm run wait:render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
+          RENDER_SERVICE_HOTELS: ${{ secrets.RENDER_SERVICE_HOTELS }}
+          RENDER_SERVICE_TRANSPORT: ${{ secrets.RENDER_SERVICE_TRANSPORT }}
+          RENDER_SERVICE_BOOKING: ${{ secrets.RENDER_SERVICE_BOOKING }}
+          RENDER_SERVICE_GATEWAY: ${{ secrets.RENDER_SERVICE_GATEWAY }}
+          RENDER_SERVICE_WEB: ${{ secrets.RENDER_SERVICE_WEB }}
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          RENDER_WAIT_MS: "900000"
+
+  smoke-prod:
+    name: Smoke production
+    needs: [wait-render]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Smoke prod (strict — bloque stores)
         run: npm run smoke:prod
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
           SMOKE_ADMIN_PHONE: ${{ secrets.SMOKE_ADMIN_PHONE }}
           SMOKE_ADMIN_PIN: ${{ secrets.SMOKE_ADMIN_PIN }}
+      - name: Contrat OpenAPI prod
+        run: node scripts/check-openapi-contrat.mjs
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+      - name: Perf légère (informatif)
+        continue-on-error: true
+        run: node scripts/perf-smoke.mjs
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          PERF_SAMPLES: "15"
+          PERF_FAIL_ON_SLOW: "0"
 
   deploy-android:
     name: Play Store
-    needs: [smoke-prod]
+    needs: [smoke-prod, mobile-quality]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
@@ -346,7 +409,7 @@ jobs:
 
   deploy-ios:
     name: App Store
-    needs: [smoke-prod]
+    needs: [smoke-prod, mobile-quality]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: macos-14
     concurrency:
@@ -382,7 +445,6 @@ jobs:
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_PROVISION_PROFILE_CLIENT_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_CLIENT_BASE64 }}
           IOS_PROVISION_PROFILE_PRO_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_PRO_BASE64 }}
-          # Fallback si seuls les anciens secrets génériques existent
           IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
         run: |
           set -euo pipefail
@@ -425,7 +487,6 @@ jobs:
 
           sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.client.plist
           sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.pro.plist
-          # Compat ancien ExportOptions.plist s'il est encore référencé
           if [ -f ios/ExportOptions.plist ]; then
             sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.plist
           fi
