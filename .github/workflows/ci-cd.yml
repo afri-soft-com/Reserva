@@ -497,20 +497,19 @@ jobs:
 
           # Signing manuel Distribution (évite "No development certificates")
           TEAM=$(printf '%s' "$APPLE_TEAM_ID" | tr -d '\r\n')
-          # Remplacer iPhone Developer → Apple Distribution dans le projet Xcode
           sed -i.bak 's/iPhone Developer/Apple Distribution/g' ios/Runner.xcodeproj/project.pbxproj
-          cat >> ios/Flutter/Release-client.xcconfig <<EOF
-CODE_SIGN_STYLE=Manual
-CODE_SIGN_IDENTITY=Apple Distribution
-DEVELOPMENT_TEAM=${TEAM}
-PROVISIONING_PROFILE_SPECIFIER=RESERVA Client App Store
-EOF
-          cat >> ios/Flutter/Release-pro.xcconfig <<EOF
-CODE_SIGN_STYLE=Manual
-CODE_SIGN_IDENTITY=Apple Distribution
-DEVELOPMENT_TEAM=${TEAM}
-PROVISIONING_PROFILE_SPECIFIER=RESERVA Pro App Store
-EOF
+          {
+            echo "CODE_SIGN_STYLE=Manual"
+            echo "CODE_SIGN_IDENTITY=Apple Distribution"
+            echo "DEVELOPMENT_TEAM=${TEAM}"
+            echo "PROVISIONING_PROFILE_SPECIFIER=RESERVA Client App Store"
+          } >> ios/Flutter/Release-client.xcconfig
+          {
+            echo "CODE_SIGN_STYLE=Manual"
+            echo "CODE_SIGN_IDENTITY=Apple Distribution"
+            echo "DEVELOPMENT_TEAM=${TEAM}"
+            echo "PROVISIONING_PROFILE_SPECIFIER=RESERVA Pro App Store"
+          } >> ios/Flutter/Release-pro.xcconfig
 
           PROF_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROF_DIR"
