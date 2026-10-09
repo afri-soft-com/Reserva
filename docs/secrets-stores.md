@@ -91,7 +91,7 @@ gh secret set IOS_CERTIFICATE_PASSWORD -R afri-soft-com/Reserva -b "MOT_DE_PASSE
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("$PWD\Reserva_Client_AppStore.mobileprovision")) | gh secret set IOS_PROVISION_PROFILE_BASE64 -R afri-soft-com/Reserva
 ```
 
-> Si Client et Pro ont des profils distincts, dis-le : on pourra splitter en deux secrets (`_CLIENT` / `_PRO`).
+> Profils distincts déjà supportés : `IOS_PROVISION_PROFILE_CLIENT_BASE64` + `IOS_PROVISION_PROFILE_PRO_BASE64` (ExportOptions.client / .pro).
 
 **Bundle IDs :** `com.reserva.client` · `com.reserva.pro`
 

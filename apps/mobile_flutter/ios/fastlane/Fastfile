@@ -11,17 +11,19 @@ platform :ios do
       in_house: false
     )
 
-    # flutter build ipa produit un IPA nommé d'après le product ; on mappe par bundle
+    # flutter build ipa → build/ios/ipa/*.ipa (Client + Pro)
     ipas = Dir.glob("../build/ios/ipa/*.ipa")
     UI.user_error!("Aucun IPA sous build/ios/ipa") if ipas.empty?
 
-    # Déploie chaque IPA trouvé (client puis pro si deux builds)
+    # 1er upload : metadata/screenshots incomplets → pas de submit auto review
+    submit = ENV.fetch("ASC_SUBMIT_FOR_REVIEW", "false") == "true"
+
     ipas.sort.each do |ipa|
-      UI.message("→ App Store #{File.basename(ipa)}")
+      UI.message("→ App Store Connect #{File.basename(ipa)} (submit_for_review=#{submit})")
       upload_to_app_store(
         api_key: api_key,
         ipa: File.expand_path(ipa),
-        submit_for_review: true,
+        submit_for_review: submit,
         automatic_release: false,
         force: true,
         precheck_include_in_app_purchases: false,

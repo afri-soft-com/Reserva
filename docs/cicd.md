@@ -109,10 +109,12 @@ URLs publiques : gateway `reserva-gateway.onrender.com`, web `reserva-web-b9au.o
 | `APP_STORE_CONNECT_API_KEY_ID` | Key ID |
 | `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID |
 | `APP_STORE_CONNECT_API_KEY_P8` | contenu `.p8` |
-| `APPLE_TEAM_ID` | Team ID |
-| `IOS_CERTIFICATE_BASE64` | `.p12` base64 |
+| `APPLE_TEAM_ID` | Team ID (`SW53MG3W9P`) |
+| `IOS_CERTIFICATE_BASE64` | `.p12` Distribution base64 |
 | `IOS_CERTIFICATE_PASSWORD` | mot de passe `.p12` |
-| `IOS_PROVISION_PROFILE_BASE64` | profil App Store base64 |
+| `IOS_PROVISION_PROFILE_CLIENT_BASE64` | profil `com.reserva.client` |
+| `IOS_PROVISION_PROFILE_PRO_BASE64` | profil `com.reserva.pro` |
+| `IOS_PROVISION_PROFILE_BASE64` | (legacy) fallback Client |
 
 ## Scripts locaux
 
