@@ -41,22 +41,28 @@ async function ownerIdOf(serviceId) {
   return s.ownerId || null;
 }
 
-async function dumpBuildLogs(serviceId, name) {
+async function dumpLogs(serviceId, name, type) {
   try {
     const ownerId = await ownerIdOf(serviceId);
     if (!ownerId) return;
     const end = new Date();
-    const start = new Date(end.getTime() - 10 * 60 * 1000);
-    const url = `${API}/logs?ownerId=${ownerId}&resource=${serviceId}&type=build&startTime=${encodeURIComponent(start.toISOString())}&endTime=${encodeURIComponent(end.toISOString())}&limit=80`;
+    const start = new Date(end.getTime() - 15 * 60 * 1000);
+    const url = `${API}/logs?ownerId=${ownerId}&resource=${serviceId}&type=${type}&startTime=${encodeURIComponent(start.toISOString())}&endTime=${encodeURIComponent(end.toISOString())}&limit=100`;
     const res = await fetch(url, { headers });
     if (!res.ok) return;
     const data = await res.json();
     const lines = (data.logs || []).map((l) => l.message).filter(Boolean);
-    console.error(`\n── Logs build ${name} (extrait) ──`);
-    console.error(lines.slice(-40).join("\n"));
+    if (!lines.length) return;
+    console.error(`\n── Logs ${type} ${name} (extrait) ──`);
+    console.error(lines.slice(-50).join("\n"));
   } catch (e) {
-    console.error(`  (logs ${name} indisponibles: ${e.message})`);
+    console.error(`  (logs ${type} ${name} indisponibles: ${e.message})`);
   }
+}
+
+async function dumpFailureLogs(serviceId, name) {
+  await dumpLogs(serviceId, name, "build");
+  await dumpLogs(serviceId, name, "app");
 }
 
 async function main() {
@@ -68,7 +74,7 @@ async function main() {
   while (pending.size > 0) {
     if (Date.now() - start > maxMs) {
       console.error("Timeout Render. Restants:", [...pending.keys()].join(", "));
-      for (const [name, id] of pending) await dumpBuildLogs(id, name);
+      for (const [name, id] of pending) await dumpFailureLogs(id, name);
       process.exit(1);
     }
     for (const [name, id] of [...pending.entries()]) {
@@ -78,7 +84,7 @@ async function main() {
         console.log(`  ${name}: ${status}`);
         if (status === "live") pending.delete(name);
         if (["build_failed", "update_failed", "canceled", "deactivated"].includes(status)) {
-          await dumpBuildLogs(id, name);
+          await dumpFailureLogs(id, name);
           throw new Error(`Deploy ${name} en échec: ${status}`);
         }
       } catch (e) {
@@ -92,18 +98,26 @@ async function main() {
 
   const gateway = (process.env.GATEWAY_URL || "").replace(/\/$/, "");
   if (gateway) {
-    console.log("→ Ping gateway", gateway);
-    for (let i = 1; i <= 20; i++) {
-      try {
-        const res = await fetch(`${gateway}/sante`);
-        if (res.ok) {
-          console.log(`  gateway OK (tentative ${i})`);
-          break;
+    const pingPaths = gateway.endsWith("/api")
+      ? [`${gateway}/sante`]
+      : [`${gateway}/api/sante`, `${gateway}/sante`];
+    console.log("→ Ping gateway", pingPaths[0]);
+    let ok = false;
+    for (let i = 1; i <= 24; i++) {
+      for (const url of pingPaths) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            console.log(`  gateway OK ${url} (tentative ${i})`);
+            ok = true;
+            break;
+          }
+        } catch {
+          /* retry */
         }
-      } catch {
-        /* retry */
       }
-      if (i === 20) throw new Error("Gateway URL non joignable après Render live");
+      if (ok) break;
+      if (i === 24) throw new Error("Gateway URL non joignable après Render live");
       await new Promise((r) => setTimeout(r, 5000));
     }
   }
