@@ -9,16 +9,17 @@ platform :android do
     }.each do |package_name, aab|
       UI.user_error!("AAB introuvable: #{aab}") unless File.exist?(aab)
       UI.message("→ Play Store #{package_name}")
+      # internal = piste fiable CI ; PLAY_TRACK=production pour prod directe
       upload_to_play_store(
         package_name: package_name,
-        track: "production",
+        track: ENV.fetch("PLAY_TRACK", "internal"),
         aab: aab,
         json_key: "play-service-account.json",
         skip_upload_metadata: true,
         skip_upload_images: true,
         skip_upload_screenshots: true,
         skip_upload_changelogs: true,
-        release_status: "completed"
+        release_status: ENV.fetch("PLAY_RELEASE_STATUS", "completed")
       )
     end
   end

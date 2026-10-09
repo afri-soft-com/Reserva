@@ -226,6 +226,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: "3.47.7"
           cache: true
       - run: flutter pub get
       - name: dart analyze
@@ -362,7 +363,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
-      group: deploy-prod
+      group: deploy-play
       cancel-in-progress: false
     defaults:
       run:
@@ -376,6 +377,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: "3.47.7"
           cache: true
       - name: Flutter pub get
         run: flutter pub get
@@ -434,7 +436,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: macos-14
     concurrency:
-      group: deploy-prod
+      group: deploy-ios
       cancel-in-progress: false
     defaults:
       run:
@@ -444,6 +446,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: "3.47.7"
           cache: true
       - name: Flutter pub get
         run: flutter pub get
