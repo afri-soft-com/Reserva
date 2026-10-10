@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIQUES = ["/connexion", "/cgu", "/confidentialite", "/reinitialiser-pin"];
+const PUBLIQUES = ["/connexion", "/cgu", "/confidentialite", "/suppression-compte", "/reinitialiser-pin"];
 
 /** Routes legacy client/prestataire → redirection console admin */
 const BLOQUEES_PREFIXES = [

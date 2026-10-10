@@ -15,6 +15,7 @@ export function PiedDePage() {
           <ul className="mt-3 space-y-2 text-sm">
             <li><Link href="/cgu" className="text-gray-700 hover:text-primaire">Conditions d&apos;utilisation</Link></li>
             <li><Link href="/confidentialite" className="text-gray-700 hover:text-primaire">Confidentialité</Link></li>
+            <li><Link href="/suppression-compte" className="text-gray-700 hover:text-primaire">Suppression de compte</Link></li>
           </ul>
         </div>
       </div>

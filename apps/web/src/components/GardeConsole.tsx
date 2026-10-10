@@ -4,7 +4,7 @@ import { ReactNode, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "../lib/store-auth";
 
-const ROUTES_PUBLIQUES = ["/connexion", "/cgu", "/confidentialite", "/reinitialiser-pin"];
+const ROUTES_PUBLIQUES = ["/connexion", "/cgu", "/confidentialite", "/suppression-compte", "/reinitialiser-pin"];
 
 export function GardeConsole({ children }: { children: ReactNode }) {
   const pathname = usePathname();
