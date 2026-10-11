@@ -22,11 +22,12 @@ platform :android do
           skip_upload_images: true,
           skip_upload_screenshots: true,
           skip_upload_changelogs: true,
-          release_status: ENV.fetch("PLAY_RELEASE_STATUS", "draft"),
+          # completed = dispo immédiatement aux testeurs du track (internal)
+          release_status: ENV.fetch("PLAY_RELEASE_STATUS", "completed"),
           ack_bundle_installation_warning: true,
           timeout: 600,
-          # Évite les conflits d'edit si une review Play est en cours
-          changes_not_sent_for_review: ENV.fetch("PLAY_CHANGES_NOT_SENT_FOR_REVIEW", "true") == "true"
+          # true si une review Play bloque l'edit ; sinon false pour publier le track
+          changes_not_sent_for_review: ENV.fetch("PLAY_CHANGES_NOT_SENT_FOR_REVIEW", "false") == "true"
         )
       rescue => e
         msg = e.message.to_s
