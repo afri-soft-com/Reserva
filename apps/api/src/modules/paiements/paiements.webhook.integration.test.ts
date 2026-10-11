@@ -91,7 +91,8 @@ describe.skipIf(!run)("webhook AfriSoft (HMAC + ledger)", () => {
       }
       if (created) break;
     }
-    expect(created?.status).toBeLessThan(400);
+    expect(created, "aucun créneau SANTE libre pour le setup webhook").toBeTruthy();
+    expect(created!.status).toBeLessThan(400);
     const reservationId = created!.data.id as string;
 
     const accept = await api(

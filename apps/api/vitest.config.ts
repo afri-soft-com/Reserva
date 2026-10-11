@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["src/**/*.{test,spec}.ts"],
+    // Les *.integration.test.ts nécessitent GATEWAY_URL + seed ; lancés via test:integration:all
+    exclude: ["src/**/*.integration.test.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary"],
