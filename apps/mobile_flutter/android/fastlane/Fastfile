@@ -1,7 +1,7 @@
 default_platform(:android)
 
 platform :android do
-  desc "Upload AAB Client + Pro sur Google Play (production)"
+  desc "Upload AAB Client + Pro sur Google Play (internal draft)"
   lane :deploy do
     {
       "com.reserva.client" => File.expand_path("../../build/app/outputs/bundle/clientRelease/app-client-release.aab", __dir__),
@@ -9,19 +9,34 @@ platform :android do
     }.each do |package_name, aab|
       UI.user_error!("AAB introuvable: #{aab}") unless File.exist?(aab)
       UI.message("→ Play Store #{package_name}")
-      # internal + draft = upload CI fiable ; PLAY_TRACK / PLAY_RELEASE_STATUS pour override
-      upload_to_play_store(
-        package_name: package_name,
-        track: ENV.fetch("PLAY_TRACK", "internal"),
-        aab: aab,
-        json_key: "play-service-account.json",
-        skip_upload_metadata: true,
-        skip_upload_images: true,
-        skip_upload_screenshots: true,
-        skip_upload_changelogs: true,
-        release_status: ENV.fetch("PLAY_RELEASE_STATUS", "draft"),
-        ack_bundle_installation_warning: true
-      )
+      attempts = 0
+      begin
+        attempts += 1
+        # internal + draft = upload CI fiable ; PLAY_TRACK / PLAY_RELEASE_STATUS pour override
+        upload_to_play_store(
+          package_name: package_name,
+          track: ENV.fetch("PLAY_TRACK", "internal"),
+          aab: aab,
+          json_key: "play-service-account.json",
+          skip_upload_metadata: true,
+          skip_upload_images: true,
+          skip_upload_screenshots: true,
+          skip_upload_changelogs: true,
+          release_status: ENV.fetch("PLAY_RELEASE_STATUS", "draft"),
+          ack_bundle_installation_warning: true,
+          timeout: 600,
+          # Évite les conflits d'edit si une review Play est en cours
+          changes_not_sent_for_review: ENV.fetch("PLAY_CHANGES_NOT_SENT_FOR_REVIEW", "true") == "true"
+        )
+      rescue => e
+        msg = e.message.to_s
+        if attempts < 3 && msg.match?(/edit has expired|Edit.*expired|rateLimitExceeded|503|500/i)
+          UI.important("Play API retry #{attempts}/3 pour #{package_name}: #{msg}")
+          sleep(15 * attempts)
+          retry
+        end
+        raise
+      end
     end
   end
 end
