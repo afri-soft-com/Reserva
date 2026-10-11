@@ -35,34 +35,44 @@ describe.skipIf(!run)("cycle réservation → paiement → annulation", () => {
     const search = await api("GET", "/services?categorie=SANTE&parPage=10", undefined, clientToken);
     expect(search.status).toBe(200);
     const services = search.data.items || search.data || [];
-    const service = (Array.isArray(services) ? services : []).find(
+    const avecCreneaux = (Array.isArray(services) ? services : []).filter(
       (s: { creneaux?: unknown[] }) => (s.creneaux || []).length > 0
     );
-    expect(service?.id).toBeTruthy();
-    const creneau = service.creneaux[0];
-    expect(creneau?.id).toBeTruthy();
+    expect(avecCreneaux.length).toBeGreaterThan(0);
 
-    const created = await api(
-      "POST",
-      "/reservations",
-      {
-        serviceId: service.id,
-        creneauId: creneau.id,
-        notes: "vitest lifecycle",
-        acomptePourcent: 30,
-      },
-      clientToken
-    );
-    expect(created.status).toBeLessThan(400);
-    reservationId = created.data.id;
+    let created: Awaited<ReturnType<typeof api>> | null = null;
+    let service: { id: string; prix?: number; creneaux: { id: string }[] } | null = null;
+    for (const s of avecCreneaux) {
+      for (const creneau of s.creneaux || []) {
+        const attempt = await api(
+          "POST",
+          "/reservations",
+          {
+            serviceId: s.id,
+            creneauId: creneau.id,
+            notes: `vitest lifecycle ${Date.now()}`,
+            acomptePourcent: 30,
+          },
+          clientToken
+        );
+        if (attempt.status < 400) {
+          created = attempt;
+          service = s;
+          break;
+        }
+      }
+      if (created) break;
+    }
+    expect(created?.status).toBeLessThan(400);
+    reservationId = created!.data.id;
     expect(reservationId).toBeTruthy();
-    expect(created.data.statut).toBe("EN_ATTENTE");
+    expect(created!.data.statut).toBe("EN_ATTENTE");
 
     const accept = await api("POST", `/reservations/${reservationId}/repondre`, { accepter: true }, proToken);
     expect(accept.status).toBeLessThan(400);
     expect(accept.data.statut).toBe("CONFIRMEE");
 
-    const montant = created.data.montantAcompte || created.data.montantTotal || service.prix || 15000;
+    const montant = created!.data.montantAcompte || created!.data.montantTotal || service?.prix || 15000;
     const pay = await api(
       "POST",
       "/paiements",

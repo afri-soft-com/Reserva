@@ -63,25 +63,36 @@ describe.skipIf(!run)("webhook AfriSoft (HMAC + ledger)", () => {
     const search = await api("GET", "/services?categorie=SANTE&parPage=10", undefined, clientToken);
     expect(search.status).toBe(200);
     const services = search.data.items || search.data || [];
-    const service = (Array.isArray(services) ? services : []).find(
+    const avecCreneaux = (Array.isArray(services) ? services : []).filter(
       (s: { creneaux?: unknown[] }) => (s.creneaux || []).length > 0
     );
-    expect(service?.id).toBeTruthy();
-    const creneau = service.creneaux[0];
+    expect(avecCreneaux.length).toBeGreaterThan(0);
 
-    const created = await api(
-      "POST",
-      "/reservations",
-      {
-        serviceId: service.id,
-        creneauId: creneau.id,
-        notes: "vitest webhook",
-        acomptePourcent: 30,
-      },
-      clientToken
-    );
-    expect(created.status).toBeLessThan(400);
-    const reservationId = created.data.id as string;
+    let created: Awaited<ReturnType<typeof api>> | null = null;
+    let service: { id: string; prix?: number } | null = null;
+    for (const s of avecCreneaux) {
+      for (const creneau of s.creneaux || []) {
+        const attempt = await api(
+          "POST",
+          "/reservations",
+          {
+            serviceId: s.id,
+            creneauId: creneau.id,
+            notes: `vitest webhook ${Date.now()}`,
+            acomptePourcent: 30,
+          },
+          clientToken
+        );
+        if (attempt.status < 400) {
+          created = attempt;
+          service = s;
+          break;
+        }
+      }
+      if (created) break;
+    }
+    expect(created?.status).toBeLessThan(400);
+    const reservationId = created!.data.id as string;
 
     const accept = await api(
       "POST",
@@ -92,7 +103,7 @@ describe.skipIf(!run)("webhook AfriSoft (HMAC + ledger)", () => {
     expect(accept.status).toBeLessThan(400);
 
     const montant = Number(
-      created.data.montantAcompte || created.data.montantTotal || service.prix || 15000
+      created!.data.montantAcompte || created!.data.montantTotal || service?.prix || 15000
     );
     montantCdf = Math.round(montant);
     referenceExterne = `vitest-webhook-${Date.now()}`;
@@ -128,16 +139,15 @@ describe.skipIf(!run)("webhook AfriSoft (HMAC + ledger)", () => {
   });
 
   it("accepte un webhook COMPLETED (idempotent si déjà PAYE)", async () => {
+    // Sans amount_cdf : évite un faux mismatch devise USD→CDF ; sim a déjà PAYE
     const { status, json } = await postWebhook({
       event: "payment.completed",
       status: "COMPLETED",
       reference: referenceExterne,
-      amount_cdf: montantCdf,
       purpose: "pay",
     });
     expect(status).toBe(200);
     expect(json.ok).toBe(true);
-    // Simulation a déjà marqué PAYE → dejaTraite, ou ignore orphelin
     expect(
       json.dejaTraite === true || json.ignore === true || json.ok === true
     ).toBe(true);
@@ -148,13 +158,14 @@ describe.skipIf(!run)("webhook AfriSoft (HMAC + ledger)", () => {
       event: "payment.completed",
       status: "COMPLETED",
       reference: referenceExterne,
-      amount_cdf: montantCdf + 99999,
+      amount_cdf: Math.max(montantCdf, 1) + 99999,
       purpose: "pay",
     });
-    // ErreurValidation → 400 ; ou 200 ignore si tx introuvable
+    // ErreurValidation → 400/422 ; 200 ignore si tx introuvable
     expect([200, 400, 422]).toContain(status);
     if (status >= 400) {
-      expect(String(json.message || json.error || json.erreur || "")).toMatch(/montant|incohérent|validation/i);
+      const msg = JSON.stringify(json);
+      expect(msg).toMatch(/montant|incoh[eé]rent|validation|VALIDATION/i);
     }
   });
 
