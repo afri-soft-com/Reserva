@@ -1,0 +1,50 @@
+name: Hub smoke (manuel)
+
+# Vérifie gateway + hub AfriSoft (HMAC lecture) sans créer de paiement USSD.
+# Actions → Hub smoke → Run workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      gateway_url:
+        description: "GATEWAY_URL (ex: https://reserva-gateway.onrender.com/api)"
+        required: false
+        default: "https://reserva-gateway.onrender.com/api"
+
+concurrency:
+  group: hub-smoke-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  hub-readiness:
+    name: Hub readiness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Ping gateway + hub pay/SMS
+        env:
+          GATEWAY_URL: ${{ github.event.inputs.gateway_url || secrets.GATEWAY_URL }}
+          AFRISOFT_HUB_APP_ID: ${{ secrets.AFRISOFT_HUB_APP_ID }}
+          AFRISOFT_HUB_API_KEY: ${{ secrets.AFRISOFT_HUB_API_KEY }}
+          AFRISOFT_PAY_HUB_URL: ${{ secrets.AFRISOFT_PAY_HUB_URL }}
+          AFRISOFT_SMS_HUB_URL: ${{ secrets.AFRISOFT_SMS_HUB_URL }}
+          HUB_READINESS_REQUIRE: "1"
+        run: |
+          set -euo pipefail
+          if [ -z "${GATEWAY_URL:-}" ]; then
+            echo "GATEWAY_URL manquant (input ou secret)"
+            exit 1
+          fi
+          if [ -z "${AFRISOFT_HUB_API_KEY:-}" ] || [ -z "${AFRISOFT_HUB_APP_ID:-}" ]; then
+            echo "Secrets AFRISOFT_HUB_APP_ID / AFRISOFT_HUB_API_KEY requis pour ce workflow"
+            exit 1
+          fi
+          node scripts/hub-readiness.mjs
+          echo ""
+          echo "Rappel checklist:"
+          echo "  - MODE_PAIEMENT=production et MODE_SMS=production sur Render"
+          echo "  - Webhook URL enregistrée chez AfriSoft"
+          echo "  - Voir docs/mobile-money-afrisoft-pay.md et docs/checklist-production.md"

@@ -11,9 +11,14 @@ const common = {
   CRON_SECRET: process.env.CRON_SECRET || "ci-cron-secret",
   MODE_PAIEMENT: "simulation",
   MODE_SMS: "simulation",
+  /** Secret webhook CI — tests HMAC (paiements.webhook.integration.test.ts) */
+  AFRISOFT_HUB_WEBHOOK_SECRET:
+    process.env.AFRISOFT_HUB_WEBHOOK_SECRET || "ci-webhook-secret",
+  AFRISOFT_HUB_APP_ID: process.env.AFRISOFT_HUB_APP_ID || "reserva",
   WEB_URL: "http://127.0.0.1:3001",
   NODE_ENV: "development",
   REDIS_URL: process.env.REDIS_URL || "redis://127.0.0.1:6379",
+  PAIEMENT_SIM_DETERMINISTE: process.env.PAIEMENT_SIM_DETERMINISTE || "1",
 };
 
 const urlCore =

@@ -117,3 +117,5 @@ Dès que c’est prêt : *« les fichiers sont dans C:\Secrets\Reserva »* — l
 ## D. Ce qui est déjà fait (sans toi)
 
 Render + smoke : `RENDER_API_KEY`, IDs services, `GATEWAY_URL`, `SMOKE_ADMIN_*` — déjà sur GitHub.
+
+Hub readiness / Hub smoke : `AFRISOFT_HUB_APP_ID`, `AFRISOFT_HUB_API_KEY` (optionnel `AFRISOFT_PAY_HUB_URL`, `AFRISOFT_SMS_HUB_URL`).

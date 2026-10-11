@@ -32,10 +32,19 @@ async function loadSpec() {
 
 async function main() {
   console.log("→ Contrat OpenAPI");
+  const strict =
+    process.env.STRICT_OPENAPI === "1" ||
+    process.env.STRICT_OPENAPI === "true" ||
+    process.env.CI === "true";
   const { url, json } = await loadSpec();
   console.log("  source", url);
   const paths = Object.keys(json.paths || {});
   if (json._uiOnly) {
+    if (strict) {
+      throw new Error(
+        "Spec OpenAPI JSON absente (UI seule). Exposez /api-docs.json ou désactivez STRICT_OPENAPI."
+      );
+    }
     console.log("  UI swagger OK (spec JSON non exposée — check soft)");
     process.exit(0);
   }

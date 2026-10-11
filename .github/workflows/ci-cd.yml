@@ -127,9 +127,12 @@ jobs:
       CRON_SECRET: ci-cron-secret
       MODE_PAIEMENT: simulation
       MODE_SMS: simulation
+      AFRISOFT_HUB_WEBHOOK_SECRET: ci-webhook-secret
+      AFRISOFT_HUB_APP_ID: reserva
       MIGRATE_FALLBACK_PUSH: "1"
       PAIEMENT_SIM_DETERMINISTE: "1"
       SMOKE_WRITE: "1"
+      STRICT_OPENAPI: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -346,10 +349,26 @@ jobs:
           SMOKE_PRO_PHONE: ${{ secrets.SMOKE_PRO_PHONE }}
           SMOKE_WRITE: "1"
           PAIEMENT_SIM_DETERMINISTE: "1"
+      - name: Hub readiness (lecture seule — bloque si secrets hub présents)
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          AFRISOFT_HUB_APP_ID: ${{ secrets.AFRISOFT_HUB_APP_ID }}
+          AFRISOFT_HUB_API_KEY: ${{ secrets.AFRISOFT_HUB_API_KEY }}
+          AFRISOFT_PAY_HUB_URL: ${{ secrets.AFRISOFT_PAY_HUB_URL }}
+          AFRISOFT_SMS_HUB_URL: ${{ secrets.AFRISOFT_SMS_HUB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -n "${AFRISOFT_HUB_API_KEY:-}" ] && [ -n "${AFRISOFT_HUB_APP_ID:-}" ]; then
+            export HUB_READINESS_REQUIRE=1
+          else
+            echo "⚠ Secrets hub absents — readiness soft (stores non bloqués sur hub)"
+          fi
+          npm run hub:readiness
       - name: Contrat OpenAPI prod
         run: node scripts/check-openapi-contrat.mjs
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          STRICT_OPENAPI: "1"
       - name: Perf légère (informatif)
         continue-on-error: true
         run: node scripts/perf-smoke.mjs

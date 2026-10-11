@@ -60,3 +60,21 @@ describe.skipIf(!run)("intégration API gateway", () => {
   });
 });
 
+describe.skipIf(!run)("OTP SMS simulation (reset PIN)", () => {
+  const clientPhone = process.env.SMOKE_CLIENT_PHONE || "+243991234567";
+
+  it("demande OTP reset PIN OK et refuse un mauvais code", async () => {
+    const ask = await api("POST", "/auth/pin/reinitialiser/demander", {
+      telephone: clientPhone,
+    });
+    expect(ask.status).toBeLessThan(400);
+
+    const bad = await api("POST", "/auth/pin/reinitialiser/confirmer", {
+      telephone: clientPhone,
+      code: "000000",
+      nouveauPin: "1234",
+    });
+    expect(bad.status).toBeGreaterThanOrEqual(400);
+  });
+});
+

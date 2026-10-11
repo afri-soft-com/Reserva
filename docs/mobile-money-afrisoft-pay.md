@@ -62,6 +62,27 @@ Règles côté API :
 
 Minimum hub : **500 FC** (plancher SerdiPay prod souvent ≥ 2 300 FC).
 
+## Vérification hub manuelle (CI / ops)
+
+Sans créer de paiement USSD :
+
+```bash
+GATEWAY_URL=https://<gateway>/api \
+AFRISOFT_HUB_APP_ID=reserva \
+AFRISOFT_HUB_API_KEY=... \
+npm run hub:readiness
+```
+
+Ou **GitHub Actions** → workflow **Hub smoke (manuel)** ([`hub-smoke.yml`](../.github/workflows/hub-smoke.yml)).
+
+Le job **Smoke production** du pipeline principal appelle aussi `hub:readiness` après le smoke métier (bloquant si les secrets `AFRISOFT_HUB_*` sont présents dans GitHub).
+
+Tests automatiques associés (régression CI, mode simulation) :
+
+- `apps/api/src/modules/paiements/mobilemoney.adapter.test.ts`
+- `apps/api/src/modules/paiements/paiements.webhook.integration.test.ts`
+- `apps/api/src/modules/paiements/afrisoft-pay.hub.unit.test.ts`
+
 ## Lien OTP SMS
 
 Voir [`otp-afrisoft-sms.md`](./otp-afrisoft-sms.md) — même modèle HMAC, hub `sms.afri-soft.com`.

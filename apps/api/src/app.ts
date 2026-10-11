@@ -100,6 +100,9 @@ app.get("/api/sante", async (_req: Request, res: Response) => {
   }
 });
 
+app.get("/api-docs.json", (_req: Request, res: Response) => {
+  res.json(swaggerSpec);
+});
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
