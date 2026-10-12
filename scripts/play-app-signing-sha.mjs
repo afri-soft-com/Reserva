@@ -115,8 +115,69 @@ function fmtSha(buf) {
   return [...buf].map((b) => b.toString(16).padStart(2, '0')).join(':').toUpperCase();
 }
 
+/** Lit length-prefixed (uint32 LE) slices depuis un Buffer. */
+function readLenPrefixed(buf, offset) {
+  const len = buf.readUInt32LE(offset);
+  const start = offset + 4;
+  const end = start + len;
+  return { slice: buf.subarray(start, end), next: end };
+}
+
+/**
+ * Extrait le 1er certificat X.509 depuis le bloc APK Signature Scheme v2/v3
+ * (pas de META-INF sur les splits Play générés).
+ */
+function certFromApkSigningBlock(apk) {
+  const magic = Buffer.from('APK Sig Block 42');
+  const magicAt = apk.lastIndexOf(magic);
+  if (magicAt < 24) return null;
+  const blockSizeHigh = apk.readBigUInt64LE(magicAt - 8);
+  const blockSize = Number(blockSizeHigh);
+  const blockStart = magicAt + 16 - blockSize;
+  if (blockStart < 0) return null;
+  // pairs: from blockStart+8 to magicAt-8
+  let p = blockStart + 8;
+  const pairsEnd = magicAt - 8;
+  const V2 = 0x7109871a;
+  const V3 = 0xf05368c0;
+  while (p + 12 <= pairsEnd) {
+    const pairLen = Number(apk.readBigUInt64LE(p));
+    const id = apk.readUInt32LE(p + 8);
+    const value = apk.subarray(p + 12, p + 8 + pairLen);
+    p += 8 + pairLen;
+    if (id !== V2 && id !== V3) continue;
+    // signed-data sequence: length-prefixed signers
+    try {
+      const signers = readLenPrefixed(value, 0).slice;
+      const signer = readLenPrefixed(signers, 0).slice;
+      // signer: signedData, digests/signatures, publicKey — first field is signedData
+      const signedData = readLenPrefixed(signer, 0).slice;
+      // signedData: digests, certificates, attributes
+      let sd = 0;
+      const digests = readLenPrefixed(signedData, sd);
+      sd = digests.next;
+      const certs = readLenPrefixed(signedData, sd).slice;
+      const cert = readLenPrefixed(certs, 0).slice;
+      const x509 = new X509Certificate(cert);
+      return {
+        sha1: fmtSha(createHash('sha1').update(x509.raw).digest()),
+        sha256: fmtSha(createHash('sha256').update(x509.raw).digest()),
+        via: id === V2 ? 'apk-sig-v2' : 'apk-sig-v3',
+        subject: x509.subject,
+      };
+    } catch (e) {
+      console.log(`  apk-sig parse: ${e.message}`);
+    }
+  }
+  return null;
+}
+
 /** Extraire le certificat de signature d'un APK (ZIP) via apksigner/keytool si dispo, sinon parse META-INF. */
 function fingerprintsFromApk(apkPath) {
+  const apk = readFileSync(apkPath);
+  const fromBlock = certFromApkSigningBlock(apk);
+  if (fromBlock) return fromBlock;
+
   try {
     const out = execFileSync(
       'keytool',
@@ -131,7 +192,6 @@ function fingerprintsFromApk(apkPath) {
   }
 
   // Parse ZIP pour CERT.RSA / CERT.DSA
-  const apk = readFileSync(apkPath);
   const names = ['META-INF/CERT.RSA', 'META-INF/CERT.DSA', 'META-INF/ANDROIDD.RSA', 'META-INF/UPLOAD.RSA'];
   // Recherche naive des entrées .RSA dans le ZIP central directory
   let certDer = null;
