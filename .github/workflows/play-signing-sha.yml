@@ -14,10 +14,22 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: Install Android build-tools (apksigner)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: build-tools;35.0.0
       - name: Print SHA-1 / SHA-256
         env:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           echo "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
-          keytool -help >/dev/null
+          export PATH="$ANDROID_HOME/build-tools/35.0.0:$PATH"
+          apksigner --version || true
           PLAY_SA_JSON="$PWD/play-service-account.json" node scripts/play-app-signing-sha.mjs
+      - name: Upload downloaded APKs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-signing-apks
+          path: play-signing-*.apk
+          if-no-files-found: ignore

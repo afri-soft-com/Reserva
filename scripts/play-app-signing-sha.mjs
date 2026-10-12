@@ -324,28 +324,39 @@ async function dumpPackage(token, packageName) {
       console.log(`  WARNING: not a ZIP/APK, head=${buf.subarray(0, 120).toString('utf8')}`);
     }
 
-    // unzip + openssl en secours (souvent plus fiable que keytool -jarfile sur splits)
+    // Debug: présence du bloc de signature APK v2
+    const magicAt = buf.lastIndexOf(Buffer.from('APK Sig Block 42'));
+    console.log(`  APK Sig Block magic at offset ${magicAt} (len=${buf.length})`);
     try {
-      execFileSync('unzip', ['-o', '-q', apkPath, 'META-INF/*'], { cwd: dir, stdio: 'pipe' });
-      const metaInf = join(dir, 'META-INF');
-      const rsa = readdirSync(metaInf).find((f) => /\.(RSA|DSA|EC)$/i.test(f));
-      if (rsa) {
-        const pem = execFileSync(
-          'openssl',
-          ['pkcs7', '-inform', 'DER', '-in', join(metaInf, rsa), '-print_certs'],
-          { encoding: 'utf8' },
-        );
-        const x509 = new X509Certificate(pem);
-        const der = x509.raw;
-        console.log(`  [App Signing] SHA-1  : ${fmtSha(createHash('sha1').update(der).digest())}`);
-        console.log(`  [App Signing] SHA-256: ${fmtSha(createHash('sha256').update(der).digest())}`);
-        console.log(`  subject: ${x509.subject}`);
-        console.log('  (via openssl pkcs7)');
-        rmSync(dir, { recursive: true, force: true });
-        return;
-      }
+      const zipList = execFileSync('unzip', ['-l', apkPath], { encoding: 'utf8' }).split('\n').slice(0, 25);
+      console.log(zipList.map((l) => `  zip: ${l}`).join('\n'));
     } catch (e) {
-      console.log(`  openssl path: ${e.message}`);
+      console.log(`  unzip -l: ${e.message}`);
+    }
+
+    // apksigner (build-tools) si disponible
+    for (const bin of [
+      process.env.APKSIGNER,
+      'apksigner',
+      `${process.env.ANDROID_HOME || ''}/build-tools/35.0.0/apksigner`,
+      `${process.env.ANDROID_HOME || ''}/build-tools/34.0.0/apksigner`,
+    ].filter(Boolean)) {
+      try {
+        const out = execFileSync(bin, ['verify', '--print-certs', apkPath], { encoding: 'utf8' });
+        console.log(out);
+        const sha1 = out.match(/SHA-1 digest:\s*([0-9a-f:]+)/i)?.[1];
+        const sha256 = out.match(/SHA-256 digest:\s*([0-9a-f:]+)/i)?.[1];
+        if (sha1) {
+          console.log(`  [App Signing] SHA-1  : ${sha1.toUpperCase()}`);
+          if (sha256) console.log(`  [App Signing] SHA-256: ${sha256.toUpperCase()}`);
+          console.log('  (via apksigner)');
+          // garder l'APK pour artifact CI
+          writeFileSync(join(process.cwd(), `play-signing-${packageName}.apk`), buf);
+          return;
+        }
+      } catch {
+        /* try next */
+      }
     }
 
     const fp = fingerprintsFromApk(apkPath);
@@ -357,6 +368,7 @@ async function dumpPackage(token, packageName) {
     } else {
       console.log('  impossible d\'extraire le certificat');
     }
+    writeFileSync(join(process.cwd(), `play-signing-${packageName}.apk`), buf);
     rmSync(dir, { recursive: true, force: true });
   } finally {
     await api(token, 'DELETE', `/applications/${enc}/edits/${editId}`);
