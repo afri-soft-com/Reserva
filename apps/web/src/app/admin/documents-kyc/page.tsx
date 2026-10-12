@@ -93,9 +93,11 @@ export default function PageDocumentsKyc() {
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-gray-600">
           Cochez les documents obligatoires par catégorie. Tant qu&apos;ils ne sont pas téléchargés et validés,
-          les prestataires reçoivent des rappels dans l&apos;app. Après le délai (à partir de la sauvegarde de
-          la règle, pas de la création du compte), ils ne sont plus visibles ni réservables. Modifier et
-          réenregistrer redémarre le compte à rebours.
+          les prestataires concernés reçoivent un rappel dans l&apos;app. Après le délai ci-dessous (à partir
+          de l&apos;enregistrement de cette règle, pas de la création du compte), ils ne reçoivent plus les
+          notifications de réservation et ne sont plus visibles / réservables. Réenregistrer après un
+          changement redémarre le délai. Laissez l&apos;exigence <strong>désactivée</strong> pour autoriser
+          tous les prestataires à fonctionner sans documents au démarrage.
         </p>
       </div>
 

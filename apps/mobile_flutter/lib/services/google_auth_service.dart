@@ -3,11 +3,19 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../config.dart';
 
 class GoogleAuthService {
+  /// Client Web OAuth (public) — secours si --dart-define est vide (écrase defaultValue).
+  static const String _webClientIdFallback =
+      '473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com';
+
+  static String get _serverClientId {
+    final fromEnv = AppConfig.googleServerClientId.trim();
+    return fromEnv.isNotEmpty ? fromEnv : _webClientIdFallback;
+  }
+
   static GoogleSignIn get _client {
-    final serverId = AppConfig.googleServerClientId;
     return GoogleSignIn(
       scopes: const ['email', 'profile'],
-      serverClientId: serverId.isEmpty ? null : serverId,
+      serverClientId: _serverClientId,
     );
   }
 

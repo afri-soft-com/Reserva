@@ -108,9 +108,14 @@ class _KycScreenState extends State<KycScreen> {
 
   Future<String?> _uploader(ImageSource source) async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(source: source, imageQuality: 85, maxWidth: 1600);
+    final file = await picker.pickImage(source: source, imageQuality: 75, maxWidth: 1280);
     if (file == null) return null;
-    return ApiClient.uploadImage(file.path);
+    try {
+      return await ApiClient.uploadImage(file.path);
+    } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      throw Exception(msg.isEmpty ? 'Échec de l\'envoi de la photo. Réessayez.' : msg);
+    }
   }
 
   Future<void> _choisirImage(void Function(String url) onUrl) async {

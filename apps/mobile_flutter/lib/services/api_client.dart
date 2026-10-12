@@ -179,14 +179,27 @@ class ApiClient {
       request.headers['Authorization'] = 'Bearer $token';
     }
     request.files.add(await http.MultipartFile.fromPath('fichier', cheminFichier));
-    final streamed = await request.send().timeout(AppConfig.requeteTimeout);
+    final streamed = await request.send().timeout(const Duration(seconds: 60));
     final response = await http.Response.fromStream(streamed);
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    Map<String, dynamic> decoded;
+    try {
+      decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw Exception(
+        response.statusCode >= 400
+            ? 'Échec upload (${response.statusCode}). Vérifiez la connexion.'
+            : 'Réponse serveur invalide lors de l\'upload.',
+      );
+    }
     if (response.statusCode >= 400) {
       final erreur = decoded['erreur'] as Map<String, dynamic>?;
       throw Exception(erreur?['message'] as String? ?? 'Erreur upload image.');
     }
-    final donnees = decoded['donnees'] as Map<String, dynamic>;
-    return donnees['url'] as String;
+    final donnees = decoded['donnees'] as Map<String, dynamic>?;
+    final url = donnees?['url'] as String?;
+    if (url == null || url.isEmpty) {
+      throw Exception('URL de fichier manquante après upload.');
+    }
+    return url;
   }
 }

@@ -453,12 +453,14 @@ jobs:
           API_URL: ${{ secrets.API_URL_PROD }}
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
         run: |
+          # Ne jamais passer un dart-define vide (écrase le defaultValue Dart)
+          WEB_GID="${GOOGLE_SERVER_CLIENT_ID:-473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com}"
           flutter build appbundle --flavor client -t lib/main.dart --release \
             --dart-define=API_URL="$API_URL" \
-            --dart-define=GOOGLE_SERVER_CLIENT_ID="${GOOGLE_SERVER_CLIENT_ID:-}"
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID"
           flutter build appbundle --flavor pro -t lib/main_pro.dart --release \
             --dart-define=API_URL="$API_URL" \
-            --dart-define=GOOGLE_SERVER_CLIENT_ID="${GOOGLE_SERVER_CLIENT_ID:-}"
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID"
       - name: Setup Ruby / Fastlane
         uses: ruby/setup-ruby@v1
         with:
@@ -606,13 +608,14 @@ jobs:
         run: |
           security unlock-keychain -p "" reserva-ci.keychain-db || true
           security default-keychain -s reserva-ci.keychain-db || true
+          WEB_GID="${GOOGLE_SERVER_CLIENT_ID:-473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com}"
           flutter build ipa --flavor client -t lib/main.dart --release \
             --dart-define=API_URL="$API_URL" \
-            --dart-define=GOOGLE_SERVER_CLIENT_ID="${GOOGLE_SERVER_CLIENT_ID:-}" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
             --export-options-plist=ios/ExportOptions.client.plist
           flutter build ipa --flavor pro -t lib/main_pro.dart --release \
             --dart-define=API_URL="$API_URL" \
-            --dart-define=GOOGLE_SERVER_CLIENT_ID="${GOOGLE_SERVER_CLIENT_ID:-}" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
             --export-options-plist=ios/ExportOptions.pro.plist
       - name: Setup Ruby / Fastlane
         uses: ruby/setup-ruby@v1

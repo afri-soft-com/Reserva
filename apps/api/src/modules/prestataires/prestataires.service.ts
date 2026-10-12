@@ -75,6 +75,11 @@ export async function validerPrestataire(input: ValiderPrestataireInput) {
       data: { statut: "APPROUVE", motifRejet: null },
     });
     await attribuerPlanGratuit(approuve.id).catch(() => {});
+    const { genererEtEnvoyerCodeActivation } = await import("./activation.service");
+    const activation = await genererEtEnvoyerCodeActivation(prestataire.utilisateurId).catch((e) => {
+      console.error("[activation]", e);
+      return null;
+    });
     await prisma.notification.create({
       data: {
         utilisateurId: prestataire.utilisateurId,
@@ -84,7 +89,7 @@ export async function validerPrestataire(input: ValiderPrestataireInput) {
         type: "SYSTEME",
       },
     }).catch(() => {});
-    return approuve;
+    return { prestataire: approuve, activation };
   }
 
   if (!input.motifRejet) {

@@ -37,12 +37,70 @@ const KYC_COULEUR: Record<string, string> = {
   REFUSE: "text-red-700 bg-red-50",
 };
 
-function LienDoc({ url, label }: { url?: string | null; label: string }) {
-  if (!url) return <span className="text-gray-400">{label} — absent</span>;
+function CarteDocument({
+  url,
+  label,
+  pour,
+  motif,
+  peutReviser,
+  onApprouver,
+  onRejeter,
+  enCours,
+}: {
+  url?: string | null;
+  label: string;
+  pour?: string;
+  motif?: string | null;
+  peutReviser: boolean;
+  onApprouver: () => void;
+  onRejeter: () => void;
+  enCours: boolean;
+}) {
+  const present = !!url;
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primaire hover:underline">
-      {label} <ExternalLink className="h-3 w-3" />
-    </a>
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-semibold text-gray-900">{label}</p>
+          {pour && <p className="text-xs text-gray-500">Pour {pour}</p>}
+          {motif && <p className="mt-1 text-sm font-medium text-red-600">Motif : {motif}</p>}
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+            present ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+          }`}
+        >
+          {present ? "Fourni" : "Absent"}
+        </span>
+      </div>
+      {url ? (
+        <a href={url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm text-primaire hover:underline">
+          Voir le justificatif <ExternalLink className="h-3 w-3" />
+        </a>
+      ) : (
+        <p className="mt-2 text-sm text-gray-400">Aucun fichier</p>
+      )}
+      {peutReviser && present && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={enCours}
+            onClick={onApprouver}
+            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            Approuver
+          </button>
+          <button
+            type="button"
+            disabled={enCours}
+            onClick={onRejeter}
+            className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+          >
+            Rejeter
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -56,6 +114,12 @@ export default function PageAdminPrestataires() {
   const [dossierKyc, setDossierKyc] = useState<any | null>(null);
   const [motifRejet, setMotifRejet] = useState("");
   const [validationEnCours, setValidationEnCours] = useState(false);
+  const [activation, setActivation] = useState<{
+    codeActivation: string;
+    canal: string;
+    destinataire: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     charger();
@@ -87,16 +151,33 @@ export default function PageAdminPrestataires() {
     }
   }
 
+  function afficherActivation(data: any) {
+    const act = data?.activation;
+    if (act?.codeActivation) {
+      setActivation(act);
+      toastSucces(act.message || "Code d'activation envoyé.");
+    }
+  }
+
   async function handleValider(prestataireId: string, approuver: boolean) {
+    if (!approuver && !motifRejet.trim()) {
+      toastErreur("Indiquez un motif de rejet.");
+      return;
+    }
     setValidationEnCours(true);
     try {
-      await validerPrestataireAdmin({
+      const data = await validerPrestataireAdmin({
         prestataireId,
         approuver,
         motifRejet: approuver ? undefined : motifRejet || undefined,
       });
-      toastSucces(approuver ? "Prestataire approuvé avec succès." : "Prestataire rejeté.");
-      setPrestataireDetail(null);
+      if (approuver) {
+        afficherActivation(data);
+        toastSucces("Prestataire approuvé — code d'activation envoyé.");
+      } else {
+        toastSucces("Prestataire rejeté.");
+        setPrestataireDetail(null);
+      }
       setMotifRejet("");
       charger();
     } catch (err) {
@@ -106,28 +187,30 @@ export default function PageAdminPrestataires() {
     }
   }
 
-  async function handleReviserKyc(decision: "VALIDER" | "INFO_MANQUANTE" | "REFUSER") {
+  async function handleReviserKyc(decision: "VALIDER" | "INFO_MANQUANTE" | "REFUSER", motifForce?: string) {
     if (!prestataireDetail) return;
-    if (decision !== "VALIDER" && !motifRejet.trim()) {
+    const motif = (motifForce ?? motifRejet).trim();
+    if (decision !== "VALIDER" && !motif) {
       toastErreur("Indiquez un motif pour cette décision.");
       return;
     }
     setValidationEnCours(true);
     try {
-      await reviserKycAdmin({
+      const data = await reviserKycAdmin({
         prestataireId: prestataireDetail.id,
         decision,
-        motif: motifRejet.trim() || undefined,
+        motif: motif || undefined,
         approuverProfil: true,
       });
-      toastSucces(
-        decision === "VALIDER"
-          ? "KYC validé — profil approuvé."
-          : decision === "INFO_MANQUANTE"
-            ? "Demande d'informations envoyée."
-            : "KYC refusé."
-      );
-      setPrestataireDetail(null);
+      if (decision === "VALIDER") {
+        afficherActivation(data);
+        toastSucces("KYC validé — profil approuvé. Code d'activation envoyé.");
+      } else {
+        toastSucces(
+          decision === "INFO_MANQUANTE" ? "Demande d'informations envoyée." : "KYC / document refusé."
+        );
+        setPrestataireDetail(null);
+      }
       setMotifRejet("");
       charger();
     } catch (err) {
@@ -135,6 +218,12 @@ export default function PageAdminPrestataires() {
     } finally {
       setValidationEnCours(false);
     }
+  }
+
+  async function rejeterDocument(label: string) {
+    const motif = motifRejet.trim() || `Document invalide : ${label}`;
+    setMotifRejet(motif);
+    await handleReviserKyc("INFO_MANQUANTE", motif);
   }
 
   if (utilisateur?.role !== "ADMIN") {
@@ -259,12 +348,6 @@ export default function PageAdminPrestataires() {
                 <p><span className="font-semibold">RCCM :</span> {kyc?.rccm || "—"}</p>
                 <p><span className="font-semibold">NIF :</span> {kyc?.nif || "—"}</p>
                 <p className="sm:col-span-2"><span className="font-semibold">Adresse légale :</span> {kyc?.adresseLegale || "—"}</p>
-                <LienDoc url={kyc?.pieceIdentiteRectoUrl} label="CNI / pièce recto" />
-                <LienDoc url={kyc?.pieceIdentiteVersoUrl} label="Pièce verso" />
-                <LienDoc url={kyc?.selfieUrl} label="Selfie" />
-                <LienDoc url={kyc?.documentRccmUrl} label="Document RCCM" />
-                <LienDoc url={kyc?.documentNifUrl} label="Document NIF" />
-                <LienDoc url={kyc?.attestationUrl} label="Attestation" />
               </div>
               {kyc?.checklist?.manquants?.length > 0 && (
                 <p className="mt-3 text-xs text-amber-700">
@@ -273,10 +356,38 @@ export default function PageAdminPrestataires() {
               )}
             </div>
 
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {(
+                [
+                  ["pieceIdentiteRectoUrl", "Pièce d'identité (recto)"],
+                  ["pieceIdentiteVersoUrl", "Pièce d'identité (verso)"],
+                  ["selfieUrl", "Selfie (photo de profil)"],
+                  ["documentRccmUrl", "Document RCCM"],
+                  ["documentNifUrl", "Document NIF"],
+                  ["attestationUrl", "Attestation"],
+                ] as const
+              ).map(([cle, label]) => (
+                <CarteDocument
+                  key={cle}
+                  url={kyc?.[cle]}
+                  label={label}
+                  pour={prestataireDetail.nomEntreprise || prestataireDetail.utilisateur?.nom}
+                  motif={kycStatut === "INFO_MANQUANTE" || kycStatut === "REFUSE" ? kyc?.kycMotifRejet : null}
+                  peutReviser={!!peutReviserKyc}
+                  enCours={validationEnCours}
+                  onApprouver={() => toastSucces(`${label} noté OK — validez le dossier ci-dessous.`)}
+                  onRejeter={() => rejeterDocument(label)}
+                />
+              ))}
+            </div>
+
             {peutReviserKyc && (
               <div className="mt-6 space-y-3">
+                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                  Vous pouvez approuver le dossier : un code d&apos;activation sera envoyé (SMS ou e-mail Google).
+                </p>
                 <textarea
-                  placeholder="Motif (requis pour infos manquantes ou refus)"
+                  placeholder="Motif de rejet / infos manquantes (requis pour rejeter)"
                   value={motifRejet}
                   onChange={(e) => setMotifRejet(e.target.value)}
                   className="w-full rounded-lg border border-gray-300 p-3 text-sm outline-none focus:border-primaire"
@@ -284,13 +395,13 @@ export default function PageAdminPrestataires() {
                 />
                 <div className="flex flex-wrap gap-2">
                   <Bouton variante="primaire" taille="sm" chargement={validationEnCours} onClick={() => handleReviserKyc("VALIDER")} className="flex-1">
-                    Valider KYC + activer
-                  </Bouton>
-                  <Bouton variante="secondaire" taille="sm" chargement={validationEnCours} onClick={() => handleReviserKyc("INFO_MANQUANTE")} className="flex-1">
-                    Infos manquantes
+                    Documents OK — Approuver le dossier
                   </Bouton>
                   <Bouton variante="destructif" taille="sm" chargement={validationEnCours} onClick={() => handleReviserKyc("REFUSER")} className="flex-1">
-                    Refuser KYC
+                    Rejeter le dossier
+                  </Bouton>
+                  <Bouton variante="secondaire" taille="sm" chargement={validationEnCours} onClick={() => handleReviserKyc("INFO_MANQUANTE")} className="w-full">
+                    Demander des infos manquantes
                   </Bouton>
                 </div>
               </div>
@@ -299,7 +410,7 @@ export default function PageAdminPrestataires() {
             {prestataireDetail.statut === "EN_ATTENTE_VALIDATION" && (
               <div className="mt-6 space-y-3">
                 <p className="text-xs text-gray-500">
-                  L&apos;approbation est possible sans documents. Vous pourrez ensuite exiger le KYC via{" "}
+                  L&apos;approbation est possible sans documents. Exigez-les plus tard via{" "}
                   <a href="/admin/documents-kyc" className="text-primaire underline">Documents &amp; KYC</a>.
                 </p>
                 <textarea
@@ -319,6 +430,39 @@ export default function PageAdminPrestataires() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {activation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-start justify-between">
+              <h3 className="text-lg font-extrabold text-gray-900">Activation du compte</h3>
+              <button type="button" onClick={() => setActivation(null)} aria-label="Fermer">
+                <X className="h-5 w-5 text-gray-400" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600">{activation.message}</p>
+            <div className="mt-4 rounded-xl bg-emerald-50 p-4 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Code d&apos;activation</p>
+              <p className="mt-1 font-mono text-3xl font-extrabold tracking-widest text-emerald-900">
+                {activation.codeActivation}
+              </p>
+              <p className="mt-2 text-xs text-emerald-800">
+                Canal : {activation.canal} → {activation.destinataire}
+              </p>
+            </div>
+            <Bouton
+              variante="primaire"
+              className="mt-5 w-full"
+              onClick={() => {
+                setActivation(null);
+                setPrestataireDetail(null);
+              }}
+            >
+              Fermer
+            </Bouton>
           </div>
         </div>
       )}

@@ -6,8 +6,11 @@ export const CLE_KYC_EXIGENCE = "KYC_EXIGENCE_JSON";
 /** Documents exigibles (cases à cocher admin, par catégorie) */
 export const DOCUMENTS_KYC_DISPO = [
   { id: "piece_identite", libelle: "Carte d'identité / passeport" },
-  { id: "selfie", libelle: "Photo récente (selfie)" },
   { id: "permis", libelle: "Permis de conduire" },
+  { id: "assurance_vehicule", libelle: "Assurance véhicule" },
+  { id: "selfie", libelle: "Photo récente (profil)" },
+  { id: "carte_rose", libelle: "Carte rose" },
+  { id: "visite_technique", libelle: "Visite technique" },
   { id: "rccm", libelle: "RCCM" },
   { id: "nif", libelle: "NIF" },
   { id: "attestation", libelle: "Attestation / justificatif" },
@@ -138,6 +141,10 @@ function docPresent(p: PrestataireDocs, docId: DocKycId): boolean {
       return !!p.selfieUrl;
     case "permis":
       return p.pieceIdentiteType === "PERMIS" && !!p.pieceIdentiteRectoUrl;
+    case "assurance_vehicule":
+    case "carte_rose":
+    case "visite_technique":
+      return !!(p.attestationUrl || p.documentJustificatifUrl);
     case "rccm":
       return !!(p.rccm && p.documentRccmUrl);
     case "nif":

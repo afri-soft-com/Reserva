@@ -215,6 +215,15 @@ export async function reviserKyc(adminId: string, input: ReviserKycInput) {
       await attribuerPlanGratuit(misAJour.id).catch(() => {});
     }
 
+    let activation = null;
+    if (approuverProfil) {
+      const { genererEtEnvoyerCodeActivation } = await import("./activation.service");
+      activation = await genererEtEnvoyerCodeActivation(prestataire.utilisateurId).catch((e) => {
+        console.error("[activation]", e);
+        return null;
+      });
+    }
+
     await notifierKyc(
       prestataire.utilisateurId,
       "KYC validé",
@@ -223,7 +232,7 @@ export async function reviserKyc(adminId: string, input: ReviserKycInput) {
         : "Votre dossier KYC est validé. L'activation du profil sera confirmée sous peu."
     );
 
-    return misAJour;
+    return { prestataire: misAJour, activation };
   }
 
   if (input.decision === "INFO_MANQUANTE") {
