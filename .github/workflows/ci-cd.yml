@@ -465,6 +465,13 @@ jobs:
           ruby-version: "3.2"
           bundler-cache: true
           working-directory: apps/mobile_flutter/android
+      - name: Print Play App Signing SHA (Google Sign-In)
+        working-directory: .
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
+          PLAY_SA_JSON="$PWD/play-service-account.json" node scripts/play-app-signing-sha.mjs || true
       - name: Upload Play Store (Client + Pro)
         working-directory: apps/mobile_flutter/android
         env:

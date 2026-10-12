@@ -71,7 +71,9 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
         context.go('/accueil');
       }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      if (mounted) {
+        ToastWidget.show(context, GoogleAuthService.messageErreur(e), type: 'erreur');
+      }
     } finally {
       if (mounted) setState(() => _chargementGoogle = false);
     }
