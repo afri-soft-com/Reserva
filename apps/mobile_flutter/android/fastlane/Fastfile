@@ -1,7 +1,7 @@
 default_platform(:android)
 
 platform :android do
-  desc "Upload AAB Client + Pro sur Google Play (internal draft)"
+  desc "Upload AAB Client + Pro sur Google Play (internal, completed)"
   lane :deploy do
     {
       "com.reserva.client" => File.expand_path("../../build/app/outputs/bundle/clientRelease/app-client-release.aab", __dir__),
@@ -12,7 +12,7 @@ platform :android do
       attempts = 0
       begin
         attempts += 1
-        # internal + draft = upload CI fiable ; PLAY_TRACK / PLAY_RELEASE_STATUS pour override
+        # internal + completed = dispo aux testeurs ; PLAY_TRACK / PLAY_RELEASE_STATUS pour override
         upload_to_play_store(
           package_name: package_name,
           track: ENV.fetch("PLAY_TRACK", "internal"),

@@ -39,6 +39,17 @@ SHA-1 debug :
 keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android
 ```
 
+### Play Store (erreur Google `10` / DEVELOPER_ERROR)
+
+Les builds **Internal / Production** sont resignées par Google Play. Il faut aussi le SHA-1 **App signing key** (pas seulement l’upload keystore) :
+
+1. Play Console → app → **Setup → App integrity** (or **Release → Setup → App signing**)
+2. Copier **SHA-1 certificate fingerprint** de la **App signing key**
+3. Google Cloud → Clients OAuth Android (`com.reserva.client` / `com.reserva.pro`) → ajouter ce SHA-1  
+   (souvent un client Android **par** SHA : debug, upload, Play App signing)
+
+Sans le SHA-1 Play App Signing, `PlatformException(sign_in_failed, … 10:)` persiste sur les APK/AAB installés via Play.
+
 ## Mode simulation (dev sans Google Cloud)
 
 ```env
