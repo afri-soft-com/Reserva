@@ -53,7 +53,7 @@ async function getAccessToken(sa) {
   return body.access_token;
 }
 
-async function api(token, method, path, { body, raw } = {}) {
+async function api(token, method, path, { body, raw, redirect = 'follow' } = {}) {
   const res = await fetch(`https://androidpublisher.googleapis.com/androidpublisher/v3${path}`, {
     method,
     headers: {
@@ -61,11 +61,11 @@ async function api(token, method, path, { body, raw } = {}) {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    redirect: 'follow',
+    redirect,
   });
   if (raw) {
     const buf = Buffer.from(await res.arrayBuffer());
-    return { ok: res.ok, status: res.status, buf, headers: res.headers };
+    return { ok: res.ok, status: res.status, buf, headers: res.headers, location: res.headers.get('location') };
   }
   const text = await res.text();
   let json;
@@ -75,6 +75,40 @@ async function api(token, method, path, { body, raw } = {}) {
     json = { raw: text };
   }
   return { ok: res.ok, status: res.status, json };
+}
+
+/** Télécharge un generated APK (302/204 + Location → URL signée). */
+async function downloadGeneratedApk(token, packageName, versionCode, downloadId) {
+  const enc = encodeURIComponent(packageName);
+  const path = `/applications/${enc}/generatedApks/${versionCode}/downloads/${encodeURIComponent(downloadId)}:download`;
+  const first = await api(token, 'GET', path, { raw: true, redirect: 'manual' });
+  let url = first.location;
+  if (!url && first.buf?.length && first.buf[0] === 0x7b) {
+    try {
+      url = JSON.parse(first.buf.toString('utf8')).downloadUrl;
+    } catch {
+      /* ignore */
+    }
+  }
+  if (!url && first.ok && first.buf?.length > 100 && first.buf[0] === 0x50) {
+    return first.buf;
+  }
+  if (!url) {
+    // retry with alt=media
+    const media = await api(token, 'GET', `${path}?alt=media`, { raw: true, redirect: 'manual' });
+    url = media.location;
+    if (!url && media.buf?.length > 100 && media.buf[0] === 0x50) return media.buf;
+    if (!url) {
+      console.log(`  download meta HTTP ${first.status}/${media.status} loc=${first.location || media.location || 'none'}`);
+      return null;
+    }
+  }
+  const r = await fetch(url);
+  if (!r.ok) {
+    console.log(`  signed URL HTTP ${r.status}`);
+    return null;
+  }
+  return Buffer.from(await r.arrayBuffer());
 }
 
 function fmtSha(buf) {
@@ -214,40 +248,26 @@ async function dumpPackage(token, packageName) {
       return;
     }
 
-    const dlPath = `/applications/${enc}/generatedApks/${vc}/downloads/${encodeURIComponent(split.downloadId)}:download`;
-    let dl = await api(token, 'GET', dlPath, { raw: true });
-    // Certains comptes renvoient un JSON { downloadUrl } au lieu du binaire
-    if (dl.ok && dl.buf?.length && dl.buf[0] === 0x7b /* { */) {
-      try {
-        const meta = JSON.parse(dl.buf.toString('utf8'));
-        if (meta.downloadUrl) {
-          const r = await fetch(meta.downloadUrl);
-          dl = { ok: r.ok, status: r.status, buf: Buffer.from(await r.arrayBuffer()) };
-        }
-      } catch {
-        /* keep original */
-      }
-    }
-    if (!dl.ok || !dl.buf?.length) {
-      console.log(`  download APK → HTTP ${dl.status} size=${dl.buf?.length || 0}`);
+    const buf = await downloadGeneratedApk(token, packageName, vc, split.downloadId);
+    if (!buf?.length) {
+      console.log('  download APK échoué');
       return;
     }
 
     const dir = join(tmpdir(), `reserva-play-sha-${packageName.replace(/\./g, '-')}`);
     mkdirSync(dir, { recursive: true });
     const apkPath = join(dir, 'base.apk');
-    writeFileSync(apkPath, dl.buf);
-    const magic = dl.buf.subarray(0, 4).toString('hex');
-    console.log(`  downloaded ${dl.buf.length} bytes (magic=${magic}) → ${apkPath}`);
+    writeFileSync(apkPath, buf);
+    const magic = buf.subarray(0, 4).toString('hex');
+    console.log(`  downloaded ${buf.length} bytes (magic=${magic}) → ${apkPath}`);
     if (magic !== '504b0304') {
-      console.log(`  WARNING: not a ZIP/APK, head=${dl.buf.subarray(0, 120).toString('utf8')}`);
+      console.log(`  WARNING: not a ZIP/APK, head=${buf.subarray(0, 120).toString('utf8')}`);
     }
 
     // unzip + openssl en secours (souvent plus fiable que keytool -jarfile sur splits)
     try {
       execFileSync('unzip', ['-o', '-q', apkPath, 'META-INF/*'], { cwd: dir, stdio: 'pipe' });
       const metaInf = join(dir, 'META-INF');
-      const { readdirSync } = await import('node:fs');
       const rsa = readdirSync(metaInf).find((f) => /\.(RSA|DSA|EC)$/i.test(f));
       if (rsa) {
         const pem = execFileSync(
