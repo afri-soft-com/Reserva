@@ -67,6 +67,7 @@ const NAV_GROUPES = [
       { href: "/admin/litiges", label: "Litiges / médiation", icon: Scale },
       { href: "/admin/notifications", label: "Notifications", icon: BellRing },
       { href: "/admin/messages", label: "Messages", icon: MessageCircle },
+      { href: "/admin/versions", label: "Versions apps", icon: Download },
       { href: "/admin/exports", label: "Exports", icon: Download },
       { href: "/admin/audits", label: "Audit", icon: ScrollText },
     ],

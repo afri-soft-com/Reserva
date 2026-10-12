@@ -5,6 +5,7 @@ import { PiedDePage } from "../components/PiedDePage";
 import { ConteneurToasts } from "../components/Toast";
 import { InitialiseurAuth } from "../components/InitialiseurAuth";
 import { GardeConsole } from "../components/GardeConsole";
+import { BanniereMiseAJour } from "../components/BanniereMiseAJour";
 
 export const metadata: Metadata = {
   title: "RESERVA — Console d'administration",
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
         <InitialiseurAuth>
+          <BanniereMiseAJour />
           <EnTete />
           <main className="animate-fade-in-up">
             <GardeConsole>{children}</GardeConsole>

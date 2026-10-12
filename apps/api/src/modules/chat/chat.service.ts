@@ -1,4 +1,6 @@
 import { prisma } from "../../config/prisma";
+import { ErreurInterdit, ErreurNonTrouve } from "../../utils/erreurs";
+import { obtenirIo } from "../../socket";
 
 export class ServiceChat {
   async listerConversations(utilisateurId: string, page: number, parPage: number) {
@@ -93,7 +95,7 @@ export class ServiceChat {
     const participant = await prisma.conversationParticipant.findUnique({
       where: { conversationId_utilisateurId: { conversationId, utilisateurId } },
     });
-    if (!participant) throw new Error("Vous n'êtes pas membre de cette conversation");
+    if (!participant) throw new ErreurInterdit("Vous n'êtes pas membre de cette conversation");
     const skip = (page - 1) * parPage;
     const [items, total] = await Promise.all([
       prisma.message.findMany({
@@ -114,14 +116,19 @@ export class ServiceChat {
     const participant = await prisma.conversationParticipant.findUnique({
       where: { conversationId_utilisateurId: { conversationId, utilisateurId: envoyeurId } },
     });
-    if (!participant) throw new Error("Vous n'êtes pas membre de cette conversation");
+    if (!participant) throw new ErreurInterdit("Vous n'êtes pas membre de cette conversation");
     const message = await prisma.message.create({
-      data: { conversationId, envoyeurId, contenu, imageUrl },
+      data: { conversationId, envoyeurId, contenu: contenu || (imageUrl ? "📷" : ""), imageUrl },
       include: {
         envoyeur: { select: { id: true, nom: true, role: true, photoUrl: true } },
       },
     });
     await prisma.conversation.update({ where: { id: conversationId }, data: { misAJourLe: new Date() } });
+    try {
+      obtenirIo().to(`conv:${conversationId}`).emit("nouveau-message", message);
+    } catch {
+      // Socket non initialisé (tests) — REST reste la source de vérité
+    }
     return message;
   }
 
@@ -129,7 +136,7 @@ export class ServiceChat {
     const participant = await prisma.conversationParticipant.findUnique({
       where: { conversationId_utilisateurId: { conversationId, utilisateurId } },
     });
-    if (!participant) throw new Error("Vous n'êtes pas membre de cette conversation");
+    if (!participant) throw new ErreurInterdit("Vous n'êtes pas membre de cette conversation");
     await prisma.conversationParticipant.update({
       where: { conversationId_utilisateurId: { conversationId, utilisateurId } },
       data: { derniereLecture: new Date() },
@@ -138,6 +145,11 @@ export class ServiceChat {
       where: { conversationId, envoyeurId: { not: utilisateurId }, lu: false },
       data: { lu: true, luLe: new Date() },
     });
+    try {
+      obtenirIo().to(`conv:${conversationId}`).emit("messages-lus", { conversationId, utilisateurId });
+    } catch {
+      /* ignore */
+    }
   }
 
   async obtenirOuCreerConversationAvecAdmin(utilisateurId: string) {
@@ -145,7 +157,7 @@ export class ServiceChat {
       where: { role: "ADMIN" },
       orderBy: { creeLe: "asc" },
     });
-    if (!admin) throw new Error("Aucun administrateur trouvé");
+    if (!admin) throw new ErreurNonTrouve("Aucun administrateur trouvé");
     return this.creerConversation(utilisateurId, admin.id, "Contact support");
   }
 }

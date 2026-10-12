@@ -6,9 +6,14 @@ export const schemaCreerConversation = z.object({
   reservationId: z.string().uuid().optional(),
 });
 
-export const schemaEnvoyerMessage = z.object({
-  contenu: z.string().min(1, "Le message ne peut pas être vide").max(2000, "Message trop long (2000 caractères max)"),
-});
+export const schemaEnvoyerMessage = z
+  .object({
+    contenu: z.string().max(2000, "Message trop long (2000 caractères max)").optional().default(""),
+    imageUrl: z.string().url("URL d'image invalide").optional(),
+  })
+  .refine((d) => (d.contenu?.trim().length ?? 0) > 0 || !!d.imageUrl, {
+    message: "Le message doit contenir du texte ou une image",
+  });
 
 export const schemaRechercheConversations = z.object({
   page: z.coerce.number().int().positive().default(1),

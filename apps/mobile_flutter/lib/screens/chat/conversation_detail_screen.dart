@@ -9,6 +9,7 @@ import '../../services/api_client.dart';
 import '../../services/socket_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/toast.dart';
+import 'appel_vocal_screen.dart';
 
 class ConversationDetailScreen extends StatefulWidget {
   final String conversationId;
@@ -226,7 +227,19 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
 
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
-      appBar: AppBar(title: const Text('Conversation')),
+      appBar: AppBar(
+        title: const Text('Conversation'),
+        actions: [
+          IconButton(
+            tooltip: 'Appel vocal',
+            icon: const Icon(Icons.call),
+            onPressed: () => lancerAppelVocal(
+              context,
+              conversationId: widget.conversationId,
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(

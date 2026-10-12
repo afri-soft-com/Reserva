@@ -7,6 +7,16 @@ import { prisma } from "./config/prisma";
 
 let io: Server;
 
+/** Accepte string ou { conversationId } depuis Flutter / web. */
+function idConversation(payload: unknown): string | null {
+  if (typeof payload === "string" && payload.trim()) return payload.trim();
+  if (payload && typeof payload === "object" && "conversationId" in payload) {
+    const id = (payload as { conversationId?: unknown }).conversationId;
+    if (typeof id === "string" && id.trim()) return id.trim();
+  }
+  return null;
+}
+
 export function initialiserSocket(serveur: HttpServer) {
   io = new Server(serveur, {
     cors: {
@@ -31,20 +41,25 @@ export function initialiserSocket(serveur: HttpServer) {
     const user = (socket as any).utilisateur as PayloadToken;
     console.log(`Socket connecté: ${user.telephone} (${user.role})`);
 
-    socket.on("rejoindre-conversation", (conversationId: string) => {
-      socket.join(`conv:${conversationId}`);
+    socket.on("rejoindre-conversation", (payload: unknown) => {
+      const conversationId = idConversation(payload);
+      if (conversationId) socket.join(`conv:${conversationId}`);
     });
 
-    socket.on("quitter-conversation", (conversationId: string) => {
-      socket.leave(`conv:${conversationId}`);
+    socket.on("quitter-conversation", (payload: unknown) => {
+      const conversationId = idConversation(payload);
+      if (conversationId) socket.leave(`conv:${conversationId}`);
     });
 
     socket.on("message-ecrit", async (donnees: { conversationId: string; contenu: string; imageUrl?: string }) => {
       try {
+        const conversationId = idConversation(donnees) || donnees?.conversationId;
+        if (!conversationId) return socket.emit("erreur", "conversationId manquant");
+
         const participant = await prisma.conversationParticipant.findUnique({
           where: {
             conversationId_utilisateurId: {
-              conversationId: donnees.conversationId,
+              conversationId,
               utilisateurId: user.utilisateurId,
             },
           },
@@ -53,9 +68,9 @@ export function initialiserSocket(serveur: HttpServer) {
 
         const message = await prisma.message.create({
           data: {
-            conversationId: donnees.conversationId,
+            conversationId,
             envoyeurId: user.utilisateurId,
-            contenu: donnees.contenu,
+            contenu: donnees.contenu || (donnees.imageUrl ? "📷" : ""),
             imageUrl: donnees.imageUrl,
           },
           include: {
@@ -64,21 +79,25 @@ export function initialiserSocket(serveur: HttpServer) {
         });
 
         await prisma.conversation.update({
-          where: { id: donnees.conversationId },
+          where: { id: conversationId },
           data: { misAJourLe: new Date() },
         });
 
-        io.to(`conv:${donnees.conversationId}`).emit("nouveau-message", message);
-      } catch (e) {
+        io.to(`conv:${conversationId}`).emit("nouveau-message", message);
+      } catch {
         socket.emit("erreur", "Erreur lors de l'envoi du message");
       }
     });
 
-    socket.on("tape", (conversationId: string) => {
+    socket.on("tape", (payload: unknown) => {
+      const conversationId = idConversation(payload);
+      if (!conversationId) return;
       socket.to(`conv:${conversationId}`).emit("tape", { conversationId, utilisateurId: user.utilisateurId });
     });
 
-    socket.on("marquer-lu", async (conversationId: string) => {
+    socket.on("marquer-lu", async (payload: unknown) => {
+      const conversationId = idConversation(payload);
+      if (!conversationId) return;
       await prisma.conversationParticipant.updateMany({
         where: { conversationId, utilisateurId: user.utilisateurId },
         data: { derniereLecture: new Date() },

@@ -7,6 +7,7 @@ import 'providers/langue_provider.dart';
 import 'providers/theme_provider.dart';
 import 'router.dart';
 import 'theme.dart';
+import 'widgets/mise_a_jour_gate.dart';
 
 Future<void> demarrerApp({required AppFlavor roleForce}) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +41,7 @@ class ReservaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: appTheme(),
       routerConfig: router,
+      builder: (context, child) => MiseAJourGate(child: child ?? const SizedBox.shrink()),
     );
   }
 }

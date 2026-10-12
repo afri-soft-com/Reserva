@@ -16,6 +16,7 @@ import '../../widgets/bouton.dart';
 import '../../widgets/toast.dart';
 import '../../widgets/qr_code_reservation.dart';
 import 'modifier_reservation_screen.dart';
+import '../chat/appel_vocal_screen.dart';
 
 class ReservationDetailScreen extends StatefulWidget {
   final String reservationId;
@@ -323,6 +324,17 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                 onPressed: () => _contacter(
                   estClient ? r.prestataire.utilisateurId : r.reservation.clientId,
                   estClient ? r.prestataire.nomEntreprise : 'le client',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Bouton(
+                titre: 'Appel vocal',
+                variante: 'secondaire',
+                icone: Icons.call,
+                onPressed: () => lancerAppelVocal(
+                  context,
+                  reservationId: widget.reservationId,
+                  titre: estClient ? r.prestataire.nomEntreprise : 'Client',
                 ),
               ),
             ],

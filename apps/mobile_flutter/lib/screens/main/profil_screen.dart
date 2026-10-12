@@ -13,6 +13,7 @@ import '../../widgets/toast.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/badge_notification.dart';
 import '../../services/api_avis.dart';
+import '../../services/api_chat.dart';
 
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({super.key});
@@ -215,6 +216,20 @@ class ProfilScreen extends StatelessWidget {
                     title: const Text('Messages', style: TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/conversations'),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.support_agent, color: AppCouleurs.primaire),
+                    title: const Text('Contacter le support', style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      try {
+                        final conv = await ApiChat.contacterAdmin();
+                        if (context.mounted) context.push('/conversations/${conv['id']}');
+                      } catch (e) {
+                        if (context.mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+                      }
+                    },
                   ),
                   const Divider(height: 1, indent: 56),
                   ListTile(
