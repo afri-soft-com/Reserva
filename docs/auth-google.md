@@ -43,12 +43,19 @@ keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androidd
 
 Les builds **Internal / Production** sont resignées par Google Play. Il faut aussi le SHA-1 **App signing key** (pas seulement l’upload keystore) :
 
-1. Play Console → app → **Setup → App integrity** (or **Release → Setup → App signing**)
-2. Copier **SHA-1 certificate fingerprint** de la **App signing key**
-3. Google Cloud → Clients OAuth Android (`com.reserva.client` / `com.reserva.pro`) → ajouter ce SHA-1  
-   (souvent un client Android **par** SHA : debug, upload, Play App signing)
+1. Google Cloud → **APIs & Services → Credentials** → clients OAuth **Android**
+2. Pour chaque package, créer un client (ou éditer) avec le SHA-1 **App Signing** ci-dessous  
+   (garder aussi debug + upload keystore)
 
-Sans le SHA-1 Play App Signing, `PlatformException(sign_in_failed, … 10:)` persiste sur les APK/AAB installés via Play.
+**SHA-1 Play App Signing (extraits CI `Play signing SHA`, 2026-10-12) :**
+
+| Package | SHA-1 |
+|---------|-------|
+| `com.reserva.client` | `71:7C:4A:C4:CA:A7:05:2A:8D:F0:96:6A:95:28:E2:11:10:D6:1C:F7` |
+| `com.reserva.pro` | `47:75:2F:F0:5A:53:29:09:69:9D:F3:5A:26:15:41:BC:63:49:5C:23` |
+
+Sans ces SHA-1, `PlatformException(sign_in_failed, … 10:)` persiste sur les installs Play.  
+Recalcul : Actions → workflow **Play signing SHA** (manuel).
 
 ## Mode simulation (dev sans Google Cloud)
 
