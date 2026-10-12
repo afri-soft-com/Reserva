@@ -6,7 +6,7 @@
  *   PLAY_SA_JSON=./play-service-account.json node scripts/play-app-signing-sha.mjs
  */
 import { createSign, createHash, X509Certificate } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -215,8 +215,19 @@ async function dumpPackage(token, packageName) {
     }
 
     const dlPath = `/applications/${enc}/generatedApks/${vc}/downloads/${encodeURIComponent(split.downloadId)}:download`;
-    // L'API renvoie souvent une redirection ; fetch suit déjà
-    const dl = await api(token, 'GET', `${dlPath}?alt=media`, { raw: true });
+    let dl = await api(token, 'GET', dlPath, { raw: true });
+    // Certains comptes renvoient un JSON { downloadUrl } au lieu du binaire
+    if (dl.ok && dl.buf?.length && dl.buf[0] === 0x7b /* { */) {
+      try {
+        const meta = JSON.parse(dl.buf.toString('utf8'));
+        if (meta.downloadUrl) {
+          const r = await fetch(meta.downloadUrl);
+          dl = { ok: r.ok, status: r.status, buf: Buffer.from(await r.arrayBuffer()) };
+        }
+      } catch {
+        /* keep original */
+      }
+    }
     if (!dl.ok || !dl.buf?.length) {
       console.log(`  download APK → HTTP ${dl.status} size=${dl.buf?.length || 0}`);
       return;
@@ -226,7 +237,36 @@ async function dumpPackage(token, packageName) {
     mkdirSync(dir, { recursive: true });
     const apkPath = join(dir, 'base.apk');
     writeFileSync(apkPath, dl.buf);
-    console.log(`  downloaded ${dl.buf.length} bytes → ${apkPath}`);
+    const magic = dl.buf.subarray(0, 4).toString('hex');
+    console.log(`  downloaded ${dl.buf.length} bytes (magic=${magic}) → ${apkPath}`);
+    if (magic !== '504b0304') {
+      console.log(`  WARNING: not a ZIP/APK, head=${dl.buf.subarray(0, 120).toString('utf8')}`);
+    }
+
+    // unzip + openssl en secours (souvent plus fiable que keytool -jarfile sur splits)
+    try {
+      execFileSync('unzip', ['-o', '-q', apkPath, 'META-INF/*'], { cwd: dir, stdio: 'pipe' });
+      const metaInf = join(dir, 'META-INF');
+      const { readdirSync } = await import('node:fs');
+      const rsa = readdirSync(metaInf).find((f) => /\.(RSA|DSA|EC)$/i.test(f));
+      if (rsa) {
+        const pem = execFileSync(
+          'openssl',
+          ['pkcs7', '-inform', 'DER', '-in', join(metaInf, rsa), '-print_certs'],
+          { encoding: 'utf8' },
+        );
+        const x509 = new X509Certificate(pem);
+        const der = x509.raw;
+        console.log(`  [App Signing] SHA-1  : ${fmtSha(createHash('sha1').update(der).digest())}`);
+        console.log(`  [App Signing] SHA-256: ${fmtSha(createHash('sha256').update(der).digest())}`);
+        console.log(`  subject: ${x509.subject}`);
+        console.log('  (via openssl pkcs7)');
+        rmSync(dir, { recursive: true, force: true });
+        return;
+      }
+    } catch (e) {
+      console.log(`  openssl path: ${e.message}`);
+    }
 
     const fp = fingerprintsFromApk(apkPath);
     if (fp) {
@@ -235,7 +275,7 @@ async function dumpPackage(token, packageName) {
       if (fp.subject) console.log(`  subject: ${fp.subject}`);
       console.log(`  (via ${fp.via})`);
     } else {
-      console.log('  impossible d\'extraire le certificat — installez keytool sur le runner');
+      console.log('  impossible d\'extraire le certificat');
     }
     rmSync(dir, { recursive: true, force: true });
   } finally {
