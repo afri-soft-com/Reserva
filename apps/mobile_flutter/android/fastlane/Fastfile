@@ -31,7 +31,7 @@ platform :android do
         )
       rescue => e
         msg = e.message.to_s
-        if attempts < 3 && msg.match?(/edit has expired|Edit.*expired|rateLimitExceeded|503|500/i)
+        if attempts < 3 && msg.match?(/edit has expired|Edit.*expired|Edit has been deleted|edit.*deleted|rateLimitExceeded|503|500/i)
           UI.important("Play API retry #{attempts}/3 pour #{package_name}: #{msg}")
           sleep(15 * attempts)
           retry
