@@ -10,3 +10,10 @@
 # Play Core
 -keep class com.google.android.play.core.** { *; }
 -dontwarn com.google.android.play.core.**
+
+# Google Sign-In / Play Services Auth (idToken)
+-keep class com.google.android.gms.auth.** { *; }
+-keep class com.google.android.gms.common.** { *; }
+-keep class com.google.api.client.** { *; }
+-keep class com.google.android.gms.signin.** { *; }
+-dontwarn com.google.android.gms.**

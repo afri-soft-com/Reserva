@@ -42,11 +42,22 @@ android {
             dimension = "app"
             applicationId = "com.reserva.client"
             resValue("string", "app_name", "RESERVA")
+            // Utilisé par certains plugins Google ; le Dart force aussi ce Web client ID.
+            resValue(
+                "string",
+                "default_web_client_id",
+                "473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com",
+            )
         }
         create("pro") {
             dimension = "app"
             applicationId = "com.reserva.pro"
             resValue("string", "app_name", "RESERVA Pro")
+            resValue(
+                "string",
+                "default_web_client_id",
+                "473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com",
+            )
         }
     }
 
