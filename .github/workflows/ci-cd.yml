@@ -380,7 +380,8 @@ jobs:
   deploy-android:
     name: Play Store
     needs: [smoke-prod, mobile-quality]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Uniquement le dépôt prod — clskas a un run_number plus bas → erreur Play « cannot upgrade »
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'afri-soft-com/Reserva'
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-play
@@ -453,8 +454,14 @@ jobs:
           API_URL: ${{ secrets.API_URL_PROD }}
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
         run: |
-          # Ne jamais passer un dart-define vide (écrase le defaultValue Dart)
-          WEB_GID="${GOOGLE_SERVER_CLIENT_ID:-473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com}"
+          # Secret vide ("") n'active pas ${VAR:-default} — forcer le Client ID Web RESERVA
+          FALLBACK_WEB_GID="473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com"
+          WEB_GID="${GOOGLE_SERVER_CLIENT_ID:-}"
+          case "$WEB_GID" in
+            *".apps.googleusercontent.com") ;;
+            *) WEB_GID="$FALLBACK_WEB_GID" ;;
+          esac
+          echo "GOOGLE_SERVER_CLIENT_ID pour AAB: ${WEB_GID:0:20}…"
           flutter build appbundle --flavor client -t lib/main.dart --release \
             --dart-define=API_URL="$API_URL" \
             --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID"
@@ -486,7 +493,7 @@ jobs:
   deploy-ios:
     name: App Store
     needs: [smoke-prod, mobile-quality]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'afri-soft-com/Reserva'
     # ASC exige iOS 26 SDK → Xcode 26+ (image macos-26)
     runs-on: macos-26
     concurrency:
@@ -608,7 +615,12 @@ jobs:
         run: |
           security unlock-keychain -p "" reserva-ci.keychain-db || true
           security default-keychain -s reserva-ci.keychain-db || true
-          WEB_GID="${GOOGLE_SERVER_CLIENT_ID:-473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com}"
+          FALLBACK_WEB_GID="473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com"
+          WEB_GID="${GOOGLE_SERVER_CLIENT_ID:-}"
+          case "$WEB_GID" in
+            *".apps.googleusercontent.com") ;;
+            *) WEB_GID="$FALLBACK_WEB_GID" ;;
+          esac
           flutter build ipa --flavor client -t lib/main.dart --release \
             --dart-define=API_URL="$API_URL" \
             --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
