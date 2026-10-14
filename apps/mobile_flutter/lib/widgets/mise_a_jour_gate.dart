@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -21,6 +22,7 @@ int comparerVersions(String a, String b) {
 }
 
 /// Soft banner + force blocking overlay selon /api/app/versions.
+/// La bannière disparaît dès que la version installée ≥ minSoft (après MAJ store).
 class MiseAJourGate extends StatefulWidget {
   final Widget child;
   const MiseAJourGate({super.key, required this.child});
@@ -29,21 +31,39 @@ class MiseAJourGate extends StatefulWidget {
   State<MiseAJourGate> createState() => _MiseAJourGateState();
 }
 
-class _MiseAJourGateState extends State<MiseAJourGate> {
+class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserver {
   String? _installee;
   String? _minSoft;
   String? _minForce;
   String? _storeUrl;
   bool _dismissSoft = false;
   bool _charge = true;
+  Timer? _poll;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _charger();
+    _poll = Timer.periodic(const Duration(minutes: 30), (_) => _charger(silencieux: true));
   }
 
-  Future<void> _charger() async {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Au retour du store / de l'arrière-plan : relecture version installée.
+    if (state == AppLifecycleState.resumed) {
+      _charger(silencieux: true);
+    }
+  }
+
+  Future<void> _charger({bool silencieux = false}) async {
     try {
       final info = await PackageInfo.fromPlatform();
       final versions = await ApiAppVersions.lire();
@@ -51,15 +71,25 @@ class _MiseAJourGateState extends State<MiseAJourGate> {
       final cfg = Map<String, dynamic>.from(versions[canal] as Map? ?? {});
       final android = cfg['storeUrlAndroid'] as String?;
       final ios = cfg['storeUrlIos'] as String?;
+      final installee = info.version;
+      final minSoft = cfg['minSoft'] as String? ?? '1.0.0';
+      final minForce = cfg['minForce'] as String? ?? '0.9.0';
+
+      if (!mounted) return;
       setState(() {
-        _installee = info.version;
-        _minSoft = cfg['minSoft'] as String? ?? '1.0.0';
-        _minForce = cfg['minForce'] as String? ?? '0.9.0';
+        _installee = installee;
+        _minSoft = minSoft;
+        _minForce = minForce;
         _storeUrl = Platform.isIOS ? ios : android;
         _charge = false;
+        // Dès que la MAJ est faite, la bannière disparaît (même si dismissée avant).
+        if (comparerVersions(installee, minSoft) >= 0) {
+          _dismissSoft = false;
+        }
       });
     } catch (_) {
-      if (mounted) setState(() => _charge = false);
+      if (mounted && !silencieux) setState(() => _charge = false);
+      else if (mounted && _charge) setState(() => _charge = false);
     }
   }
 
@@ -93,28 +123,39 @@ class _MiseAJourGateState extends State<MiseAJourGate> {
         widget.child,
         if (_soft)
           Positioned(
-            top: MediaQuery.paddingOf(context).top,
+            top: 0,
             left: 0,
             right: 0,
             child: Material(
+              elevation: 6,
               color: const Color(0xFF1A56DB),
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Row(
                     children: [
-                      const Expanded(
+                      const Icon(Icons.system_update_alt, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
                         child: Text(
-                          'Une mise à jour est disponible.',
-                          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                          'Mise à jour disponible (v$_installee → ≥ $_minSoft)',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       TextButton(
                         onPressed: _ouvrirStore,
-                        child: const Text('Mettre à jour', style: TextStyle(color: Colors.white)),
+                        child: const Text(
+                          'Mettre à jour',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                        ),
                       ),
                       IconButton(
+                        tooltip: 'Plus tard',
                         icon: const Icon(Icons.close, color: Colors.white70, size: 18),
                         onPressed: () => setState(() => _dismissSoft = true),
                       ),

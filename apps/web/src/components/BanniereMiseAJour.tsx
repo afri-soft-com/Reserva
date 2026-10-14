@@ -1,37 +1,76 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { comparerVersions, lireVersionsApp } from "../lib/api-app-versions";
+import { EVENT_SW_UPDATE, appliquerMiseAJourPwa } from "./EnregistreurPwa";
 
 const VERSION_WEB = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
 
-export function BanniereMiseAJour() {
-  const [mode, setMode] = useState<"none" | "soft" | "force">("none");
-  const [minForce, setMinForce] = useState("0.9.0");
-  const [dismiss, setDismiss] = useState(false);
+type Mode = "none" | "soft" | "force" | "pwa";
 
-  useEffect(() => {
-    let annule = false;
-    (async () => {
-      try {
-        const cfg = await lireVersionsApp();
-        if (annule) return;
-        const soft = cfg.web?.minSoft ?? "1.0.0";
-        const force = cfg.web?.minForce ?? "0.9.0";
-        setMinForce(force);
-        if (comparerVersions(VERSION_WEB, force) < 0) setMode("force");
-        else if (comparerVersions(VERSION_WEB, soft) < 0) setMode("soft");
-        else setMode("none");
-      } catch {
-        /* ignore réseau */
+/**
+ * Bannière / écran de mise à jour web :
+ * - soft/force selon /app/versions (minSoft / minForce)
+ * - pwa quand un nouveau service worker attend
+ * Disparaît après rechargement si la version installée ≥ seuils (ou SW activé).
+ */
+export function BanniereMiseAJour() {
+  const [mode, setMode] = useState<Mode>("none");
+  const [minForce, setMinForce] = useState("0.9.0");
+  const [minSoft, setMinSoft] = useState("1.0.0");
+  const [dismiss, setDismiss] = useState(false);
+  const [pwaDispo, setPwaDispo] = useState(false);
+
+  const evaluerApi = useCallback(async () => {
+    try {
+      const cfg = await lireVersionsApp();
+      const soft = cfg.web?.minSoft ?? "1.0.0";
+      const force = cfg.web?.minForce ?? "0.9.0";
+      setMinSoft(soft);
+      setMinForce(force);
+      if (comparerVersions(VERSION_WEB, force) < 0) {
+        setMode("force");
+        setDismiss(false);
+      } else if (comparerVersions(VERSION_WEB, soft) < 0) {
+        setMode("soft");
+      } else {
+        setMode((m) => (m === "force" || m === "soft" ? "none" : m));
       }
-    })();
-    return () => {
-      annule = true;
-    };
+    } catch {
+      /* ignore réseau */
+    }
   }, []);
 
-  if (mode === "force") {
+  useEffect(() => {
+    void evaluerApi();
+    const onSw = () => {
+      setPwaDispo(true);
+      setDismiss(false);
+    };
+    window.addEventListener(EVENT_SW_UPDATE, onSw);
+    const onFocus = () => {
+      void evaluerApi();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") onFocus();
+    });
+    const id = window.setInterval(() => void evaluerApi(), 5 * 60_000);
+    return () => {
+      window.removeEventListener(EVENT_SW_UPDATE, onSw);
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(id);
+    };
+  }, [evaluerApi]);
+
+  const afficherSoft = (mode === "soft" || (pwaDispo && mode !== "force")) && !dismiss;
+  const afficherForce = mode === "force";
+
+  async function recharger() {
+    await appliquerMiseAJourPwa();
+  }
+
+  if (afficherForce) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 p-6 text-center text-white">
         <div className="max-w-md space-y-4">
@@ -43,28 +82,39 @@ export function BanniereMiseAJour() {
           <button
             type="button"
             className="rounded-lg bg-[#1A56DB] px-5 py-2.5 font-semibold"
-            onClick={() => window.location.reload()}
+            onClick={() => void recharger()}
           >
-            Recharger
+            Recharger maintenant
           </button>
         </div>
       </div>
     );
   }
 
-  if (mode === "soft" && !dismiss) {
+  if (afficherSoft) {
+    const message = pwaDispo
+      ? "Une nouvelle version de la console est prête à être installée."
+      : `Une mise à jour est disponible (vous : v${VERSION_WEB}, requis : ≥ ${minSoft}).`;
     return (
-      <div className="flex items-center justify-between gap-3 bg-[#1A56DB] px-4 py-2 text-sm text-white">
-        <span>Une nouvelle version de la console est disponible.</span>
-        <div className="flex items-center gap-2">
+      <div
+        role="status"
+        className="sticky top-0 z-[90] flex items-center justify-between gap-3 bg-[#1A56DB] px-4 py-2.5 text-sm text-white shadow-md"
+      >
+        <span className="font-medium">{message}</span>
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            className="rounded bg-white/20 px-3 py-1 font-semibold hover:bg-white/30"
-            onClick={() => window.location.reload()}
+            className="rounded bg-white px-3 py-1 font-semibold text-[#1A56DB] hover:bg-blue-50"
+            onClick={() => void recharger()}
           >
-            Recharger
+            Mettre à jour
           </button>
-          <button type="button" className="opacity-80 hover:opacity-100" onClick={() => setDismiss(true)} aria-label="Fermer">
+          <button
+            type="button"
+            className="rounded px-2 py-1 opacity-80 hover:bg-white/10 hover:opacity-100"
+            onClick={() => setDismiss(true)}
+            aria-label="Fermer"
+          >
             ×
           </button>
         </div>

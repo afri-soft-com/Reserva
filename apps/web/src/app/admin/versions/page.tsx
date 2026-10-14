@@ -70,9 +70,12 @@ export default function PageVersions() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-gray-900">Versions apps</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Soft = bannière ; Force = écran bloquant. Les bannières disparaissent dès que
-          l&apos;app installée ≥ minSoft / minForce.
+        <p className="mt-1 max-w-3xl text-sm text-gray-500">
+          <strong>minSoft</strong> = bannière bleue « Mettre à jour » (fermable).{" "}
+          <strong>minForce</strong> = écran bloquant. Dès que l&apos;utilisateur installe une
+          version ≥ au seuil, la bannière disparaît automatiquement (mobile au retour du store ;
+          web après rechargement / activation PWA). Ex. pub store 1.0.2 → mettez minSoft à{" "}
+          <code className="rounded bg-gray-100 px-1">1.0.2</code> pour les clients encore en 1.0.1.
         </p>
       </div>
 

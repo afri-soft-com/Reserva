@@ -174,7 +174,7 @@ services:
       - fromGroup: reserva-prod
       - key: NEXT_PUBLIC_API_URL
         value: https://reserva-gateway.onrender.com/api
-      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
-        value: 473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com
+      - key: NEXT_PUBLIC_APP_VERSION
+        value: "1.0.1"
       - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
         value: 473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com

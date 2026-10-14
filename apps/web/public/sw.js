@@ -1,11 +1,10 @@
-/* RESERVA admin — service worker minimal (cache shell) */
-const CACHE = "reserva-admin-v1";
+/* RESERVA admin — service worker (cache shell + mise à jour contrôlée) */
+const CACHE = "reserva-admin-v2";
 const PRECACHE = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/logo.svg"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
-  );
+  // Ne pas skipWaiting ici : la page affiche la bannière puis envoie SKIP_WAITING.
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
 });
 
 self.addEventListener("activate", (event) => {
@@ -16,12 +15,17 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  // Network-first for API / HTML navigations ; cache-first for static assets
   if (url.pathname.startsWith("/api") || request.mode === "navigate") {
     event.respondWith(
       fetch(request)
