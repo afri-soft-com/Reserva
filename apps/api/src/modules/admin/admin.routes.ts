@@ -25,6 +25,41 @@ routesAdmin.get("/reservations", authentifier, exigerRole("ADMIN"), adminControl
 routesAdmin.get("/audits", authentifier, exigerRole("ADMIN"), adminController.listerAudits);
 routesAdmin.get("/prestataires", authentifier, exigerRole("ADMIN"), adminController.listerPrestataires);
 routesAdmin.get("/utilisateurs", authentifier, exigerRole("ADMIN"), adminController.listerUtilisateurs);
+const schemaCreerUtilisateur = z.object({
+  telephone: z.string().trim().min(9),
+  nom: z.string().trim().min(2).max(100),
+  email: z.string().email().optional().or(z.literal("")),
+  role: z.enum(["CLIENT", "ADMIN", "AGENT"]),
+  pin: z.string().regex(/^\d{4}$/),
+  langue: z.enum(["fr", "ln", "sw"]).optional(),
+});
+const schemaModifierUtilisateur = z.object({
+  nom: z.string().trim().min(2).max(100).optional(),
+  email: z.string().email().optional().nullable().or(z.literal("")),
+  role: z.enum(["CLIENT", "ADMIN", "AGENT", "PRESTATAIRE"]).optional(),
+  langue: z.enum(["fr", "ln", "sw"]).optional(),
+  pin: z.string().regex(/^\d{4}$/).optional(),
+});
+routesAdmin.post(
+  "/utilisateurs",
+  authentifier,
+  exigerRole("ADMIN"),
+  valider(schemaCreerUtilisateur),
+  adminController.creerUtilisateur
+);
+routesAdmin.patch(
+  "/utilisateurs/:utilisateurId",
+  authentifier,
+  exigerRole("ADMIN"),
+  valider(schemaModifierUtilisateur),
+  adminController.modifierUtilisateur
+);
+routesAdmin.delete(
+  "/utilisateurs/:utilisateurId",
+  authentifier,
+  exigerRole("ADMIN"),
+  adminController.supprimerUtilisateur
+);
 routesAdmin.post(
   "/utilisateurs/:utilisateurId/bloquer",
   authentifier,

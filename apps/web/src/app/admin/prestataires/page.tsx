@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, ExternalLink, Printer, Search, X } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur, toastSucces } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
-import { listerTousPrestatairesAdmin } from "../../../lib/api-paiements";
 import {
+  listerTousPrestatairesAdmin,
+  listerVillesAdmin,
   obtenirKycAdmin,
   reviserKycAdmin,
+  suspendrePrestataireAdmin,
+  telechargerExportAdmin,
   validerPrestataireAdmin,
 } from "../../../lib/api-admin";
+import { listerCategoriesAdmin } from "../../../lib/api-categories";
+import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 import { useAuthStore } from "../../../lib/store-auth";
 import { LIBELLES_CATEGORIE, LIBELLES_STATUT_KYC } from "@reserva/shared";
 
@@ -110,6 +115,14 @@ export default function PageAdminPrestataires() {
   const [chargement, setChargement] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [recherche, setRecherche] = useState("");
+  const [q, setQ] = useState("");
+  const [statutFiltre, setStatutFiltre] = useState("");
+  const [kycFiltre, setKycFiltre] = useState("");
+  const [villeFiltre, setVilleFiltre] = useState("");
+  const [categorieFiltre, setCategorieFiltre] = useState("");
+  const [villes, setVilles] = useState<string[]>([]);
+  const [categories, setCategories] = useState<{ code: string; libelle: string }[]>([]);
   const [prestataireDetail, setPrestataireDetail] = useState<any | null>(null);
   const [dossierKyc, setDossierKyc] = useState<any | null>(null);
   const [motifRejet, setMotifRejet] = useState("");
@@ -122,20 +135,47 @@ export default function PageAdminPrestataires() {
   } | null>(null);
 
   useEffect(() => {
+    Promise.all([
+      listerVillesAdmin().catch(() => [] as string[]),
+      listerCategoriesAdmin(true).catch(() => []),
+    ]).then(([v, c]) => {
+      setVilles(v);
+      setCategories(c.map((x) => ({ code: x.code, libelle: x.libelle })));
+    });
+  }, []);
+
+  useEffect(() => {
     charger();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, q, statutFiltre, kycFiltre, villeFiltre, categorieFiltre]);
 
   async function charger() {
     setChargement(true);
     try {
-      const resultat = await listerTousPrestatairesAdmin(page);
+      const resultat = await listerTousPrestatairesAdmin(page, 20, {
+        recherche: q || undefined,
+        statut: statutFiltre || undefined,
+        kycStatut: kycFiltre || undefined,
+        ville: villeFiltre || undefined,
+        categorie: categorieFiltre || undefined,
+      });
       setPrestataires(resultat.items);
       setTotalPages(resultat.totalPages);
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
     } finally {
       setChargement(false);
+    }
+  }
+
+  async function suspendre(p: any) {
+    if (!confirm(`Suspendre ${p.nomEntreprise} ?`)) return;
+    try {
+      await suspendrePrestataireAdmin(p.id);
+      toastSucces("Prestataire suspendu.");
+      await charger();
+    } catch (e) {
+      toastErreur(extraireMessageErreur(e));
     }
   }
 
@@ -240,11 +280,88 @@ export default function PageAdminPrestataires() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des prestataires</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Revue KYC (identité + entreprise) puis activation du profil.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Gestion des prestataires</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Revue KYC (identité + entreprise) puis activation du profil.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Bouton
+            variante="fantome"
+            taille="sm"
+            onClick={() =>
+              imprimerElement(
+                "Prestataires",
+                tableVersHtml(
+                  ["Entreprise", "Catégorie", "Ville", "Statut", "KYC"],
+                  prestataires.map((p) => [
+                    p.nomEntreprise,
+                    LIBELLES_CATEGORIE[p.categorie as keyof typeof LIBELLES_CATEGORIE] || p.categorie,
+                    p.ville,
+                    STATUT_LABEL[p.statut] || p.statut,
+                    LIBELLES_STATUT_KYC[p.kycStatut as keyof typeof LIBELLES_STATUT_KYC] || p.kycStatut || "—",
+                  ])
+                )
+              )
+            }
+          >
+            <Printer className="h-4 w-4" /> Imprimer
+          </Bouton>
+          <Bouton
+            variante="fantome"
+            taille="sm"
+            onClick={() => telechargerExportAdmin("prestataires").catch((e) => toastErreur(extraireMessageErreur(e)))}
+          >
+            Export CSV
+          </Bouton>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                setPage(1);
+                setQ(recherche.trim());
+              }
+            }}
+            placeholder="Entreprise, téléphone, ville…"
+            className="h-11 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm"
+          />
+        </div>
+        <Bouton taille="sm" onClick={() => { setPage(1); setQ(recherche.trim()); }}>
+          Rechercher
+        </Bouton>
+        <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={statutFiltre} onChange={(e) => { setPage(1); setStatutFiltre(e.target.value); }}>
+          <option value="">Tous statuts</option>
+          {Object.entries(STATUT_LABEL).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+        <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={kycFiltre} onChange={(e) => { setPage(1); setKycFiltre(e.target.value); }}>
+          <option value="">Tous KYC</option>
+          {Object.keys(LIBELLES_STATUT_KYC).map((k) => (
+            <option key={k} value={k}>{LIBELLES_STATUT_KYC[k as keyof typeof LIBELLES_STATUT_KYC]}</option>
+          ))}
+        </select>
+        <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={villeFiltre} onChange={(e) => { setPage(1); setVilleFiltre(e.target.value); }}>
+          <option value="">Toutes villes</option>
+          {villes.map((v) => (
+            <option key={v} value={v}>{v}</option>
+          ))}
+        </select>
+        <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={categorieFiltre} onChange={(e) => { setPage(1); setCategorieFiltre(e.target.value); }}>
+          <option value="">Toutes catégories</option>
+          {categories.map((c) => (
+            <option key={c.code} value={c.code}>{c.libelle}</option>
+          ))}
+        </select>
       </div>
 
       {chargement && <p className="text-gray-500">Chargement...</p>}
@@ -286,9 +403,16 @@ export default function PageAdminPrestataires() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{p.noteMoyenne?.toFixed(1) || "—"}</td>
                     <td className="px-4 py-3">
-                      <Bouton variante="fantome" taille="sm" onClick={() => ouvrirDetail(p)}>
-                        <Building2 className="h-4 w-4" /> Détails
-                      </Bouton>
+                      <div className="flex flex-wrap gap-1">
+                        <Bouton variante="fantome" taille="sm" onClick={() => ouvrirDetail(p)}>
+                          <Building2 className="h-4 w-4" /> Détails
+                        </Bouton>
+                        {p.statut !== "SUSPENDU" && (
+                          <Bouton variante="fantome" taille="sm" onClick={() => suspendre(p)}>
+                            Suspendre
+                          </Bouton>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

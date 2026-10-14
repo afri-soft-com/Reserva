@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarCheck, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Printer, Search } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
-import { listerReservationsAdmin } from "../../../lib/api-admin";
+import { listerReservationsAdmin, telechargerExportAdmin } from "../../../lib/api-admin";
+import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 import { formaterMontant } from "@reserva/shared";
 
 export default function PageAdminReservations() {
@@ -39,11 +40,45 @@ export default function PageAdminReservations() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <CalendarCheck className="h-6 w-6" /> Réservations
-        </h1>
-        <p className="text-sm text-gray-500">{total} réservation(s) santé / restauration / hôtellerie (core).</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <CalendarCheck className="h-6 w-6" /> Réservations
+          </h1>
+          <p className="text-sm text-gray-500">{total} réservation(s) santé / restauration / hôtellerie (core).</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Bouton
+            variante="fantome"
+            taille="sm"
+            onClick={() =>
+              imprimerElement(
+                "Réservations",
+                tableVersHtml(
+                  ["N°", "Client", "Prestataire", "Service", "Statut", "Paiement", "Montant"],
+                  items.map((r) => [
+                    r.numero,
+                    `${r.client?.nom || ""} ${r.client?.telephone || ""}`.trim(),
+                    r.prestataire?.nomEntreprise || "—",
+                    r.service?.nom || "—",
+                    r.statut,
+                    r.statutPaiement,
+                    formaterMontant(r.montantTotal, r.devise),
+                  ])
+                )
+              )
+            }
+          >
+            <Printer className="h-4 w-4" /> Imprimer
+          </Bouton>
+          <Bouton
+            variante="fantome"
+            taille="sm"
+            onClick={() => telechargerExportAdmin("reservations").catch((e) => toastErreur(extraireMessageErreur(e)))}
+          >
+            Export CSV
+          </Bouton>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

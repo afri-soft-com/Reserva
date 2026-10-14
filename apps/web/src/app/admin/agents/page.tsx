@@ -39,7 +39,7 @@ export default function PageAdminAgents() {
       const { data } = await clientApi.get("/admin/utilisateurs", {
         params: { recherche: telephone.trim(), parPage: 5 },
       });
-      const items = data?.data?.items ?? data?.items ?? data?.data ?? [];
+      const items = data?.donnees?.items ?? data?.items ?? [];
       const u = Array.isArray(items)
         ? items.find((x: any) => x.telephone?.includes(telephone.replace(/\s/g, ""))) ?? items[0]
         : null;

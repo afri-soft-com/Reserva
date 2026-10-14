@@ -1,3 +1,5 @@
+import bcrypt from "bcryptjs";
+import { normaliserTelephone } from "@reserva/shared";
 import { prisma } from "../../config/prisma";
 
 export interface FiltresStatistiques {
@@ -130,16 +132,36 @@ export async function obtenirStatistiquesPlateforme(filtres?: FiltresStatistique
   };
 }
 
-export async function listerTousPrestataires(page = 1, parPage = 20) {
+export async function listerTousPrestataires(
+  page = 1,
+  parPage = 20,
+  opts?: { recherche?: string; statut?: string; kycStatut?: string; ville?: string; categorie?: string }
+) {
   const skip = (page - 1) * parPage;
+  const where: Record<string, unknown> = {};
+  if (opts?.statut) where.statut = opts.statut;
+  if (opts?.kycStatut) where.kycStatut = opts.kycStatut;
+  if (opts?.ville) where.ville = opts.ville;
+  if (opts?.categorie) where.categorie = opts.categorie;
+  if (opts?.recherche?.trim()) {
+    const q = opts.recherche.trim();
+    where.OR = [
+      { nomEntreprise: { contains: q } },
+      { ville: { contains: q } },
+      { quartier: { contains: q } },
+      { utilisateur: { nom: { contains: q } } },
+      { utilisateur: { telephone: { contains: q } } },
+    ];
+  }
   const [items, total] = await Promise.all([
     prisma.prestataire.findMany({
+      where,
       skip,
       take: parPage,
       include: { utilisateur: { select: { nom: true, telephone: true, email: true, creeLe: true } } },
       orderBy: { creeLe: "desc" },
     }),
-    prisma.prestataire.count(),
+    prisma.prestataire.count({ where }),
   ]);
   return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) };
 }
@@ -147,17 +169,28 @@ export async function listerTousPrestataires(page = 1, parPage = 20) {
 export async function listerTousUtilisateurs(
   page = 1,
   parPage = 20,
-  opts?: { recherche?: string }
+  opts?: { recherche?: string; role?: string; bloque?: "oui" | "non" }
 ) {
   const skip = (page - 1) * parPage;
   const where: Record<string, unknown> = {};
+  if (opts?.role) where.role = opts.role;
+  if (opts?.bloque === "oui") where.bloqueJusquA = { gt: new Date() };
+  if (opts?.bloque === "non") {
+    where.OR = [{ bloqueJusquA: null }, { bloqueJusquA: { lte: new Date() } }];
+  }
   if (opts?.recherche?.trim()) {
     const q = opts.recherche.trim();
-    where.OR = [
+    const rechercheOr = [
       { nom: { contains: q } },
       { telephone: { contains: q } },
       { email: { contains: q } },
     ];
+    if (where.OR) {
+      where.AND = [{ OR: where.OR }, { OR: rechercheOr }];
+      delete where.OR;
+    } else {
+      where.OR = rechercheOr;
+    }
   }
   const [items, total] = await Promise.all([
     prisma.utilisateur.findMany({
@@ -182,6 +215,130 @@ export async function listerTousUtilisateurs(
     prisma.utilisateur.count({ where }),
   ]);
   return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) };
+}
+
+export async function creerUtilisateurAdmin(input: {
+  telephone: string;
+  nom: string;
+  email?: string;
+  role: "CLIENT" | "ADMIN" | "AGENT";
+  pin: string;
+  langue?: string;
+}) {
+  const telephone = normaliserTelephone(input.telephone);
+  const existant = await prisma.utilisateur.findUnique({ where: { telephone } });
+  if (existant) throw new Error("Ce téléphone est déjà utilisé");
+  if (input.email) {
+    const emailPris = await prisma.utilisateur.findUnique({ where: { email: input.email } });
+    if (emailPris) throw new Error("Cet email est déjà utilisé");
+  }
+  if (!/^\d{4}$/.test(input.pin)) throw new Error("Le PIN doit contenir 4 chiffres");
+  const pinHash = await bcrypt.hash(input.pin, 10);
+  const email = input.email?.trim() || undefined;
+  return prisma.utilisateur.create({
+    data: {
+      telephone,
+      nom: input.nom.trim(),
+      email: email || null,
+      role: input.role,
+      langue: input.langue || "fr",
+      pinHash,
+      telephoneVerifie: true,
+      commissionAgentPourcent: 2,
+    },
+    select: {
+      id: true,
+      nom: true,
+      telephone: true,
+      email: true,
+      role: true,
+      langue: true,
+      creeLe: true,
+    },
+  });
+}
+
+export async function modifierUtilisateurAdmin(
+  utilisateurId: string,
+  input: {
+    nom?: string;
+    email?: string | null;
+    role?: "CLIENT" | "ADMIN" | "AGENT" | "PRESTATAIRE";
+    langue?: string;
+    pin?: string;
+  }
+) {
+  const u = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });
+  if (!u) throw new Error("Utilisateur non trouvé");
+
+  if (input.role && input.role !== u.role) {
+    if (u.role === "ADMIN" && input.role !== "ADMIN") {
+      const nbAdmins = await prisma.utilisateur.count({ where: { role: "ADMIN" } });
+      if (nbAdmins <= 1) throw new Error("Impossible de retirer le dernier administrateur");
+    }
+    if (input.role === "PRESTATAIRE" && u.role !== "PRESTATAIRE") {
+      throw new Error("Pour un prestataire, utilisez le parcours inscription / KYC mobile");
+    }
+  }
+
+  if (input.email) {
+    const emailPris = await prisma.utilisateur.findFirst({
+      where: { email: input.email, NOT: { id: utilisateurId } },
+    });
+    if (emailPris) throw new Error("Cet email est déjà utilisé");
+  }
+
+  const data: Record<string, unknown> = {};
+  if (input.nom !== undefined) data.nom = input.nom.trim();
+  if (input.email !== undefined) data.email = input.email?.trim() || null;
+  if (input.role !== undefined) data.role = input.role;
+  if (input.langue !== undefined) data.langue = input.langue;
+  if (input.pin) {
+    if (!/^\d{4}$/.test(input.pin)) throw new Error("Le PIN doit contenir 4 chiffres");
+    data.pinHash = await bcrypt.hash(input.pin, 10);
+    data.tentativesPin = 0;
+  }
+
+  return prisma.utilisateur.update({
+    where: { id: utilisateurId },
+    data,
+    select: {
+      id: true,
+      nom: true,
+      telephone: true,
+      email: true,
+      role: true,
+      langue: true,
+      deuxFAActif: true,
+      bloqueJusquA: true,
+      creeLe: true,
+    },
+  });
+}
+
+/** Soft-delete : bloque définitivement + anonymise (conserve l'historique). */
+export async function supprimerUtilisateurAdmin(utilisateurId: string) {
+  const u = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });
+  if (!u) throw new Error("Utilisateur non trouvé");
+  if (u.role === "ADMIN") {
+    const nbAdmins = await prisma.utilisateur.count({ where: { role: "ADMIN" } });
+    if (nbAdmins <= 1) throw new Error("Impossible de supprimer le dernier administrateur");
+  }
+  const suffix = utilisateurId.slice(0, 8);
+  return prisma.utilisateur.update({
+    where: { id: utilisateurId },
+    data: {
+      nom: `Compte supprimé`,
+      email: null,
+      googleId: null,
+      photoUrl: null,
+      pinHash: null,
+      bloqueJusquA: new Date("2099-12-31"),
+      telephone: `+243000${suffix.replace(/\D/g, "0").padEnd(8, "0").slice(0, 8)}`,
+      role: u.role === "PRESTATAIRE" ? "PRESTATAIRE" : "CLIENT",
+    },
+    select: { id: true, nom: true, telephone: true, bloqueJusquA: true },
+  });
 }
 
 /** Bloque un utilisateur (connexion refusée jusqu'à la date). */

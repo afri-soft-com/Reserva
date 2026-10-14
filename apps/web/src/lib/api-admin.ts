@@ -62,14 +62,68 @@ export async function telechargerExportAdmin(type: "reservations" | "prestataire
   URL.revokeObjectURL(url);
 }
 
-export async function listerTousPrestatairesAdmin(page = 1, parPage = 20) {
-  const { data } = await clientApi.get("/admin/prestataires", { params: { page, parPage } });
+export async function listerTousPrestatairesAdmin(
+  page = 1,
+  parPage = 20,
+  filtres?: {
+    recherche?: string;
+    statut?: string;
+    kycStatut?: string;
+    ville?: string;
+    categorie?: string;
+  }
+) {
+  const { data } = await clientApi.get("/admin/prestataires", {
+    params: { page, parPage, ...filtres },
+  });
   return data.donnees as { items: any[]; total: number; page: number; totalPages: number };
 }
 
-export async function listerTousUtilisateursAdmin(page = 1, parPage = 20) {
-  const { data } = await clientApi.get("/admin/utilisateurs", { params: { page, parPage } });
+export async function suspendrePrestataireAdmin(prestataireId: string) {
+  const { data } = await clientApi.post(`/admin/prestataires/${prestataireId}/suspendre`);
+  return data.donnees;
+}
+
+export async function listerTousUtilisateursAdmin(
+  page = 1,
+  parPage = 20,
+  filtres?: { recherche?: string; role?: string; bloque?: "oui" | "non" }
+) {
+  const { data } = await clientApi.get("/admin/utilisateurs", {
+    params: { page, parPage, ...filtres },
+  });
   return data.donnees as { items: any[]; total: number; page: number; totalPages: number };
+}
+
+export async function creerUtilisateurAdmin(input: {
+  telephone: string;
+  nom: string;
+  email?: string;
+  role: "CLIENT" | "ADMIN" | "AGENT";
+  pin: string;
+  langue?: string;
+}) {
+  const { data } = await clientApi.post("/admin/utilisateurs", input);
+  return data.donnees;
+}
+
+export async function modifierUtilisateurAdmin(
+  utilisateurId: string,
+  input: Partial<{
+    nom: string;
+    email: string | null;
+    role: "CLIENT" | "ADMIN" | "AGENT" | "PRESTATAIRE";
+    langue: string;
+    pin: string;
+  }>
+) {
+  const { data } = await clientApi.patch(`/admin/utilisateurs/${utilisateurId}`, input);
+  return data.donnees;
+}
+
+export async function supprimerUtilisateurAdmin(utilisateurId: string) {
+  const { data } = await clientApi.delete(`/admin/utilisateurs/${utilisateurId}`);
+  return data.donnees;
 }
 
 export async function bloquerUtilisateurAdmin(utilisateurId: string, dureeJours = 3650) {

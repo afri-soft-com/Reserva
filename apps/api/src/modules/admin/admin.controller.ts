@@ -29,16 +29,64 @@ export const statistiquesPdf = asyncHandler(async (req: Request, res: Response) 
 export const listerPrestataires = asyncHandler(async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const parPage = bornerParPage(parseInt(req.query.parPage as string) || 20);
-  const resultat = await adminService.listerTousPrestataires(page, parPage);
+  const resultat = await adminService.listerTousPrestataires(page, parPage, {
+    recherche: req.query.recherche as string | undefined,
+    statut: req.query.statut as string | undefined,
+    kycStatut: req.query.kycStatut as string | undefined,
+    ville: req.query.ville as string | undefined,
+    categorie: req.query.categorie as string | undefined,
+  });
   envoyerSucces(res, resultat);
 });
 
 export const listerUtilisateurs = asyncHandler(async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const parPage = bornerParPage(parseInt(req.query.parPage as string) || 20);
+  const bloque = req.query.bloque as string | undefined;
   const resultat = await adminService.listerTousUtilisateurs(page, parPage, {
     recherche: req.query.recherche as string | undefined,
+    role: req.query.role as string | undefined,
+    bloque: bloque === "oui" || bloque === "non" ? bloque : undefined,
   });
+  envoyerSucces(res, resultat);
+});
+
+export const creerUtilisateur = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await adminService.creerUtilisateurAdmin(req.body);
+  const { enregistrerAuditAdmin } = await import("./audit.service");
+  await enregistrerAuditAdmin({
+    adminId: req.utilisateur.utilisateurId,
+    action: "CREER_UTILISATEUR",
+    cibleType: "Utilisateur",
+    cibleId: resultat.id,
+  }).catch(() => undefined);
+  envoyerSucces(res, resultat, 201);
+});
+
+export const modifierUtilisateur = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await adminService.modifierUtilisateurAdmin(req.params.utilisateurId, req.body);
+  const { enregistrerAuditAdmin } = await import("./audit.service");
+  await enregistrerAuditAdmin({
+    adminId: req.utilisateur.utilisateurId,
+    action: "MODIFIER_UTILISATEUR",
+    cibleType: "Utilisateur",
+    cibleId: req.params.utilisateurId,
+  }).catch(() => undefined);
+  envoyerSucces(res, resultat);
+});
+
+export const supprimerUtilisateur = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await adminService.supprimerUtilisateurAdmin(req.params.utilisateurId);
+  const { enregistrerAuditAdmin } = await import("./audit.service");
+  await enregistrerAuditAdmin({
+    adminId: req.utilisateur.utilisateurId,
+    action: "SUPPRIMER_UTILISATEUR",
+    cibleType: "Utilisateur",
+    cibleId: req.params.utilisateurId,
+  }).catch(() => undefined);
   envoyerSucces(res, resultat);
 });
 
