@@ -43,11 +43,21 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
           RENDER_WAIT_MS: "600000"
-      - name: Hub SMS readiness
+      - name: Hub SMS readiness (retry si gateway encore tiède)
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
           AFRISOFT_HUB_APP_ID: ${{ secrets.AFRISOFT_HUB_APP_ID }}
           AFRISOFT_HUB_API_KEY: ${{ secrets.AFRISOFT_HUB_API_KEY }}
           AFRISOFT_SMS_HUB_URL: ${{ secrets.AFRISOFT_SMS_HUB_URL }}
           HUB_READINESS_REQUIRE: "1"
-        run: node scripts/hub-readiness.mjs
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5; do
+            if node scripts/hub-readiness.mjs; then
+              exit 0
+            fi
+            echo "Tentative $i échouée — attente 20s (gateway / hub)…"
+            sleep 20
+          done
+          echo "⚠ Sync MODE_SMS déjà fait ; hub readiness encore KO (vérifier GATEWAY_URL / quotas AfriSoft)."
+          exit 1
