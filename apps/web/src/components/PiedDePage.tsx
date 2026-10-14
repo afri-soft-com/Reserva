@@ -5,7 +5,8 @@ export function PiedDePage() {
     <footer className="mt-16 border-t border-gray-200 bg-white">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2">
         <div>
-          <p className="text-lg font-extrabold text-primaire">RESERVA</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="RESERVA" className="h-10 w-auto" />
           <p className="mt-2 text-sm text-gray-600">
             Console d&apos;administration. Clients et prestataires utilisent l&apos;application Android et iOS.
           </p>

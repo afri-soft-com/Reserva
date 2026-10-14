@@ -172,6 +172,8 @@ export async function listerTousUtilisateurs(
         role: true,
         langue: true,
         telephoneVerifie: true,
+        deuxFAActif: true,
+        bloqueJusquA: true,
         commissionAgentPourcent: true,
         creeLe: true,
       },
@@ -180,6 +182,41 @@ export async function listerTousUtilisateurs(
     prisma.utilisateur.count({ where }),
   ]);
   return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) };
+}
+
+/** Bloque un utilisateur (connexion refusée jusqu'à la date). */
+export async function bloquerUtilisateur(utilisateurId: string, dureeJours = 3650) {
+  const u = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });
+  if (!u) throw new Error("Utilisateur non trouvé");
+  if (u.role === "ADMIN") throw new Error("Impossible de bloquer un administrateur");
+  const bloqueJusquA = new Date(Date.now() + Math.max(1, dureeJours) * 24 * 60 * 60 * 1000);
+  return prisma.utilisateur.update({
+    where: { id: utilisateurId },
+    data: { bloqueJusquA },
+    select: { id: true, nom: true, telephone: true, bloqueJusquA: true },
+  });
+}
+
+/** Débloque un utilisateur et remet les tentatives PIN à zéro. */
+export async function debloquerUtilisateur(utilisateurId: string) {
+  const u = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });
+  if (!u) throw new Error("Utilisateur non trouvé");
+  return prisma.utilisateur.update({
+    where: { id: utilisateurId },
+    data: { bloqueJusquA: null, tentativesPin: 0 },
+    select: { id: true, nom: true, telephone: true, bloqueJusquA: true },
+  });
+}
+
+/** Villes distinctes présentes chez les prestataires (filtres admin). */
+export async function listerVillesReferentiel() {
+  const rows = await prisma.prestataire.findMany({
+    where: { ville: { not: "" } },
+    select: { ville: true },
+    distinct: ["ville"],
+    orderBy: { ville: "asc" },
+  });
+  return rows.map((r) => r.ville);
 }
 
 export async function listerReservationsAdmin(params: {

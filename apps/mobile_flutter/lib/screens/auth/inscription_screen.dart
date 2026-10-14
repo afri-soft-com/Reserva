@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../theme.dart';
 import '../../app_flavor.dart';
 import '../../widgets/champ.dart';
+import '../../widgets/otp_champ.dart';
 import '../../widgets/toast.dart';
 
 class InscriptionScreen extends StatefulWidget {
@@ -325,7 +326,11 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
       children: [
         Text('Code envoyé au ${_telephoneCtrl.text}', style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
         const SizedBox(height: 12),
-        Champ(libelle: 'Code de vérification', controller: _codeOtpCtrl, keyboardType: TextInputType.number, maxLength: 6, prefixIcon: Icons.sms_outlined),
+        OtpChamp(
+          libelle: 'Code de vérification',
+          controller: _codeOtpCtrl,
+          onCompleted: (_) => _gererOtp(),
+        ),
         const SizedBox(height: 16),
         _boutonPrincipal('Vérifier', _gererOtp),
         TextButton(

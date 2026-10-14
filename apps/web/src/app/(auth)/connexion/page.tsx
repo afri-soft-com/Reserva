@@ -81,6 +81,7 @@ export default function PageConnexion() {
               libelle="Code de vérification"
               placeholder="123456"
               inputMode="numeric"
+              autoComplete="one-time-code"
               maxLength={6}
               value={code2FA}
               onChange={(e) => setCode2FA(e.target.value)}
@@ -98,8 +99,14 @@ export default function PageConnexion() {
   return (
     <div className="mx-auto max-w-md px-4 py-8">
       <Carte>
-        <h1 className="mb-1 text-2xl font-bold text-primaire-700">Connexion administrateur</h1>
-        <p className="mb-6 text-sm text-gray-500">Console web réservée à l&apos;équipe RESERVA. Clients et prestataires passent par l&apos;app mobile.</p>
+        <div className="mb-6 flex flex-col items-center text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="RESERVA" className="mb-3 h-12 w-auto" />
+          <h1 className="text-2xl font-bold text-primaire-700">Connexion administrateur</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Console web réservée à l&apos;équipe RESERVA. Clients et prestataires passent par l&apos;app mobile.
+          </p>
+        </div>
 
         <form onSubmit={gererSoumission} className="space-y-4">
           <Champ

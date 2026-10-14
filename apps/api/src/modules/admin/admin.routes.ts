@@ -25,6 +25,19 @@ routesAdmin.get("/reservations", authentifier, exigerRole("ADMIN"), adminControl
 routesAdmin.get("/audits", authentifier, exigerRole("ADMIN"), adminController.listerAudits);
 routesAdmin.get("/prestataires", authentifier, exigerRole("ADMIN"), adminController.listerPrestataires);
 routesAdmin.get("/utilisateurs", authentifier, exigerRole("ADMIN"), adminController.listerUtilisateurs);
+routesAdmin.post(
+  "/utilisateurs/:utilisateurId/bloquer",
+  authentifier,
+  exigerRole("ADMIN"),
+  adminController.bloquerUtilisateur
+);
+routesAdmin.post(
+  "/utilisateurs/:utilisateurId/debloquer",
+  authentifier,
+  exigerRole("ADMIN"),
+  adminController.debloquerUtilisateur
+);
+routesAdmin.get("/villes", authentifier, exigerRole("ADMIN"), adminController.listerVilles);
 routesAdmin.post("/prestataires/:prestataireId/suspendre", authentifier, exigerRole("ADMIN"), adminController.suspendre);
 
 // Plans d'abonnement

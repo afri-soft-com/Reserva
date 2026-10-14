@@ -8,6 +8,8 @@ import { Bouton } from "../../../components/Bouton";
 import { toastSucces, toastErreur } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { obtenirStatistiquesAdmin, telechargerStatistiquesAdminPdf } from "../../../lib/api-paiements";
+import { listerCategoriesAdmin } from "../../../lib/api-categories";
+import { listerVillesAdmin } from "../../../lib/api-admin";
 import { useAuthStore } from "../../../lib/store-auth";
 import { formaterMontant } from "@reserva/shared";
 
@@ -42,15 +44,24 @@ const LIBELLES_STATUT_RESERVATION: Record<string, string> = {
   TERMINEE: "Terminée",
   ABSENCE: "Absence",
 };
-const CATEGORIES = ["HOTELLERIE", "RESTAURATION", "SANTE", "TRANSPORT"];
-const VILLES = ["Kinshasa", "Lubumbashi"];
-
 export default function PageAdminStatistiques() {
   const { utilisateur } = useAuthStore();
   const [stats, setStats] = useState<StatistiquesAdmin | null>(null);
+  const [categories, setCategories] = useState<{ code: string; libelle: string }[]>([]);
+  const [villes, setVilles] = useState<string[]>([]);
   const [chargement, setChargement] = useState(true);
   const [chargementExport, setChargementExport] = useState(false);
   const [filtres, setFiltres] = useState<FiltresAdmin>({ periode: "mois", ville: "", categorie: "" });
+
+  useEffect(() => {
+    Promise.all([
+      listerCategoriesAdmin(true).catch(() => []),
+      listerVillesAdmin().catch(() => [] as string[]),
+    ]).then(([cats, v]) => {
+      setCategories(cats.map((c) => ({ code: c.code, libelle: c.libelle })));
+      setVilles(v);
+    });
+  }, []);
 
   useEffect(() => {
     chargerStats();
@@ -126,8 +137,8 @@ export default function PageAdminStatistiques() {
           <label className="mb-1.5 block text-sm font-medium text-gray-700">Catégorie</label>
           <select className={classeSelect} value={filtres.categorie} onChange={(e) => setFiltres({ ...filtres, categorie: e.target.value })}>
             <option value="">Toutes</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
+            {categories.map((c) => (
+              <option key={c.code} value={c.code}>{c.libelle}</option>
             ))}
           </select>
         </div>
@@ -135,7 +146,7 @@ export default function PageAdminStatistiques() {
           <label className="mb-1.5 block text-sm font-medium text-gray-700">Ville</label>
           <select className={classeSelect} value={filtres.ville} onChange={(e) => setFiltres({ ...filtres, ville: e.target.value })}>
             <option value="">Toutes</option>
-            {VILLES.map((v) => (
+            {villes.map((v) => (
               <option key={v} value={v}>{v}</option>
             ))}
           </select>

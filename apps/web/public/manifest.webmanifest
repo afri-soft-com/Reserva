@@ -1,0 +1,32 @@
+{
+  "name": "RESERVA — Console d'administration",
+  "short_name": "RESERVA",
+  "description": "Console d'administration RESERVA. Réservez. Sereinement.",
+  "start_url": "/admin/pilotage",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1A56DB",
+  "theme_color": "#1A56DB",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -26,7 +26,13 @@ export async function envoyerSms(telephone: string, message: string, purpose = "
 }
 
 export async function envoyerOtpSms(telephone: string, code: string): Promise<ResultatEnvoiSms> {
-  const message = `Votre code RESERVA : ${code} Valide 5 minutes`;
+  // Format optimisé autofill iOS/Android (one-time-code / Messages).
+  // Hash Android SMS Retriever optionnel via SMS_APP_HASH (11 car.).
+  const hash = (process.env.SMS_APP_HASH || "").trim();
+  const base = `RESERVA: votre code est ${code}. Valide 5 minutes.`;
+  const message = hash
+    ? `<#> ${base}\n${hash}`
+    : `${base}\n@reserva.app #${code}`;
   return envoyerSms(telephone, message, "otp");
 }
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { EnTete } from "../components/EnTete";
 import { PiedDePage } from "../components/PiedDePage";
@@ -6,14 +6,32 @@ import { ConteneurToasts } from "../components/Toast";
 import { InitialiseurAuth } from "../components/InitialiseurAuth";
 import { GardeConsole } from "../components/GardeConsole";
 import { BanniereMiseAJour } from "../components/BanniereMiseAJour";
+import { EnregistreurPwa } from "../components/EnregistreurPwa";
 
 export const metadata: Metadata = {
   title: "RESERVA — Console d'administration",
   description: "Console d'administration RESERVA. Clients et prestataires utilisent l'application mobile.",
-  icons: {
-    icon: "/icon.png",
-    apple: "/icon.png",
+  applicationName: "RESERVA",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "RESERVA",
   },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1A56DB",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,10 +39,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr">
       <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
         <div id="splash-ecran" className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#1A56DB] transition-opacity duration-500">
-          <svg width="80" height="80" viewBox="0 0 48 48" fill="none" className="animate-pulse">
-            <circle cx="38" cy="12" r="3" fill="#F5A623" />
-            <path d="M22 44V4h8.5a7 7 0 0 1 5.25 2.1A7.5 7.5 0 0 1 38 12a7.5 7.5 0 0 1-2.25 5.9A7 7 0 0 1 30.5 20H27v24h-5Zm5-12h3a3.5 3.5 0 0 0 2.625-1.05A3.75 3.75 0 0 0 34 12a3.75 3.75 0 0 0-1.375-2.95A3.5 3.5 0 0 0 30 8h-3v24Z" fill="white" />
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/app-icon.svg" alt="RESERVA" width={80} height={80} className="animate-pulse brightness-0 invert" />
           <h1 className="mb-2 mt-6 text-4xl font-extrabold tracking-wide text-white">RESERVA</h1>
           <p className="text-lg text-blue-100">Réservez. Sereinement.</p>
           <div className="mt-8 flex gap-1.5">
@@ -33,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white" style={{ animationDelay: "0.3s" }} />
           </div>
         </div>
+        <EnregistreurPwa />
         <InitialiseurAuth>
           <BanniereMiseAJour />
           <EnTete />

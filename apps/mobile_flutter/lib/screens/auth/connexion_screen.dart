@@ -9,6 +9,7 @@ import '../../models/models.dart';
 import '../../theme.dart';
 import '../../app_flavor.dart';
 import '../../widgets/champ.dart';
+import '../../widgets/otp_champ.dart';
 import '../../widgets/toast.dart';
 
 class ConnexionScreen extends StatefulWidget {
@@ -244,7 +245,11 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
       children: [
         Text(AppTraductions.t('codeEnvoyeSMS'), style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
         const SizedBox(height: 12),
-        Champ(libelle: AppTraductions.t('code2FA'), controller: _code2FACtrl, keyboardType: TextInputType.number, maxLength: 6, prefixIcon: Icons.sms_outlined),
+        OtpChamp(
+          libelle: AppTraductions.t('code2FA'),
+          controller: _code2FACtrl,
+          onCompleted: (_) => _verifier2FA(),
+        ),
         const SizedBox(height: 16),
         _boutonPrincipal(AppTraductions.t('verifier'), _verifier2FA),
       ],

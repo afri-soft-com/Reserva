@@ -55,6 +55,39 @@ export const suspendre = asyncHandler(async (req: Request, res: Response) => {
   envoyerSucces(res, resultat);
 });
 
+export const bloquerUtilisateur = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const dureeJours = parseInt(String(req.body?.dureeJours ?? 3650), 10) || 3650;
+  const resultat = await adminService.bloquerUtilisateur(req.params.utilisateurId, dureeJours);
+  const { enregistrerAuditAdmin } = await import("./audit.service");
+  await enregistrerAuditAdmin({
+    adminId: req.utilisateur.utilisateurId,
+    action: "BLOQUER_UTILISATEUR",
+    cibleType: "Utilisateur",
+    cibleId: req.params.utilisateurId,
+    details: { dureeJours },
+  }).catch(() => undefined);
+  envoyerSucces(res, resultat);
+});
+
+export const debloquerUtilisateur = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await adminService.debloquerUtilisateur(req.params.utilisateurId);
+  const { enregistrerAuditAdmin } = await import("./audit.service");
+  await enregistrerAuditAdmin({
+    adminId: req.utilisateur.utilisateurId,
+    action: "DEBLOQUER_UTILISATEUR",
+    cibleType: "Utilisateur",
+    cibleId: req.params.utilisateurId,
+  }).catch(() => undefined);
+  envoyerSucces(res, resultat);
+});
+
+export const listerVilles = asyncHandler(async (_req: Request, res: Response) => {
+  const resultat = await adminService.listerVillesReferentiel();
+  envoyerSucces(res, resultat);
+});
+
 export const listerAudits = asyncHandler(async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const { listerAuditsAdmin } = await import("./audit.service");

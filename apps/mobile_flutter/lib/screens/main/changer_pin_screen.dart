@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_auth.dart';
+import '../../widgets/otp_champ.dart';
 import '../../widgets/toast.dart';
 
 class ChangerPinScreen extends StatefulWidget {
@@ -104,17 +105,10 @@ class _ChangerPinScreenState extends State<ChangerPinScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Code de vérification', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              TextField(
+              OtpChamp(
+                libelle: 'Code de vérification',
                 controller: _codeCtrl,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: InputDecoration(
-                  hintText: 'Code à 6 chiffres',
-                  filled: true, fillColor: AppCouleurs.blanc,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
+                onCompleted: (_) => setState(() => _etape = 'NOUVEAU_PIN'),
               ),
               const SizedBox(height: 8),
               SizedBox(

@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/models.dart';
 import '../../theme.dart';
 import '../../widgets/champ.dart';
+import '../../widgets/otp_champ.dart';
 import '../../widgets/bouton.dart';
 import '../../widgets/toast.dart';
 
@@ -101,7 +102,7 @@ class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
             if (_etape == 'OTP') ...[
               const Text('Entrez le code reçu par SMS.', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
               const SizedBox(height: 12),
-              Champ(libelle: 'Code de vérification', controller: _codeCtrl, keyboardType: TextInputType.number, maxLength: 6),
+              OtpChamp(libelle: 'Code de vérification', controller: _codeCtrl),
               const SizedBox(height: 8),
               Bouton(titre: 'Vérifier', onPressed: () => setState(() => _etape = 'NOUVEAU_PIN'), desactive: _codeCtrl.text.length < 6),
             ],

@@ -21,8 +21,9 @@ export const EnTete = memo(function EnTete() {
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        <Link href={estAdmin ? "/admin/pilotage" : "/connexion"} className="flex items-center gap-2">
-          <span className="text-2xl font-extrabold text-primaire">RESERVA</span>
+        <Link href={estAdmin ? "/admin/pilotage" : "/connexion"} className="flex items-center gap-2.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="RESERVA" className="h-9 w-auto" />
           <span className="hidden rounded-full bg-primaire-50 px-2 py-0.5 text-xs font-semibold text-primaire sm:inline">
             Console admin
           </span>
@@ -55,8 +56,13 @@ export const EnTete = memo(function EnTete() {
         </div>
       </div>
       {menuOuvert && estAdmin && (
-        <div className="flex flex-col gap-3 border-t border-gray-100 bg-white px-4 py-4 md:hidden">
-          <Link href="/admin/pilotage" onClick={() => setMenuOuvert(false)}>Administration</Link>
+        <div className="flex flex-col gap-2 border-t border-gray-100 bg-white px-4 py-4 text-sm font-medium text-gray-700 md:hidden">
+          <Link href="/admin/pilotage" onClick={() => setMenuOuvert(false)}>Vue d&apos;ensemble</Link>
+          <Link href="/admin/categories" onClick={() => setMenuOuvert(false)}>Catégories</Link>
+          <Link href="/admin/prestataires" onClick={() => setMenuOuvert(false)}>Prestataires</Link>
+          <Link href="/admin/utilisateurs" onClick={() => setMenuOuvert(false)}>Utilisateurs</Link>
+          <Link href="/admin/reservations" onClick={() => setMenuOuvert(false)}>Réservations</Link>
+          <Link href="/admin/finances" onClick={() => setMenuOuvert(false)}>Finances</Link>
         </div>
       )}
     </header>

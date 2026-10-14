@@ -72,6 +72,21 @@ export async function listerTousUtilisateursAdmin(page = 1, parPage = 20) {
   return data.donnees as { items: any[]; total: number; page: number; totalPages: number };
 }
 
+export async function bloquerUtilisateurAdmin(utilisateurId: string, dureeJours = 3650) {
+  const { data } = await clientApi.post(`/admin/utilisateurs/${utilisateurId}/bloquer`, { dureeJours });
+  return data.donnees;
+}
+
+export async function debloquerUtilisateurAdmin(utilisateurId: string) {
+  const { data } = await clientApi.post(`/admin/utilisateurs/${utilisateurId}/debloquer`);
+  return data.donnees;
+}
+
+export async function listerVillesAdmin() {
+  const { data } = await clientApi.get("/admin/villes");
+  return data.donnees as string[];
+}
+
 // ---- Plans d'abonnement ----
 
 export async function listerPlansAdmin(page = 1, parPage = 50) {
