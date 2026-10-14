@@ -12,8 +12,7 @@ import {
 } from "../../../lib/api-admin";
 import { useAuthStore } from "../../../lib/store-auth";
 import { LIBELLES_CATEGORIE } from "@reserva/shared";
-
-const CATEGORIES = Object.keys(LIBELLES_CATEGORIE) as (keyof typeof LIBELLES_CATEGORIE)[];
+import { listerCategoriesAdmin } from "../../../lib/api-categories";
 
 export default function PageDocumentsKyc() {
   const { utilisateur } = useAuthStore();
@@ -24,6 +23,9 @@ export default function PageDocumentsKyc() {
   const [activeLe, setActiveLe] = useState<string | null>(null);
   const [documentsDispo, setDocumentsDispo] = useState<{ id: string; libelle: string }[]>([]);
   const [parCategorie, setParCategorie] = useState<Record<string, string[]>>({});
+  const [categories, setCategories] = useState<{ code: string; libelle: string }[]>(
+    Object.entries(LIBELLES_CATEGORIE).map(([code, libelle]) => ({ code, libelle }))
+  );
   const [categorieActive, setCategorieActive] = useState<string>("SANTE");
 
   useEffect(() => {
@@ -33,12 +35,21 @@ export default function PageDocumentsKyc() {
   async function charger() {
     setChargement(true);
     try {
-      const data = await obtenirExigenceDocumentsAdmin();
+      const [data, cats] = await Promise.all([
+        obtenirExigenceDocumentsAdmin(),
+        listerCategoriesAdmin().catch(() => [] as { code: string; libelle: string }[]),
+      ]);
       setActif(data.config.actif);
       setDelaiJours(data.config.delaiJours);
       setActiveLe(data.config.activeLe);
       setDocumentsDispo(data.documentsDisponibles);
       setParCategorie(data.config.documents || {});
+      if (cats.length) {
+        setCategories(cats.map((c) => ({ code: c.code, libelle: c.libelle })));
+        if (!cats.some((c) => c.code === categorieActive)) {
+          setCategorieActive(cats[0].code);
+        }
+      }
     } catch (e) {
       toastErreur(extraireMessageErreur(e));
     } finally {
@@ -140,19 +151,19 @@ export default function PageDocumentsKyc() {
       <Carte>
         <h2 className="mb-3 font-semibold text-gray-900">Documents par catégorie</h2>
         <div className="mb-4 flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <button
-              key={c}
+              key={c.code}
               type="button"
-              onClick={() => setCategorieActive(c)}
+              onClick={() => setCategorieActive(c.code)}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                categorieActive === c
+                categorieActive === c.code
                   ? "bg-primaire text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              {LIBELLES_CATEGORIE[c]}
-              <span className="ml-1 opacity-70">({(parCategorie[c] || []).length})</span>
+              {c.libelle}
+              <span className="ml-1 opacity-70">({(parCategorie[c.code] || []).length})</span>
             </button>
           ))}
         </div>

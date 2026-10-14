@@ -29,10 +29,24 @@ async function main() {
   await prisma.planAbonnement.deleteMany();
   await prisma.configurationTarification.deleteMany();
   await prisma.codePromo.deleteMany();
+  await prisma.categorieService.deleteMany();
   await prisma.prestataire.deleteMany();
   await prisma.otp.deleteMany();
   await prisma.publicite.deleteMany();
   await prisma.utilisateur.deleteMany();
+
+  console.log("Création des catégories de services...");
+  await prisma.categorieService.createMany({
+    data: [
+      { code: "SANTE", libelle: "Santé", description: "Consultations, cliniques, laboratoires", ordre: 10 },
+      { code: "TRANSPORT", libelle: "Transport", description: "Bus, trajets interurbains", ordre: 20 },
+      { code: "HOTELLERIE", libelle: "Hôtellerie", description: "Hôtels et hébergements", ordre: 30 },
+      { code: "RESTAURATION", libelle: "Restauration", description: "Restaurants et traiteurs", ordre: 40 },
+      { code: "SALLE_REUNION", libelle: "Salle de réunion", description: "Salles et espaces événementiels", ordre: 50 },
+      { code: "ADMINISTRATIF", libelle: "Service administratif", description: "Démarches et services admin", ordre: 60 },
+      { code: "EDUCATION", libelle: "Éducation", description: "Formations et cours", ordre: 70 },
+    ],
+  });
 
   console.log("Création des utilisateurs de démonstration...");
 

@@ -30,7 +30,7 @@ export type ConfigExigenceKyc = {
   documents: Record<string, DocKycId[]>;
 };
 
-const CATEGORIES = [
+const CATEGORIES_DEFAUT = [
   "SANTE",
   "TRANSPORT",
   "HOTELLERIE",
@@ -42,20 +42,32 @@ const CATEGORIES = [
 
 const DEFAUT_DOCS: DocKycId[] = ["piece_identite", "selfie", "rccm", "nif", "adresse_legale"];
 
-function configVide(): ConfigExigenceKyc {
+async function codesCategoriesConnues(): Promise<string[]> {
+  try {
+    const { listerCategories } = await import("../categories/categories.service");
+    const cats = await listerCategories();
+    if (cats.length) return cats.map((c) => c.code);
+  } catch {
+    /* table absente avant migration */
+  }
+  return [...CATEGORIES_DEFAUT];
+}
+
+function configVide(categories: string[] = [...CATEGORIES_DEFAUT]): ConfigExigenceKyc {
   const documents: Record<string, DocKycId[]> = {};
-  for (const c of CATEGORIES) {
+  for (const c of categories) {
     documents[c] = c === "TRANSPORT" ? [...DEFAUT_DOCS, "permis"] : [...DEFAUT_DOCS];
   }
   return { actif: false, delaiJours: 7, activeLe: null, documents };
 }
 
 export async function obtenirConfigExigenceKyc(): Promise<ConfigExigenceKyc> {
+  const categories = await codesCategoriesConnues();
   const ligne = await prisma.configurationTarification.findUnique({ where: { cle: CLE_KYC_EXIGENCE } });
-  if (!ligne?.valeur) return configVide();
+  if (!ligne?.valeur) return configVide(categories);
   try {
     const parse = JSON.parse(ligne.valeur) as Partial<ConfigExigenceKyc>;
-    const base = configVide();
+    const base = configVide(categories);
     return {
       actif: !!parse.actif,
       delaiJours: Math.max(0, Math.min(365, Number(parse.delaiJours ?? 7) || 0)),
@@ -63,7 +75,7 @@ export async function obtenirConfigExigenceKyc(): Promise<ConfigExigenceKyc> {
       documents: { ...base.documents, ...(parse.documents || {}) },
     };
   } catch {
-    return configVide();
+    return configVide(categories);
   }
 }
 
@@ -72,10 +84,11 @@ export async function enregistrerConfigExigenceKyc(input: {
   delaiJours: number;
   documents: Record<string, string[]>;
 }): Promise<ConfigExigenceKyc> {
+  const categories = await codesCategoriesConnues();
   const delaiJours = Math.max(0, Math.min(365, Math.round(Number(input.delaiJours) || 0)));
   const idsValides = new Set(DOCUMENTS_KYC_DISPO.map((d) => d.id));
   const documents: Record<string, DocKycId[]> = {};
-  for (const c of CATEGORIES) {
+  for (const c of categories) {
     const liste = (input.documents?.[c] || []).filter((id): id is DocKycId => idsValides.has(id as DocKycId));
     documents[c] = liste;
   }

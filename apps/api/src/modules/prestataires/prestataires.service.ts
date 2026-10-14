@@ -15,10 +15,14 @@ export async function creerProfilPrestataire(utilisateurId: string, input: Creer
     throw new ErreurValidation("Vous avez déjà un profil prestataire");
   }
 
+  const { exigerCategorieActive } = await import("../categories/categories.service");
+  await exigerCategorieActive(input.categorie);
+
   const prestataire = await prisma.prestataire.create({
     data: {
       utilisateurId,
       ...input,
+      categorie: input.categorie.trim().toUpperCase(),
       statut: "EN_ATTENTE_VALIDATION",
     },
   });
@@ -48,6 +52,12 @@ export async function modifierProfilPrestataire(utilisateurId: string, input: Mo
   const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
   if (!prestataire) {
     throw new ErreurNonTrouve("Profil prestataire non trouvé");
+  }
+
+  if (input.categorie) {
+    const { exigerCategorieActive } = await import("../categories/categories.service");
+    await exigerCategorieActive(input.categorie);
+    input = { ...input, categorie: input.categorie.trim().toUpperCase() };
   }
 
   return prisma.prestataire.update({ where: { id: prestataire.id }, data: input });

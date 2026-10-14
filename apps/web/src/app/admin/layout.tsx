@@ -24,6 +24,7 @@ import {
   Download,
   ScrollText,
   FileCheck2,
+  FolderTree,
 } from "lucide-react";
 import { useAuthStore } from "../../lib/store-auth";
 import clsx from "clsx";
@@ -53,6 +54,7 @@ const NAV_GROUPES = [
     items: [
       { href: "/admin/hotels", label: "Hôtels", icon: Hotel },
       { href: "/admin/transport", label: "Transport", icon: Bus },
+      { href: "/admin/categories", label: "Catégories", icon: FolderTree },
       { href: "/admin/prestataires", label: "Prestataires", icon: Building2 },
       { href: "/admin/documents-kyc", label: "Documents & KYC", icon: FileCheck2 },
       { href: "/admin/utilisateurs", label: "Utilisateurs", icon: Users },

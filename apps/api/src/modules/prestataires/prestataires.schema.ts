@@ -2,15 +2,12 @@ import { z } from "zod";
 
 export const schemaCreerPrestataire = z.object({
   nomEntreprise: z.string().trim().min(2).max(150),
-  categorie: z.enum([
-    "SANTE",
-    "TRANSPORT",
-    "HOTELLERIE",
-    "RESTAURATION",
-    "SALLE_REUNION",
-    "ADMINISTRATIF",
-    "EDUCATION",
-  ]),
+  /** Code catalogue (admin CRUD) — ex. SANTE, TRANSPORT, … */
+  categorie: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z][A-Z0-9_]{1,39}$/, "Code catégorie invalide"),
   ville: z.string().trim().min(2).max(100),
   quartier: z.string().trim().min(2).max(100),
   adresse: z.string().trim().max(300).optional(),

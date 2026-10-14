@@ -2,15 +2,10 @@ import { z } from "zod";
 
 export const schemaRechercheServices = z.object({
   categorie: z
-    .enum([
-      "SANTE",
-      "TRANSPORT",
-      "HOTELLERIE",
-      "RESTAURATION",
-      "SALLE_REUNION",
-      "ADMINISTRATIF",
-      "EDUCATION",
-    ])
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z][A-Z0-9_]{1,39}$/)
     .optional(),
   ville: z.string().trim().optional(),
   quartier: z.string().trim().optional(),

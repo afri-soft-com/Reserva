@@ -261,6 +261,23 @@ model CodePromo {
   @@map("codes_promo")
 }
 
+/// Catalogue admin des catégories de services (code = prestataires.categorie)
+model CategorieService {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  libelle     String
+  description String?
+  icone       String?
+  couleur     String?
+  ordre       Int      @default(0)
+  actif       Boolean  @default(true)
+  creeLe      DateTime @default(now())
+  misAJourLe  DateTime @updatedAt
+
+  @@index([actif, ordre])
+  @@map("categories_service")
+}
+
 model Transaction {
   id               String   @id @default(uuid())
   reservationId    String

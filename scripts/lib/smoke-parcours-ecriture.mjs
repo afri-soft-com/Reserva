@@ -43,17 +43,65 @@ export async function executerParcoursEcriture(opts) {
   const client = await login(gateway, clientPhone, pin);
 
   console.log("→ Recherche service SANTE");
-  const servicesData = await get(gateway, "/services?categorie=SANTE&ville=Kinshasa&parPage=10", client.token);
-  const services = itemsOf(servicesData);
-  const service = services.find((s) => (s.creneaux || []).length > 0) || services[0];
-  if (!service?.id) throw new Error("Aucun service SANTE trouvé (seed manquant ?)");
-
-  let creneau = (service.creneaux || [])[0];
-  if (!creneau?.id) {
-    const detail = await get(gateway, `/services/${service.id}`, client.token);
-    creneau = (detail.creneaux || []).find((c) => (c.capaciteReservee ?? 0) < (c.capaciteTotale ?? 1));
+  const servicesData = await get(gateway, "/services?categorie=SANTE&ville=Kinshasa&parPage=20", client.token);
+  let services = itemsOf(servicesData);
+  if (!services.length) {
+    const all = await get(gateway, "/services?ville=Kinshasa&parPage=20", client.token);
+    services = itemsOf(all);
   }
-  if (!creneau?.id) throw new Error(`Aucun créneau dispo pour service ${service.id}`);
+  if (!services.length) throw new Error("Aucun service trouvé (seed manquant ?)");
+
+  async function trouverCreneauDispo(serviceId) {
+    const detail = await get(gateway, `/services/${serviceId}`, client.token);
+    const maintenant = Date.now();
+    return (detail.creneaux || []).find(
+      (c) =>
+        c?.id &&
+        (c.capaciteReservee ?? 0) < (c.capaciteTotale ?? 1) &&
+        new Date(c.debut).getTime() > maintenant
+    );
+  }
+
+  let service = null;
+  let creneau = null;
+  for (const s of services) {
+    const c = await trouverCreneauDispo(s.id);
+    if (c) {
+      service = s;
+      creneau = c;
+      break;
+    }
+  }
+
+  // Créneaux seed épuisés / expirés → le pro smoke régénère sur SES services
+  if (!creneau?.id) {
+    console.log("→ Aucun créneau dispo — génération récurrente via pro smoke");
+    const proBootstrap = await login(gateway, proPhone, pin);
+    const mesServices = itemsOf(await get(gateway, "/prestataires/moi/services", proBootstrap.token));
+    service = mesServices[0] || services[0];
+    if (!service?.id) throw new Error("Pro smoke sans service pour générer des créneaux");
+    const debut = datePlus(1);
+    const fin = datePlus(5);
+    await post(
+      gateway,
+      "/services/creneaux/recurrents",
+      {
+        serviceId: service.id,
+        dateDebut: debut,
+        dateFin: fin,
+        heuresCreneaux: ["09:00", "10:00", "11:00", "14:00"],
+        dureeMinutes: 30,
+        capaciteParCreneau: 3,
+        joursExclus: [0],
+      },
+      proBootstrap.token
+    );
+    creneau = await trouverCreneauDispo(service.id);
+  }
+
+  if (!service?.id || !creneau?.id) {
+    throw new Error(`Aucun créneau dispo pour service ${service?.id || "?"}`);
+  }
 
   console.log("→ Créer réservation", service.nom || service.id);
   const reservation = await post(
