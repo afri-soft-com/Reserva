@@ -28,7 +28,7 @@
 
 - [x] Adaptateur production via sms.afri-soft.com
 - [x] Test CI OTP sim (demande reset PIN + mauvais code)
-- [ ] `MODE_SMS=production` sur Render
+- [x] `MODE_SMS=production` sur Render (workflow `enable-sms-prod` / Dashboard)
 - [ ] Quotas / sender AfriSoft OK
 
 ## Avant mise en prod publique

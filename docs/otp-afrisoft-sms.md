@@ -16,12 +16,25 @@
 ## Variables (`apps/api/.env`)
 
 ```env
-MODE_SMS=simulation   # local : log console
+MODE_SMS=simulation   # local : log console uniquement (aucun SMS réel)
 # MODE_SMS=production
 AFRISOFT_SMS_HUB_URL=https://sms.afri-soft.com
 AFRISOFT_HUB_APP_ID=reserva   # fourni à l'onboarding AfriSoft (souvent partagé avec le pay hub)
 AFRISOFT_HUB_API_KEY=         # canal privé — jamais committer
 ```
+
+### Production Render (SMS réels)
+
+Si l’app répond « code envoyé » mais **aucun SMS** n’arrive sur un numéro réel : le core est encore en `MODE_SMS=simulation` (défaut historique du blueprint).
+
+1. Secrets GitHub : `AFRISOFT_HUB_APP_ID`, `AFRISOFT_HUB_API_KEY`, `RENDER_API_KEY`, `RENDER_SERVICE_CORE`
+2. Actions → **Activer SMS production (Render)** → Run workflow  
+   (script [`scripts/render-enable-sms-prod.mjs`](../scripts/render-enable-sms-prod.mjs))
+3. Ou manuellement Dashboard Render → service **reserva-core** → Environment :
+   - `MODE_SMS=production`
+   - `AFRISOFT_HUB_APP_ID` / `AFRISOFT_HUB_API_KEY`
+   - puis Manual Deploy
+4. Vérifier : Actions → **Hub smoke** (HMAC lecture sms.afri-soft.com)
 
 Paiements Mobile Money (même app_id / clé si multi-produit) : voir [`mobile-money-afrisoft-pay.md`](./mobile-money-afrisoft-pay.md).
 

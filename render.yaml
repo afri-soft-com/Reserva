@@ -30,8 +30,9 @@ envVarGroups:
         value: 7d
       - key: MODE_PAIEMENT
         value: simulation
+      # SMS réel via hub AfriSoft — clés AFRISOFT_HUB_* à poser sur le service core (Dashboard ou workflow enable-sms-prod)
       - key: MODE_SMS
-        value: simulation
+        value: production
       - key: HOLD_MINUTES
         value: "15"
       - key: MIGRATE_FALLBACK_PUSH
