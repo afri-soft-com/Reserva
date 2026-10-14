@@ -88,8 +88,11 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
         }
       });
     } catch (_) {
-      if (mounted && !silencieux) setState(() => _charge = false);
-      else if (mounted && _charge) setState(() => _charge = false);
+      if (mounted && !silencieux) {
+        setState(() => _charge = false);
+      } else if (mounted && _charge) {
+        setState(() => _charge = false);
+      }
     }
   }
 
