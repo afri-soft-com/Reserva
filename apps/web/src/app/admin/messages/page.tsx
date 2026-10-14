@@ -17,6 +17,7 @@ export default function PageMessagesAdmin() {
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [text, setText] = useState("");
+  const [recherche, setRecherche] = useState("");
   const [mobileList, setMobileList] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -84,6 +85,16 @@ export default function PageMessagesAdmin() {
     return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   }
 
+  const conversationsFiltrees = conversations.filter((c) => {
+    const q = recherche.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      nomAutre(c).toLowerCase().includes(q) ||
+      telephoneAutre(c).toLowerCase().includes(q) ||
+      (c.messages[0]?.contenu || "").toLowerCase().includes(q)
+    );
+  });
+
   if (loading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primaire" /></div>;
   }
@@ -91,17 +102,26 @@ export default function PageMessagesAdmin() {
   return (
     <div className="flex h-[calc(100vh-120px)] overflow-hidden rounded-card border border-gray-200 bg-white">
       <div className={`w-full border-r border-gray-200 md:w-80 ${mobileList ? "block" : "hidden md:block"}`}>
-        <div className="border-b border-gray-200 p-4">
+        <div className="border-b border-gray-200 p-4 space-y-3">
           <h2 className="flex items-center gap-2 text-lg font-bold">
             <MessageCircle className="h-5 w-5 text-primaire" />
             Messages
           </h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              placeholder="Nom, téléphone…"
+              className="h-10 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm outline-none focus:border-primaire"
+            />
+          </div>
         </div>
-        <div className="overflow-y-auto" style={{ height: "calc(100% - 65px)" }}>
-          {conversations.length === 0 && (
+        <div className="overflow-y-auto" style={{ height: "calc(100% - 120px)" }}>
+          {conversationsFiltrees.length === 0 && (
             <p className="p-4 text-center text-sm text-gray-500">Aucune conversation</p>
           )}
-          {conversations.map((c) => (
+          {conversationsFiltrees.map((c) => (
             <button
               key={c.id}
               onClick={() => ouvrirConversation(c.id)}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, X, Pencil, Trash2, FolderTree } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, X, Pencil, Trash2, FolderTree, Search, Printer } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur, toastSucces } from "../../../components/Toast";
@@ -14,6 +14,7 @@ import {
   supprimerCategorie,
   type CategorieServiceDto,
 } from "../../../lib/api-categories";
+import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
 type Formulaire = {
   code: string;
@@ -43,10 +44,26 @@ export default function PageAdminCategories() {
   const [editionId, setEditionId] = useState<string | null>(null);
   const [formulaire, setFormulaire] = useState<Formulaire>(FORMULAIRE_VIDE);
   const [soumission, setSoumission] = useState(false);
+  const [recherche, setRecherche] = useState("");
+  const [filtreActif, setFiltreActif] = useState<"" | "oui" | "non">("");
 
   useEffect(() => {
     charger();
   }, []);
+
+  const categoriesFiltrees = useMemo(() => {
+    const q = recherche.trim().toLowerCase();
+    return categories.filter((c) => {
+      if (filtreActif === "oui" && !c.actif) return false;
+      if (filtreActif === "non" && c.actif) return false;
+      if (!q) return true;
+      return (
+        c.code.toLowerCase().includes(q) ||
+        c.libelle.toLowerCase().includes(q) ||
+        (c.description || "").toLowerCase().includes(q)
+      );
+    });
+  }, [categories, recherche, filtreActif]);
 
   async function charger() {
     setChargement(true);
@@ -120,6 +137,22 @@ export default function PageAdminCategories() {
     }
   }
 
+  function imprimer() {
+    imprimerElement(
+      "Catégories de services",
+      tableVersHtml(
+        ["Ordre", "Code", "Libellé", "Description", "Actif"],
+        categoriesFiltrees.map((c) => [
+          String(c.ordre),
+          c.code,
+          c.libelle,
+          c.description || "—",
+          c.actif ? "Oui" : "Non",
+        ])
+      )
+    );
+  }
+
   if (utilisateur?.role !== "ADMIN") {
     return (
       <Carte>
@@ -130,7 +163,7 @@ export default function PageAdminCategories() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <FolderTree className="h-6 w-6 text-primaire" />
@@ -140,18 +173,44 @@ export default function PageAdminCategories() {
             Codes utilisés par les prestataires, la recherche et le KYC.
           </p>
         </div>
-        <Bouton variante="primaire" taille="sm" onClick={ouvrirCreation}>
-          <Plus className="h-4 w-4" /> Nouvelle catégorie
-        </Bouton>
+        <div className="flex flex-wrap gap-2">
+          <Bouton variante="fantome" taille="sm" onClick={imprimer} disabled={categoriesFiltrees.length === 0}>
+            <Printer className="h-4 w-4" /> Imprimer
+          </Bouton>
+          <Bouton variante="primaire" taille="sm" onClick={ouvrirCreation}>
+            <Plus className="h-4 w-4" /> Nouvelle catégorie
+          </Bouton>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            placeholder="Code, libellé, description…"
+            className="h-11 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm"
+          />
+        </div>
+        <select
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          value={filtreActif}
+          onChange={(e) => setFiltreActif(e.target.value as "" | "oui" | "non")}
+        >
+          <option value="">Toutes</option>
+          <option value="oui">Actives</option>
+          <option value="non">Inactives</option>
+        </select>
       </div>
 
       {chargement && <p className="text-gray-500">Chargement...</p>}
 
-      {!chargement && categories.length === 0 && (
+      {!chargement && categoriesFiltrees.length === 0 && (
         <Carte className="text-center text-gray-500">Aucune catégorie.</Carte>
       )}
 
-      {!chargement && categories.length > 0 && (
+      {!chargement && categoriesFiltrees.length > 0 && (
         <div className="overflow-x-auto rounded-card shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
           <table className="w-full bg-white text-left text-sm">
             <thead>
@@ -166,7 +225,7 @@ export default function PageAdminCategories() {
               </tr>
             </thead>
             <tbody>
-              {categories.map((c) => (
+              {categoriesFiltrees.map((c) => (
                 <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-4 py-3 text-gray-600">{c.ordre}</td>
                   <td className="px-4 py-3 font-mono font-bold text-gray-900">{c.code}</td>

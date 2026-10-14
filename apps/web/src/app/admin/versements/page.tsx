@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Wallet } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Wallet, Search, Printer } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur, toastSucces } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { listerVersementsAdmin, traiterVersementAdmin } from "../../../lib/api-economie";
 import { formaterMontant } from "@reserva/shared";
+import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
 export default function PageAdminVersements() {
   const [items, setItems] = useState<any[]>([]);
@@ -20,8 +21,30 @@ export default function PageAdminVersements() {
   const [noteId, setNoteId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [payerMode, setPayerMode] = useState(true);
+  const [recherche, setRecherche] = useState("");
 
   useEffect(() => { charger(); }, [statut, page]);
+
+  const itemsFiltres = useMemo(() => {
+    const q = recherche.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((v) => {
+      const hay = [
+        v.prestataire?.nomEntreprise,
+        v.prestataire?.ville,
+        v.prestataire?.categorie,
+        v.operateur,
+        v.telephonePaiement,
+        v.referenceExterne,
+        v.noteAdmin,
+        String(v.montant ?? ""),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [items, recherche]);
 
   async function charger() {
     setChargement(true);
@@ -35,6 +58,24 @@ export default function PageAdminVersements() {
     } finally {
       setChargement(false);
     }
+  }
+
+  function imprimer() {
+    imprimerElement(
+      "Versements prestataires",
+      tableVersHtml(
+        ["Prestataire", "Montant", "Opérateur", "Téléphone", "Date", "Statut", "Réf."],
+        itemsFiltres.map((v) => [
+          v.prestataire?.nomEntreprise || "—",
+          formaterMontant(v.montant, v.devise),
+          v.operateur || "—",
+          v.telephonePaiement || "—",
+          new Date(v.demandeLe || v.creeLe).toLocaleDateString("fr-FR"),
+          v.statut || "—",
+          v.referenceExterne || v.noteAdmin || "—",
+        ])
+      )
+    );
   }
 
   function ouvrirTraitement(id: string, payer: boolean) {
@@ -67,24 +108,39 @@ export default function PageAdminVersements() {
           </h1>
           <p className="text-sm text-gray-500">{total} demande(s) — Mobile Money / validation manuelle.</p>
         </div>
-        <select
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          value={statut}
-          onChange={(e) => { setPage(1); setStatut(e.target.value); }}
-        >
-          <option value="DEMANDE">En attente</option>
-          <option value="PAYE">Payés</option>
-          <option value="REFUSE">Refusés</option>
-          <option value="">Tous</option>
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <Bouton variante="fantome" taille="sm" onClick={imprimer} disabled={itemsFiltres.length === 0}>
+            <Printer className="h-4 w-4" /> Imprimer
+          </Bouton>
+          <select
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            value={statut}
+            onChange={(e) => { setPage(1); setStatut(e.target.value); }}
+          >
+            <option value="DEMANDE">En attente</option>
+            <option value="PAYE">Payés</option>
+            <option value="REFUSE">Refusés</option>
+            <option value="">Tous</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="relative min-w-[220px] max-w-md">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Prestataire, téléphone, opérateur, réf…"
+          className="h-11 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm"
+        />
       </div>
 
       {chargement && <p className="text-gray-500">Chargement...</p>}
-      {!chargement && items.length === 0 && (
+      {!chargement && itemsFiltres.length === 0 && (
         <Carte><p className="text-center text-gray-500">Aucune demande.</p></Carte>
       )}
 
-      {!chargement && items.length > 0 && (
+      {!chargement && itemsFiltres.length > 0 && (
         <>
           <div className="overflow-x-auto rounded-card bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
             <table className="w-full text-left text-sm">
@@ -100,7 +156,7 @@ export default function PageAdminVersements() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((v) => (
+                {itemsFiltres.map((v) => (
                   <tr key={v.id} className="border-b border-gray-50">
                     <td className="px-4 py-3">
                       <p className="font-medium">{v.prestataire?.nomEntreprise}</p>

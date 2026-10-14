@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { UserCog } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { UserCog, Search, Printer } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur, toastSucces } from "../../../components/Toast";
@@ -12,16 +12,29 @@ import {
   listerAgents,
   modifierCommissionAgent,
 } from "../../../lib/api-agents";
+import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
 export default function PageAdminAgents() {
   const [agents, setAgents] = useState<any[]>([]);
   const [chargement, setChargement] = useState(true);
   const [telephone, setTelephone] = useState("");
   const [commission, setCommission] = useState("2");
+  const [recherche, setRecherche] = useState("");
 
   useEffect(() => {
     charger();
   }, []);
+
+  const agentsFiltres = useMemo(() => {
+    const q = recherche.trim().toLowerCase();
+    if (!q) return agents;
+    return agents.filter(
+      (a) =>
+        a.nom?.toLowerCase().includes(q) ||
+        a.telephone?.toLowerCase().includes(q) ||
+        (a.codeParrainage || "").toLowerCase().includes(q)
+    );
+  }, [agents, recherche]);
 
   async function charger() {
     setChargement(true);
@@ -32,6 +45,22 @@ export default function PageAdminAgents() {
     } finally {
       setChargement(false);
     }
+  }
+
+  function imprimer() {
+    imprimerElement(
+      "Agents de quartier",
+      tableVersHtml(
+        ["Nom", "Téléphone", "Commission %", "Réservations", "Code"],
+        agentsFiltres.map((a) => [
+          a.nom || "—",
+          a.telephone || "—",
+          String(a.commissionPourcent ?? "—"),
+          String(a.nombreReservations ?? 0),
+          a.codeParrainage || "—",
+        ])
+      )
+    );
   }
 
   async function activer() {
@@ -58,13 +87,18 @@ export default function PageAdminAgents() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <UserCog className="w-6 h-6" /> Agents de quartier
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Commission par défaut réglable dans Tarifications (`COMMISSION_AGENT`). Ici : activer / ajuster par agent.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
+            <UserCog className="w-6 h-6" /> Agents de quartier
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Commission par défaut réglable dans Tarifications (`COMMISSION_AGENT`). Ici : activer / ajuster par agent.
+          </p>
+        </div>
+        <Bouton variante="fantome" taille="sm" onClick={imprimer} disabled={agentsFiltres.length === 0}>
+          <Printer className="h-4 w-4" /> Imprimer
+        </Bouton>
       </div>
 
       <Carte>
@@ -94,15 +128,29 @@ export default function PageAdminAgents() {
         </div>
       </Carte>
 
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Filtrer par nom, téléphone, code…"
+          className="h-11 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm"
+        />
+      </div>
+
       {chargement ? (
         <p>Chargement…</p>
-      ) : agents.length === 0 ? (
+      ) : agentsFiltres.length === 0 ? (
         <Carte>
-          <p className="p-4 text-sm">Aucun agent. Activez un compte CLIENT ci-dessus.</p>
+          <p className="p-4 text-sm">
+            {agents.length === 0
+              ? "Aucun agent. Activez un compte CLIENT ci-dessus."
+              : "Aucun agent ne correspond à la recherche."}
+          </p>
         </Carte>
       ) : (
         <div className="space-y-2">
-          {agents.map((a) => (
+          {agentsFiltres.map((a) => (
             <Carte key={a.id}>
               <div className="p-4 flex flex-wrap justify-between gap-3 items-center">
                 <div>

@@ -138,8 +138,12 @@ export const listerVilles = asyncHandler(async (_req: Request, res: Response) =>
 
 export const listerAudits = asyncHandler(async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
+  const parPage = bornerParPage(parseInt(req.query.parPage as string) || 30);
   const { listerAuditsAdmin } = await import("./audit.service");
-  const resultat = await listerAuditsAdmin(page);
+  const resultat = await listerAuditsAdmin(page, parPage, {
+    recherche: req.query.recherche as string | undefined,
+    action: req.query.action as string | undefined,
+  });
   envoyerSucces(res, resultat);
 });
 

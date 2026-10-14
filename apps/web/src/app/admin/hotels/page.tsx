@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Star, MapPin, Hotel } from "lucide-react";
+import { Star, MapPin, Hotel, Printer } from "lucide-react";
 import { Carte } from "../../../components/Carte";
+import { Bouton } from "../../../components/Bouton";
 import { toastErreur } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { HotelResume, listerHotelsAdmin, listerVillesHotels } from "../../../lib/api-hotels";
 import { formaterMontant } from "@reserva/shared";
+import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
 export default function PageAdminHotels() {
   const [hotels, setHotels] = useState<HotelResume[]>([]);
@@ -51,15 +53,39 @@ export default function PageAdminHotels() {
     };
   }, [hotels]);
 
+  function imprimer() {
+    imprimerElement(
+      "Catalogue hôtels",
+      tableVersHtml(
+        ["Nom", "Ville", "Quartier", "Étoiles", "Note", "Prix dès"],
+        filtres.map((h) => [
+          h.nom,
+          h.ville,
+          h.quartier,
+          String(h.etoiles),
+          h.noteMoyenne.toFixed(1),
+          h.prixDepuis != null
+            ? formaterMontant(h.prixDepuis, (h.devise as "USD" | "CDF") || "USD")
+            : "—",
+        ])
+      )
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <Hotel className="h-6 w-6" /> Catalogue hôtels
-        </h1>
-        <p className="text-sm text-gray-500">
-          Inventaire du microservice hotels. Les clients réservent depuis l&apos;app mobile.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <Hotel className="h-6 w-6" /> Catalogue hôtels
+          </h1>
+          <p className="text-sm text-gray-500">
+            Inventaire du microservice hotels. Les clients réservent depuis l&apos;app mobile.
+          </p>
+        </div>
+        <Bouton variante="fantome" taille="sm" onClick={imprimer} disabled={filtres.length === 0}>
+          <Printer className="h-4 w-4" /> Imprimer
+        </Bouton>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">

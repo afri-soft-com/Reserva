@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { Plus, X, Pencil, Trash2, ExternalLink, Image, Camera, Upload } from "lucide-react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { Plus, X, Pencil, Trash2, ExternalLink, Image, Camera, Upload, Search, Printer } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur, toastSucces } from "../../../components/Toast";
@@ -14,6 +14,7 @@ import {
   supprimerPublicite,
   uploaderImage,
 } from "../../../lib/api-publicites";
+import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
 type Formulaire = {
   titre: string;
@@ -64,10 +65,29 @@ export default function PageAdminPublicites() {
   const [uploadFichier, setUploadFichier] = useState<File | null>(null);
   const [uploadChargement, setUploadChargement] = useState(false);
   const refInputFichier = useRef<HTMLInputElement>(null);
+  const [recherche, setRecherche] = useState("");
+  const [filtreActif, setFiltreActif] = useState<"" | "oui" | "non">("");
+  const [filtreCible, setFiltreCible] = useState("");
 
   useEffect(() => {
     charger();
   }, []);
+
+  const publicitesFiltrees = useMemo(() => {
+    const q = recherche.trim().toLowerCase();
+    return publicites.filter((p) => {
+      if (filtreActif === "oui" && !p.actif) return false;
+      if (filtreActif === "non" && p.actif) return false;
+      if (filtreCible && p.cible !== filtreCible) return false;
+      if (!q) return true;
+      return (
+        p.titre?.toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q) ||
+        (p.annonceurNom || "").toLowerCase().includes(q) ||
+        (p.modeleFacturation || "").toLowerCase().includes(q)
+      );
+    });
+  }, [publicites, recherche, filtreActif, filtreCible]);
 
   async function charger() {
     setChargement(true);
@@ -147,31 +167,86 @@ export default function PageAdminPublicites() {
     }
   }
 
+  function imprimer() {
+    imprimerElement(
+      "Publicités",
+      tableVersHtml(
+        ["Titre", "Cible", "Début", "Fin", "Actif", "Impressions", "Clics", "Facturation"],
+        publicitesFiltrees.map((p) => [
+          p.titre || "—",
+          p.cible || "—",
+          p.dateDebut ? new Date(p.dateDebut).toLocaleDateString("fr-FR") : "—",
+          p.dateFin ? new Date(p.dateFin).toLocaleDateString("fr-FR") : "—",
+          p.actif ? "Oui" : "Non",
+          String(p.impressions ?? 0),
+          String(p.clics ?? 0),
+          p.modeleFacturation || "GRATUIT",
+        ])
+      )
+    );
+  }
+
   if (utilisateur?.role !== "ADMIN") {
     return <Carte><p className="text-center text-gray-500">Accès non autorisé.</p></Carte>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Publicités</h1>
           <p className="text-sm text-gray-500">
             Tarifs CPM / CPC / forfait : Admin → Tarifications (`PUB_*`). Chaque campagne peut surcharger le prix.
           </p>
         </div>
-        <Bouton variante="primaire" taille="sm" onClick={ouvrirCreation}>
-          <Plus className="h-4 w-4" /> Nouvelle publicité
-        </Bouton>
+        <div className="flex flex-wrap gap-2">
+          <Bouton variante="fantome" taille="sm" onClick={imprimer} disabled={publicitesFiltrees.length === 0}>
+            <Printer className="h-4 w-4" /> Imprimer
+          </Bouton>
+          <Bouton variante="primaire" taille="sm" onClick={ouvrirCreation}>
+            <Plus className="h-4 w-4" /> Nouvelle publicité
+          </Bouton>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            placeholder="Titre, annonceur, description…"
+            className="h-11 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm"
+          />
+        </div>
+        <select
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          value={filtreActif}
+          onChange={(e) => setFiltreActif(e.target.value as "" | "oui" | "non")}
+        >
+          <option value="">Tous</option>
+          <option value="oui">Actives</option>
+          <option value="non">Inactives</option>
+        </select>
+        <select
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          value={filtreCible}
+          onChange={(e) => setFiltreCible(e.target.value)}
+        >
+          <option value="">Toutes cibles</option>
+          {CIBLES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
       </div>
 
       {chargement && <p className="text-gray-500">Chargement...</p>}
 
-      {!chargement && publicites.length === 0 && (
+      {!chargement && publicitesFiltrees.length === 0 && (
         <Carte className="text-center text-gray-500">Aucune publicité créée.</Carte>
       )}
 
-      {!chargement && publicites.length > 0 && (
+      {!chargement && publicitesFiltrees.length > 0 && (
         <div className="overflow-x-auto rounded-card shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
           <table className="w-full bg-white text-left text-sm">
             <thead>
@@ -189,7 +264,7 @@ export default function PageAdminPublicites() {
               </tr>
             </thead>
             <tbody>
-              {publicites.map((pub) => (
+              {publicitesFiltrees.map((pub) => (
                 <tr key={pub.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{pub.titre}</td>
                   <td className="px-4 py-3 text-gray-600">{pub.cible}</td>

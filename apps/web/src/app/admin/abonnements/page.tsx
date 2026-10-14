@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Package, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Package, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Search, Printer } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur, toastSucces } from "../../../components/Toast";
@@ -14,6 +14,7 @@ import {
   listerAbonnementsAdmin,
 } from "../../../lib/api-admin";
 import { formaterMontant } from "@reserva/shared";
+import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
 export default function PageAdminAbonnements() {
   const [onglet, setOnglet] = useState<"plans" | "souscriptions">("plans");
@@ -26,6 +27,7 @@ export default function PageAdminAbonnements() {
   const [totalPagesSous, setTotalPagesSous] = useState(1);
   const [modalOuvert, setModalOuvert] = useState(false);
   const [edition, setEdition] = useState<any | null>(null);
+  const [recherche, setRecherche] = useState("");
   const [form, setForm] = useState({ nom: "", description: "", prix: "", devise: "CDF", dureeJours: "30", maxServices: "", commissionReduite: "", fonctionnalites: "" });
 
   useEffect(() => { if (onglet === "plans") charger(); }, [page, onglet]);
@@ -98,6 +100,61 @@ export default function PageAdminAbonnements() {
     } catch (e) { toastErreur(extraireMessageErreur(e)); }
   }
 
+  const souscriptionsFiltrees = useMemo(() => {
+    const q = recherche.trim().toLowerCase();
+    if (!q) return souscriptions;
+    return souscriptions.filter(
+      (a) =>
+        a.prestataire?.nomEntreprise?.toLowerCase().includes(q) ||
+        a.plan?.nom?.toLowerCase().includes(q) ||
+        (a.statut || "").toLowerCase().includes(q)
+    );
+  }, [souscriptions, recherche]);
+
+  const plansFiltres = useMemo(() => {
+    const q = recherche.trim().toLowerCase();
+    if (!q) return plans;
+    return plans.filter(
+      (p) =>
+        p.nom?.toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q)
+    );
+  }, [plans, recherche]);
+
+  function imprimer() {
+    if (onglet === "souscriptions") {
+      imprimerElement(
+        "Souscriptions abonnements",
+        tableVersHtml(
+          ["Prestataire", "Plan", "Début", "Fin", "Statut", "Montant"],
+          souscriptionsFiltrees.map((a) => [
+            a.prestataire?.nomEntreprise || "—",
+            a.plan?.nom || "—",
+            new Date(a.dateDebut).toLocaleDateString("fr-FR"),
+            new Date(a.dateFin).toLocaleDateString("fr-FR"),
+            a.statut || "—",
+            formaterMontant(a.montantPaye ?? a.plan?.prix ?? 0, a.plan?.devise || "CDF"),
+          ])
+        )
+      );
+      return;
+    }
+    imprimerElement(
+      "Plans d'abonnement",
+      tableVersHtml(
+        ["Nom", "Prix", "Durée", "Max services", "Commission", "Actif"],
+        plansFiltres.map((p) => [
+          p.nom || "—",
+          formaterMontant(p.prix, p.devise),
+          `${p.dureeJours} j`,
+          p.maxServices != null ? String(p.maxServices) : "Illimité",
+          p.commissionReduite != null ? `${p.commissionReduite}%` : "—",
+          p.actif ? "Oui" : "Non",
+        ])
+      )
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -107,9 +164,24 @@ export default function PageAdminAbonnements() {
           </h1>
           <p className="text-sm text-gray-500">Plans commerciaux et souscriptions prestataires actives.</p>
         </div>
-        {onglet === "plans" && (
-          <Bouton taille="sm" onClick={() => ouvrirModal()}><Plus className="h-4 w-4" /> Nouveau plan</Bouton>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <Bouton variante="fantome" taille="sm" onClick={imprimer}>
+            <Printer className="h-4 w-4" /> Imprimer
+          </Bouton>
+          {onglet === "plans" && (
+            <Bouton taille="sm" onClick={() => ouvrirModal()}><Plus className="h-4 w-4" /> Nouveau plan</Bouton>
+          )}
+        </div>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder={onglet === "plans" ? "Filtrer les plans…" : "Prestataire, plan, statut…"}
+          className="h-11 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm"
+        />
       </div>
 
       <div className="flex gap-2 border-b border-gray-200 pb-2">
@@ -133,7 +205,7 @@ export default function PageAdminAbonnements() {
 
       {onglet === "souscriptions" && !chargement && (
         <>
-          {souscriptions.length === 0 ? (
+          {souscriptionsFiltrees.length === 0 ? (
             <Carte><p className="text-center text-gray-500">Aucune souscription enregistrée.</p></Carte>
           ) : (
             <div className="overflow-x-auto rounded-card bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
@@ -149,7 +221,7 @@ export default function PageAdminAbonnements() {
                   </tr>
                 </thead>
                 <tbody>
-                  {souscriptions.map((a) => (
+                  {souscriptionsFiltrees.map((a) => (
                     <tr key={a.id} className="border-b border-gray-50">
                       <td className="px-4 py-3 font-medium">{a.prestataire?.nomEntreprise}</td>
                       <td className="px-4 py-3">{a.plan?.nom}</td>
@@ -177,14 +249,14 @@ export default function PageAdminAbonnements() {
         </>
       )}
 
-      {onglet === "plans" && !chargement && plans.length === 0 && (
+      {onglet === "plans" && !chargement && plansFiltres.length === 0 && (
         <Carte><p className="text-center text-gray-500">Aucun plan d'abonnement. Créez-en un.</p></Carte>
       )}
 
-      {onglet === "plans" && !chargement && plans.length > 0 && (
+      {onglet === "plans" && !chargement && plansFiltres.length > 0 && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {plans.map((p) => (
+            {plansFiltres.map((p) => (
               <Carte key={p.id} className="relative flex flex-col">
                 {!p.actif && <span className="absolute right-3 top-3 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">Inactif</span>}
                 <h3 className="text-lg font-bold text-gray-900">{p.nom}</h3>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, X, Pencil, Trash2, Tags, Search } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Search, Printer } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
 import { toastErreur, toastSucces } from "../../../components/Toast";
@@ -13,6 +13,7 @@ import {
   modifierCodePromo,
   supprimerCodePromo,
 } from "../../../lib/api-codes-promos";
+import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
 type Formulaire = {
   code: string;
@@ -153,6 +154,24 @@ export default function PageAdminCodesPromos() {
     }
   }
 
+  function imprimer() {
+    imprimerElement(
+      "Codes promo",
+      tableVersHtml(
+        ["Code", "Type", "Valeur", "Actif", "Usages", "Début", "Fin"],
+        codesFiltres.map((c) => [
+          c.code || "—",
+          c.type || "—",
+          String(c.valeur ?? "—"),
+          c.actif ? "Oui" : "Non",
+          `${c.usageActuel ?? 0}${c.usageMax != null ? ` / ${c.usageMax}` : ""}`,
+          c.dateDebut ? new Date(c.dateDebut).toLocaleDateString("fr-FR") : "—",
+          c.dateFin ? new Date(c.dateFin).toLocaleDateString("fr-FR") : "—",
+        ])
+      )
+    );
+  }
+
   if (utilisateur?.role !== "ADMIN") {
     return <Carte><p className="text-center text-gray-500">Accès non autorisé.</p></Carte>;
   }
@@ -161,9 +180,14 @@ export default function PageAdminCodesPromos() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Codes Promo</h1>
-        <Bouton variante="primaire" taille="sm" onClick={ouvrirCreation}>
-          <Plus className="h-4 w-4" /> Nouveau code
-        </Bouton>
+        <div className="flex flex-wrap gap-2">
+          <Bouton variante="fantome" taille="sm" onClick={imprimer} disabled={codesFiltres.length === 0}>
+            <Printer className="h-4 w-4" /> Imprimer
+          </Bouton>
+          <Bouton variante="primaire" taille="sm" onClick={ouvrirCreation}>
+            <Plus className="h-4 w-4" /> Nouveau code
+          </Bouton>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

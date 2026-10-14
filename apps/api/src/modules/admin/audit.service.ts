@@ -22,15 +22,34 @@ export async function enregistrerAuditAdmin(input: {
   });
 }
 
-export async function listerAuditsAdmin(page = 1, parPage = 30) {
+export async function listerAuditsAdmin(
+  page = 1,
+  parPage = 30,
+  filtres?: { recherche?: string; action?: string }
+) {
   const skip = (page - 1) * parPage;
+  const where: Record<string, unknown> = {};
+  if (filtres?.action?.trim()) {
+    where.action = { contains: filtres.action.trim(), mode: "insensitive" };
+  }
+  const q = filtres?.recherche?.trim();
+  if (q) {
+    where.OR = [
+      { action: { contains: q, mode: "insensitive" } },
+      { cibleType: { contains: q, mode: "insensitive" } },
+      { cibleId: { contains: q, mode: "insensitive" } },
+      { details: { contains: q, mode: "insensitive" } },
+      { adminId: { contains: q, mode: "insensitive" } },
+    ];
+  }
   const [items, total] = await Promise.all([
     prisma.auditAdmin.findMany({
+      where,
       skip,
       take: parPage,
       orderBy: { creeLe: "desc" },
     }),
-    prisma.auditAdmin.count(),
+    prisma.auditAdmin.count({ where }),
   ]);
   return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) || 1 };
 }
