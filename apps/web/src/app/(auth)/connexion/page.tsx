@@ -6,9 +6,10 @@ import Link from "next/link";
 import { Bouton } from "../../../components/Bouton";
 import { Champ } from "../../../components/Champ";
 import { Carte } from "../../../components/Carte";
+import { BoutonGoogleAdmin } from "../../../components/BoutonGoogleAdmin";
 import { toastSucces, toastErreur } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
-import { connecter, verifier2FA } from "../../../lib/api-auth";
+import { connecter, connecterGoogleAdmin, verifier2FA } from "../../../lib/api-auth";
 import { useAuthStore } from "../../../lib/store-auth";
 
 export default function PageConnexion() {
@@ -22,6 +23,25 @@ export default function PageConnexion() {
   const [deuxfaRequis, setDeuxfaRequis] = useState(false);
   const [code2FA, setCode2FA] = useState("");
   const [message2FA, setMessage2FA] = useState("");
+
+  async function gererGoogle(idToken: string) {
+    setChargement(true);
+    try {
+      const resultat = await connecterGoogleAdmin(idToken);
+      if (resultat.utilisateur.role !== "ADMIN") {
+        deconnecterStore();
+        toastErreur("La console web est réservée aux administrateurs.");
+        return;
+      }
+      connecterStore(resultat.token, resultat.utilisateur);
+      toastSucces(`Bon retour, ${resultat.utilisateur.nom} !`);
+      router.push("/admin/pilotage");
+    } catch (erreur) {
+      toastErreur(extraireMessageErreur(erreur));
+    } finally {
+      setChargement(false);
+    }
+  }
 
   async function gererSoumission(e: React.FormEvent) {
     e.preventDefault();
@@ -130,6 +150,18 @@ export default function PageConnexion() {
             Se connecter
           </Bouton>
         </form>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs font-medium uppercase tracking-wide text-gray-400">ou</span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <BoutonGoogleAdmin onCredential={gererGoogle} disabled={chargement} />
+        <p className="mt-2 text-center text-xs text-gray-400">
+          Le compte Google doit correspondre à un administrateur déjà créé
+          (ex. email du superadmin).
+        </p>
 
         <p className="mt-4 text-center text-sm">
           <Link href="/reinitialiser-pin" className="font-semibold text-primaire hover:underline">

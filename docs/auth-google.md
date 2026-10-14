@@ -1,14 +1,23 @@
 # Connexion Google — RESERVA
 
-Bouton **Continuer avec Google** (écran bienvenue), comme SENGA.
+Bouton **Continuer avec Google** (écran bienvenue mobile), comme SENGA.
 
-## Flux
+## Flux mobile
 
 1. Flutter `google_sign_in` → `idToken`
 2. `POST /api/auth/google` `{ idToken, role: CLIENT|PRESTATAIRE }`
 3. API vérifie le token (Google) → crée / retrouve l'utilisateur
 4. Si **pas de PIN** → écran création PIN (sans SMS)
 5. Connexions suivantes : PIN **ou** Google
+
+## Console web admin
+
+1. Bouton GIS sur `/connexion` → `idToken`
+2. `POST /api/auth/google/admin` `{ idToken }`
+3. **Aucun compte créé** : l’email / `googleId` doit déjà appartenir à un utilisateur `ADMIN`
+4. Origines JS autorisées (client OAuth **Web**) :
+   - `https://reserva-web-b9au.onrender.com`
+   - `http://localhost:3001` (dev)
 
 ## Configuration Google Cloud
 

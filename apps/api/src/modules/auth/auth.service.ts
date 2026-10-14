@@ -488,6 +488,58 @@ export async function mesParrainages(utilisateurId: string) {
 }
 
 /**
+ * Connexion Google pour la console web admin.
+ * N'autorise que les comptes déjà ADMIN (email ou googleId) — pas de création.
+ */
+export async function connecterAvecGoogleAdmin(input: { idToken: string }) {
+  const profil = await verifierIdTokenGoogle(input.idToken);
+
+  const utilisateur = await prisma.utilisateur.findFirst({
+    where: {
+      OR: [{ googleId: profil.googleId }, ...(profil.email ? [{ email: profil.email }] : [])],
+    },
+  });
+
+  if (!utilisateur) {
+    throw new ErreurValidation(
+      "Aucun compte administrateur lié à ce Google. Connectez-vous d'abord par PIN, " +
+        "ou associez l'email Google au compte ADMIN."
+    );
+  }
+  if (utilisateur.role !== "ADMIN") {
+    throw new ErreurValidation(
+      "La console web est réservée aux administrateurs. Utilisez l'application mobile."
+    );
+  }
+  if (utilisateur.bloqueJusquA && new Date() < utilisateur.bloqueJusquA) {
+    throw new ErreurValidation("Compte administrateur temporairement bloqué");
+  }
+
+  const misAJour = await prisma.utilisateur.update({
+    where: { id: utilisateur.id },
+    data: {
+      googleId: utilisateur.googleId || profil.googleId,
+      email: utilisateur.email || profil.email,
+      photoUrl: utilisateur.photoUrl || profil.photoUrl || null,
+      telephoneVerifie: true,
+      tentativesPin: 0,
+      bloqueJusquA: null,
+    },
+  });
+
+  const token = genererToken({
+    utilisateurId: misAJour.id,
+    role: "ADMIN",
+    telephone: misAJour.telephone,
+  });
+
+  return {
+    token,
+    utilisateur: formaterUtilisateurPublic(misAJour),
+  };
+}
+
+/**
  * Inscription / connexion Google.
  * Si le compte n'a pas encore de PIN → pinRequis=true (écran création PIN, sans SMS).
  */

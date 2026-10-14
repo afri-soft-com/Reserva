@@ -54,6 +54,12 @@ export const schemaAuthGoogle = z.object({
 });
 export type AuthGoogleInput = z.infer<typeof schemaAuthGoogle>;
 
+/** Connexion Google console admin — aucun auto-compte, ADMIN existant uniquement */
+export const schemaAuthGoogleAdmin = z.object({
+  idToken: z.string().trim().min(20),
+});
+export type AuthGoogleAdminInput = z.infer<typeof schemaAuthGoogleAdmin>;
+
 export const schemaPhotoProfil = z.object({
   photoUrl: z.string().url("URL de photo invalide").or(z.string().startsWith("data:image")),
 });

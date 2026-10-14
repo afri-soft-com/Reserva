@@ -33,6 +33,12 @@ export async function connecter(input: ConnexionPinInput) {
   return data.donnees as ({ token: string; utilisateur: Utilisateur } | { deuxfaRequis: boolean; telephone: string; message: string });
 }
 
+/** Connexion Google console admin (ADMIN existant uniquement). */
+export async function connecterGoogleAdmin(idToken: string) {
+  const { data } = await clientApi.post("/auth/google/admin", { idToken });
+  return data.donnees as { token: string; utilisateur: Utilisateur };
+}
+
 export async function verifier2FA(input: { telephone: string; code: string }) {
   const { data } = await clientApi.post("/auth/2fa/verifier", input);
   return data.donnees as { token: string; utilisateur: Utilisateur };

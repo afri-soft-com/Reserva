@@ -12,6 +12,7 @@ import {
   schemaDemandeReinitialisationPin,
   schemaReinitialiserPin,
   schemaAuthGoogle,
+  schemaAuthGoogleAdmin,
 } from "@reserva/shared";
 
 export const routesAuth = Router();
@@ -22,6 +23,7 @@ routesAuth.post("/otp/verifier", valider(schemaVerifierOtp), authController.veri
 routesAuth.post("/pin/definir", valider(schemaDefinirPin), authController.definirCodePin);
 routesAuth.post("/connexion", valider(schemaConnexionPin), authController.connexion);
 routesAuth.post("/google", valider(schemaAuthGoogle), authController.connexionGoogle);
+routesAuth.post("/google/admin", valider(schemaAuthGoogleAdmin), authController.connexionGoogleAdmin);
 routesAuth.get("/profil", authentifier, authController.profil);
 
 // Récupération de compte (mot de passe oublié)
