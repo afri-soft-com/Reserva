@@ -88,6 +88,8 @@ app.get("/api/sante", async (_req: Request, res: Response) => {
       statut: ok ? "operationnel" : "degrade",
       base: "ok",
       redis,
+      modeSms: env.MODE_SMS,
+      hubSms: env.AFRISOFT_SMS_HUB_URL ? "configure" : "absent",
       horodatage: new Date().toISOString(),
       environnement: env.NODE_ENV,
     });

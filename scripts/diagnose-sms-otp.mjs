@@ -23,6 +23,32 @@ async function ownerIdOf(serviceId) {
   return s.ownerId;
 }
 
+async function dumpRenderSmsEnv() {
+  if (!key || !serviceId) return;
+  console.log("→ Env Render core (SMS)");
+  const res = await fetch(`${API}/services/${serviceId}/env-vars`, { headers });
+  if (!res.ok) {
+    console.log(`  ⚠ env-vars HTTP ${res.status}`);
+    return;
+  }
+  const data = await res.json();
+  const rows = (Array.isArray(data) ? data : []).map((r) => r.envVar || r);
+  const want = ["MODE_SMS", "AFRISOFT_SMS_HUB_URL", "AFRISOFT_HUB_APP_ID", "AFRISOFT_HUB_API_KEY"];
+  for (const k of want) {
+    const row = rows.find((r) => r.key === k);
+    if (!row) {
+      console.log(`  ${k}: ABSENT`);
+      continue;
+    }
+    const v = row.value == null ? "(masqué)" : String(row.value);
+    if (k.includes("API_KEY")) {
+      console.log(`  ${k}: présent len=${v === "(masqué)" ? "?" : v.length}`);
+    } else {
+      console.log(`  ${k}: ${v}`);
+    }
+  }
+}
+
 async function dumpOtpLogs() {
   if (!key || !serviceId) {
     console.log("⚠ RENDER_* absents — skip logs");
@@ -98,6 +124,7 @@ async function probeHubSend() {
 
 async function main() {
   console.log("→ Diagnostic SMS OTP RESERVA");
+  await dumpRenderSmsEnv();
   await dumpOtpLogs();
   await probeHubSend();
   console.log("✓ Diagnostic terminé");

@@ -1,3 +1,4 @@
+import dns from "node:dns";
 import { createServer } from "http";
 import { app } from "./app";
 import { env } from "./config/env";
@@ -5,10 +6,26 @@ import { prisma } from "./config/prisma";
 import { initialiserSocket } from "./socket";
 import { initialiserRappels } from "./services/rappel.scheduler";
 
+// Prefer IPv4: certains hubs SMS renvoient 503 sur le chemin IPv6 depuis Render.
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {
+  /* Node < 17 */
+}
+
 async function demarrer() {
   try {
     await prisma.$connect();
     console.log("✓ Connexion à la base de données établie");
+    if (env.MODE_SMS === "production") {
+      const hub = env.AFRISOFT_SMS_HUB_URL.replace(/\/$/, "");
+      fetch(`${hub}/health`)
+        .then(async (r) => {
+          const body = await r.text().catch(() => "");
+          console.log(`[Hub SMS] egress /health → ${r.status} ${body.slice(0, 120)}`);
+        })
+        .catch((e) => console.error(`[Hub SMS] egress /health KO:`, e instanceof Error ? e.message : e));
+    }
 
     const { assurerClesTarificationCroissance } = await import("./modules/economie/economie.service");
     await assurerClesTarificationCroissance().catch((e) =>

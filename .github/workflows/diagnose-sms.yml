@@ -16,7 +16,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Probe hub direct + logs Render
+      # Gateway d'abord (avant probe hub) pour isoler un 503 Render ≠ rate-limit du diagnostic.
+      - name: Reproduire OTP via gateway prod (comme l'app)
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          DIAG_SMS_PHONE: ${{ github.event.inputs.phone }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
+        run: node scripts/probe-otp-via-gateway.mjs
+      - name: Probe hub direct + env/logs Render
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
@@ -25,10 +33,3 @@ jobs:
           AFRISOFT_SMS_HUB_URL: ${{ secrets.AFRISOFT_SMS_HUB_URL }}
           DIAG_SMS_PHONE: ${{ github.event.inputs.phone }}
         run: node scripts/diagnose-sms-otp.mjs
-      - name: Reproduire OTP via gateway prod (comme l'app)
-        env:
-          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
-          DIAG_SMS_PHONE: ${{ github.event.inputs.phone }}
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
-        run: node scripts/probe-otp-via-gateway.mjs
