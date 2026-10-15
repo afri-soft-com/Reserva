@@ -59,11 +59,17 @@ async function deploy() {
   const res = await fetch(`${API}/services/${serviceId}/deploys`, {
     method: "POST",
     headers,
-    body: "{}",
+    body: JSON.stringify({ clearCache: "do_not_clear" }),
   });
-  if (!res.ok) throw new Error(`POST deploy → ${res.status} ${await res.text()}`);
-  const d = await res.json();
-  return d?.deploy?.id || d?.id || "?";
+  const text = await res.text();
+  if (!res.ok) throw new Error(`POST deploy → ${res.status} ${text.slice(0, 300)}`);
+  if (!text.trim()) return "ok-empty-body";
+  try {
+    const d = JSON.parse(text);
+    return d?.deploy?.id || d?.id || "ok";
+  } catch {
+    return `ok-non-json:${text.slice(0, 40)}`;
+  }
 }
 
 async function verifyListed() {
