@@ -10,19 +10,39 @@ interface ResultatEnvoiSms {
   referenceExterne?: string;
 }
 
-export async function envoyerSms(telephone: string, message: string, purpose = "sms"): Promise<ResultatEnvoiSms> {
+/**
+ * Envoi SMS. Les purposes « otp » restent critiques (échec → exception).
+ * Confirmation / rappel / annulation : best-effort — un échec hub ne doit pas
+ * faire échouer l’acceptation ou l’annulation d’une réservation (500 smoke).
+ */
+export async function envoyerSms(
+  telephone: string,
+  message: string,
+  purpose = "sms"
+): Promise<ResultatEnvoiSms> {
+  const critique = purpose === "otp";
+
   if (env.MODE_SMS === "simulation") {
     console.log(`\n[SMS SIMULÉ] → ${telephone}\n${message}\n`);
     return { succes: true, referenceExterne: `SIM-${Date.now()}` };
   }
 
   if (!env.AFRISOFT_HUB_APP_ID || !env.AFRISOFT_HUB_API_KEY) {
-    throw new Error(
+    const err = new Error(
       "MODE_SMS=production mais AFRISOFT_HUB_APP_ID / AFRISOFT_HUB_API_KEY manquants"
     );
+    if (critique) throw err;
+    console.error(`[SMS] ${err.message} (purpose=${purpose})`);
+    return { succes: false };
   }
 
-  return envoyerSmsViaHubAfriSoft({ telephone, text: message, purpose });
+  try {
+    return await envoyerSmsViaHubAfriSoft({ telephone, text: message, purpose });
+  } catch (e) {
+    if (critique) throw e;
+    console.error(`[SMS] échec non bloquant (${purpose}) → ${telephone}:`, e);
+    return { succes: false };
+  }
 }
 
 export async function envoyerOtpSms(telephone: string, code: string): Promise<ResultatEnvoiSms> {

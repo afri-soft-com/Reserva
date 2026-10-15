@@ -281,12 +281,13 @@ export async function repondreReservation(utilisateurId: string, reservationId: 
     data: { statut: "CONFIRMEE" },
   });
 
-  await envoyerConfirmationReservation({
+  // SMS best-effort : ne doit jamais faire échouer l'acceptation métier.
+  envoyerConfirmationReservation({
     telephone: reservation.client.telephone,
     numeroReservation: reservation.numero,
     nomPrestataire: reservation.prestataire.nomEntreprise,
     dateHeure: reservation.creneau.debut.toLocaleString("fr-FR"),
-  });
+  }).catch((e) => console.error("[SMS confirmation]", e));
 
   await creerNotification({
     utilisateurId: reservation.clientId,
@@ -383,11 +384,11 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
     }
   }
 
-  await envoyerNotificationAnnulation({
+  envoyerNotificationAnnulation({
     telephone: reservation.client.telephone,
     numeroReservation: reservation.numero,
     montantRembourse: montantRembourse > 0 ? montantRembourse : undefined,
-  });
+  }).catch((e) => console.error("[SMS annulation]", e));
 
   await creerNotification({
     utilisateurId: reservation.clientId,
