@@ -25,7 +25,21 @@ export async function demarrerInscription(input: InscriptionInput) {
 
   const utilisateurExistant = await prisma.utilisateur.findUnique({ where: { telephone } });
   if (utilisateurExistant) {
-    throw new ErreurValidation("Ce numéro de téléphone est déjà associé à un compte RESERVA");
+    // Compte déjà vérifié → connexion PIN
+    if (utilisateurExistant.telephoneVerifie) {
+      throw new ErreurValidation(
+        "Ce numéro est déjà inscrit. Connectez-vous avec votre PIN, ou utilisez « PIN oublié »."
+      );
+    }
+    // Inscription inachevée (ex. SMS OTP a échoué après création en base) → renvoyer l'OTP
+    if (input.nom?.trim() && input.nom.trim() !== utilisateurExistant.nom) {
+      await prisma.utilisateur.update({
+        where: { id: utilisateurExistant.id },
+        data: { nom: input.nom.trim() },
+      });
+    }
+    await genererEtEnvoyerOtp(utilisateurExistant.id, telephone);
+    return { utilisateurId: utilisateurExistant.id, telephone, reprise: true };
   }
 
   // Parrainage : rattache le nouveau compte au parrain si le code est valide
@@ -146,11 +160,20 @@ async function genererEtEnvoyerOtp(utilisateurId: string, telephone: string): Pr
   const code = genererOtp();
   const expireLe = new Date(Date.now() + DUREE_VALIDITE_OTP_MINUTES * 60 * 1000);
 
-  await prisma.otp.create({
+  const otp = await prisma.otp.create({
     data: { utilisateurId, code, expireLe },
   });
 
-  await envoyerOtpSms(telephone, code);
+  try {
+    await envoyerOtpSms(telephone, code);
+  } catch (e) {
+    // Évite le 500 « erreur interne » côté app : le compte peut déjà exister.
+    console.error("[OTP SMS] échec envoi", telephone, e);
+    await prisma.otp.delete({ where: { id: otp.id } }).catch(() => undefined);
+    throw new ErreurValidation(
+      "Impossible d'envoyer le SMS de vérification pour le moment. Vérifiez le numéro et réessayez dans une minute."
+    );
+  }
 }
 
 /** Renvoie un nouvel OTP (ex: si le précédent a expiré ou n'est pas arrivé) */

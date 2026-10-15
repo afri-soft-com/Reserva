@@ -87,10 +87,34 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
         setState(() => _etape = 'OTP');
       }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      final msg = _msgErreur(e);
+      // Compte créé mais OTP non reçu / inscription inachevée → renvoyer le SMS
+      final deja = msg.toLowerCase().contains('déjà inscrit') ||
+          msg.toLowerCase().contains('deja inscrit') ||
+          msg.toLowerCase().contains('déjà associé');
+      if (deja) {
+        try {
+          await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim());
+          if (mounted) {
+            ToastWidget.show(context, 'Nouveau code SMS envoyé.', type: 'succes');
+            setState(() => _etape = 'OTP');
+          }
+          return;
+        } catch (e2) {
+          if (mounted) ToastWidget.show(context, _msgErreur(e2), type: 'erreur');
+          return;
+        }
+      }
+      if (mounted) ToastWidget.show(context, msg, type: 'erreur');
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
+  }
+
+  String _msgErreur(Object e) {
+    var s = e.toString();
+    if (s.startsWith('Exception: ')) s = s.substring('Exception: '.length);
+    return s;
   }
 
   Future<void> _gererOtp() async {
@@ -102,7 +126,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
         setState(() => _etape = 'PIN');
       }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      if (mounted) ToastWidget.show(context, _msgErreur(e), type: 'erreur');
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
