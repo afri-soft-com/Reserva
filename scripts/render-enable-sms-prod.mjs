@@ -1,17 +1,15 @@
 /**
- * Passe MODE_SMS=production sur reserva-core (Render) et pose AFRISOFT_HUB_*.
- * Relance un deploy core pour prendre en compte les env vars.
+ * Pose MODE_SMS=production + AFRISOFT_HUB_* sur reserva-core (upsert par clé).
+ * Ne remplace PAS toutes les env-vars (évite d'effacer les secrets Render masqués).
  *
- * Env requis:
- *   RENDER_API_KEY, RENDER_SERVICE_CORE
- *   AFRISOFT_HUB_APP_ID, AFRISOFT_HUB_API_KEY
- * Optionnel: AFRISOFT_SMS_HUB_URL (défaut https://sms.afri-soft.com)
+ * Env: RENDER_API_KEY, RENDER_SERVICE_CORE, AFRISOFT_HUB_APP_ID, AFRISOFT_HUB_API_KEY
+ * Optionnel: AFRISOFT_SMS_HUB_URL
  */
 const API = "https://api.render.com/v1";
 const key = process.env.RENDER_API_KEY;
 const serviceId = process.env.RENDER_SERVICE_CORE;
-const appId = process.env.AFRISOFT_HUB_APP_ID;
-const apiKey = process.env.AFRISOFT_HUB_API_KEY;
+const appId = (process.env.AFRISOFT_HUB_APP_ID || "").trim();
+const apiKey = (process.env.AFRISOFT_HUB_API_KEY || "").trim();
 const smsHubUrl = (process.env.AFRISOFT_SMS_HUB_URL || "https://sms.afri-soft.com").replace(/\/$/, "");
 
 if (!key || !serviceId) {
@@ -29,23 +27,32 @@ const headers = {
   "Content-Type": "application/json",
 };
 
-async function getEnvVars() {
-  const res = await fetch(`${API}/services/${serviceId}/env-vars`, { headers });
-  if (!res.ok) throw new Error(`GET env-vars → ${res.status} ${await res.text()}`);
-  const data = await res.json();
-  // Render renvoie [{ envVar: { key, value } }] ou [{ key, value }]
-  return (Array.isArray(data) ? data : []).map((row) => row.envVar || row);
-}
-
-async function putEnvVars(vars) {
-  const body = vars.map(({ key: k, value }) => ({ key: k, value }));
-  const res = await fetch(`${API}/services/${serviceId}/env-vars`, {
+/** Upsert une seule variable — API Render v1 */
+async function upsertEnv(envKey, value) {
+  // PUT /services/{id}/env-vars/{envVarKey}
+  const res = await fetch(`${API}/services/${serviceId}/env-vars/${encodeURIComponent(envKey)}`, {
     method: "PUT",
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify({ value }),
   });
-  if (!res.ok) throw new Error(`PUT env-vars → ${res.status} ${await res.text()}`);
-  return res.json();
+  if (res.ok) {
+    console.log(`  ✓ ${envKey}`);
+    return;
+  }
+  // Fallback: certains comptes attendent POST collection
+  if (res.status === 404 || res.status === 405) {
+    const res2 = await fetch(`${API}/services/${serviceId}/env-vars`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify([{ key: envKey, value }]),
+    });
+    if (!res2.ok) {
+      throw new Error(`POST env ${envKey} → ${res2.status} ${await res2.text()}`);
+    }
+    console.log(`  ✓ ${envKey} (POST)`);
+    return;
+  }
+  throw new Error(`PUT env ${envKey} → ${res.status} ${await res.text()}`);
 }
 
 async function deploy() {
@@ -55,39 +62,32 @@ async function deploy() {
     body: "{}",
   });
   if (!res.ok) throw new Error(`POST deploy → ${res.status} ${await res.text()}`);
-  return res.json();
+  const d = await res.json();
+  return d?.deploy?.id || d?.id || "?";
 }
 
-function upsert(list, k, value) {
-  const i = list.findIndex((e) => e.key === k);
-  if (i >= 0) list[i] = { ...list[i], key: k, value };
-  else list.push({ key: k, value });
+async function verifyListed() {
+  const res = await fetch(`${API}/services/${serviceId}/env-vars`, { headers });
+  if (!res.ok) return;
+  const data = await res.json();
+  const rows = (Array.isArray(data) ? data : []).map((r) => r.envVar || r);
+  const keys = new Set(rows.map((r) => r.key));
+  for (const k of ["MODE_SMS", "AFRISOFT_HUB_APP_ID", "AFRISOFT_HUB_API_KEY", "AFRISOFT_SMS_HUB_URL"]) {
+    console.log(`  list ${k}: ${keys.has(k) ? "présent" : "ABSENT"}`);
+  }
+  const mode = rows.find((r) => r.key === "MODE_SMS");
+  if (mode?.value) console.log(`  MODE_SMS valeur visible=${mode.value}`);
 }
 
 async function main() {
-  console.log(`→ Lecture env-vars service ${serviceId}`);
-  const current = await getEnvVars();
-  const next = current
-    .filter((e) => e.key && e.value !== undefined && e.value !== null)
-    .map((e) => ({ key: e.key, value: String(e.value) }));
-
-  upsert(next, "MODE_SMS", "production");
-  upsert(next, "AFRISOFT_HUB_APP_ID", appId);
-  upsert(next, "AFRISOFT_HUB_API_KEY", apiKey);
-  upsert(next, "AFRISOFT_SMS_HUB_URL", smsHubUrl);
-
-  console.log("→ Mise à jour MODE_SMS=production + clés hub AfriSoft");
-  await putEnvVars(next);
-
-  const mode = next.find((e) => e.key === "MODE_SMS")?.value;
-  const hasApp = next.some((e) => e.key === "AFRISOFT_HUB_APP_ID" && e.value);
-  const hasKey = next.some((e) => e.key === "AFRISOFT_HUB_API_KEY" && e.value);
-  console.log(`  MODE_SMS=${mode} | APP_ID=${hasApp ? "ok" : "manquant"} | API_KEY=${hasKey ? "ok" : "manquant"}`);
-
-  console.log("→ Déclenchement redeploy core");
-  const d = await deploy();
-  const deployId = d?.deploy?.id || d?.id || "?";
-  console.log(`✓ Deploy lancé (${deployId}). Attendre le live puis retester OTP sur un numéro réel.`);
+  console.log(`→ Upsert SMS prod sur service ${serviceId}`);
+  await upsertEnv("MODE_SMS", "production");
+  await upsertEnv("AFRISOFT_HUB_APP_ID", appId);
+  await upsertEnv("AFRISOFT_HUB_API_KEY", apiKey);
+  await upsertEnv("AFRISOFT_SMS_HUB_URL", smsHubUrl);
+  await verifyListed();
+  const deployId = await deploy();
+  console.log(`✓ Deploy core lancé (${deployId}). Attendre live puis retenter OTP.`);
 }
 
 main().catch((e) => {
