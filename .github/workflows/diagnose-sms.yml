@@ -1,0 +1,27 @@
+name: Diagnostiquer SMS OTP
+
+on:
+  workflow_dispatch:
+    inputs:
+      phone:
+        description: "Numéro réel à tester (ex +243971163574) — laisse vide pour numéro démo"
+        required: false
+        default: ""
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Probe hub + logs Render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
+          AFRISOFT_HUB_APP_ID: ${{ secrets.AFRISOFT_HUB_APP_ID }}
+          AFRISOFT_HUB_API_KEY: ${{ secrets.AFRISOFT_HUB_API_KEY }}
+          AFRISOFT_SMS_HUB_URL: ${{ secrets.AFRISOFT_SMS_HUB_URL }}
+          DIAG_SMS_PHONE: ${{ github.event.inputs.phone }}
+        run: node scripts/diagnose-sms-otp.mjs

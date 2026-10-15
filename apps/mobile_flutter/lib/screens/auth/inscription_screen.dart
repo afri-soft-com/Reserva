@@ -113,7 +113,8 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
 
   String _msgErreur(Object e) {
     var s = e.toString();
-    if (s.startsWith('Exception: ')) s = s.substring('Exception: '.length);
+    // ApiClient wrappe en Exception('…') — retirer le préfixe pour l'UI
+    s = s.replaceFirst(RegExp(r'^Exception:\s*'), '');
     return s;
   }
 
