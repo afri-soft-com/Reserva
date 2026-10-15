@@ -6,20 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../app_flavor.dart';
 import '../services/api_app_versions.dart';
 import '../theme.dart';
-
-/// Compare semver a.b.c — retourne negatif si a plus petit, 0 si egal, positif sinon.
-int comparerVersions(String a, String b) {
-  List<int> parts(String v) =>
-      v.split(RegExp(r'[^0-9]+')).where((s) => s.isNotEmpty).map(int.parse).toList();
-  final pa = parts(a);
-  final pb = parts(b);
-  for (var i = 0; i < 3; i++) {
-    final x = i < pa.length ? pa[i] : 0;
-    final y = i < pb.length ? pb[i] : 0;
-    if (x != y) return x.compareTo(y);
-  }
-  return 0;
-}
+import '../utils/comparer_versions.dart';
 
 /// Soft banner + force blocking overlay selon /api/app/versions.
 /// La bannière disparaît dès que la version installée ≥ minSoft (après MAJ store).
@@ -83,7 +70,12 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
         _storeUrl = Platform.isIOS ? ios : android;
         _charge = false;
         // Dès que la MAJ est faite, la bannière disparaît (même si dismissée avant).
-        if (comparerVersions(installee, minSoft) >= 0) {
+        if (decideModeMiseAJour(
+              versionInstallee: installee,
+              minSoft: minSoft,
+              minForce: minForce,
+            ) ==
+            'none') {
           _dismissSoft = false;
         }
       });
@@ -96,16 +88,18 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
     }
   }
 
-  bool get _force {
-    if (_installee == null || _minForce == null) return false;
-    return comparerVersions(_installee!, _minForce!) < 0;
+  String get _mode {
+    if (_installee == null || _minSoft == null || _minForce == null) return 'none';
+    return decideModeMiseAJour(
+      versionInstallee: _installee!,
+      minSoft: _minSoft!,
+      minForce: _minForce!,
+    );
   }
 
-  bool get _soft {
-    if (_dismissSoft || _force) return false;
-    if (_installee == null || _minSoft == null) return false;
-    return comparerVersions(_installee!, _minSoft!) < 0;
-  }
+  bool get _force => _mode == 'force';
+
+  bool get _soft => !_dismissSoft && _mode == 'soft';
 
   Future<void> _ouvrirStore() async {
     final url = _storeUrl;

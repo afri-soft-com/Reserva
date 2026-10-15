@@ -91,3 +91,37 @@ export function bornerParPage(parPage: number, max = 100): number {
   if (!Number.isFinite(parPage) || parPage <= 0) return 20;
   return Math.min(parPage, max);
 }
+
+/**
+ * Compare des versions a.b.c (ignore suffixes non numériques).
+ * @returns négatif si a < b, 0 si égal, positif si a > b
+ */
+export function comparerVersions(a: string, b: string): number {
+  const parts = (v: string) =>
+    v
+      .split(/[^0-9]+/)
+      .filter(Boolean)
+      .map((n) => parseInt(n, 10));
+  const pa = parts(a || "0");
+  const pb = parts(b || "0");
+  for (let i = 0; i < 3; i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x !== y) return x - y;
+  }
+  return 0;
+}
+
+/** Mode d'affichage bannière de mise à jour (soft / force / none). */
+export type ModeMiseAJour = "none" | "soft" | "force";
+
+export function decideModeMiseAJour(params: {
+  versionInstallee: string;
+  minSoft: string;
+  minForce: string;
+}): ModeMiseAJour {
+  const { versionInstallee, minSoft, minForce } = params;
+  if (comparerVersions(versionInstallee, minForce) < 0) return "force";
+  if (comparerVersions(versionInstallee, minSoft) < 0) return "soft";
+  return "none";
+}

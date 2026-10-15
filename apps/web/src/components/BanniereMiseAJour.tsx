@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { comparerVersions, lireVersionsApp } from "../lib/api-app-versions";
+import { decideModeMiseAJour, lireVersionsApp } from "../lib/api-app-versions";
 import { EVENT_SW_UPDATE, appliquerMiseAJourPwa } from "./EnregistreurPwa";
 
 const VERSION_WEB = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
@@ -28,14 +28,13 @@ export function BanniereMiseAJour() {
       const force = cfg.web?.minForce ?? "0.9.0";
       setMinSoft(soft);
       setMinForce(force);
-      if (comparerVersions(VERSION_WEB, force) < 0) {
-        setMode("force");
-        setDismiss(false);
-      } else if (comparerVersions(VERSION_WEB, soft) < 0) {
-        setMode("soft");
-      } else {
-        setMode((m) => (m === "force" || m === "soft" ? "none" : m));
-      }
+      const next = decideModeMiseAJour({
+        versionInstallee: VERSION_WEB,
+        minSoft: soft,
+        minForce: force,
+      });
+      if (next === "force") setDismiss(false);
+      setMode(next);
     } catch {
       /* ignore réseau */
     }

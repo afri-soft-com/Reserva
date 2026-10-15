@@ -144,6 +144,24 @@ export async function executerParcoursSmoke(opts) {
   const sim = await get(gateway, "/economie/simulation?prix=10000&devise=CDF", token);
   console.log("  sim", JSON.stringify(sim).slice(0, 120));
 
+  console.log("→ Versions apps (bannières MAJ — public)");
+  const versions = await get(gateway, "/app/versions");
+  for (const canal of ["client", "pro", "web"]) {
+    const cfg = versions?.[canal];
+    if (!cfg?.minSoft || !cfg?.minForce) {
+      throw new Error(`/app/versions: canal ${canal} incomplet (minSoft/minForce requis)`);
+    }
+  }
+  if (versions.client && !versions.client.storeUrlAndroid) {
+    console.log("  ⚠ client.storeUrlAndroid vide (bannière soft OK, CTA store limité)");
+  }
+  console.log(
+    "  ok",
+    `client≥${versions.client.minSoft}`,
+    `pro≥${versions.pro.minSoft}`,
+    `web≥${versions.web.minSoft}`
+  );
+
   const ecriture =
     opts.ecriture === true ||
     (opts.ecriture !== false &&

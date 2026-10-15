@@ -9,6 +9,8 @@ import {
   schemaInitierPaiement,
   schemaAnnulerReservation,
   schemaConnexionPin,
+  comparerVersions,
+  decideModeMiseAJour,
 } from "@reserva/shared";
 
 describe("métier partagé — tarification & annulation", () => {
@@ -108,5 +110,28 @@ describe("métier partagé — helpers & schémas", () => {
   it("valide connexion PIN", () => {
     expect(schemaConnexionPin.safeParse({ telephone: "+243991234567", pin: "1234" }).success).toBe(true);
     expect(schemaConnexionPin.safeParse({ telephone: "+243991234567", pin: "12" }).success).toBe(false);
+  });
+});
+
+describe("bannières de mise à jour — comparaison versions", () => {
+  it("compare semver", () => {
+    expect(comparerVersions("1.0.0", "1.0.1")).toBeLessThan(0);
+    expect(comparerVersions("1.2.0", "1.10.0")).toBeLessThan(0);
+    expect(comparerVersions("1.0.1", "1.0.1")).toBe(0);
+  });
+
+  it("décide soft / force / none et disparaît après MAJ", () => {
+    expect(
+      decideModeMiseAJour({ versionInstallee: "1.0.1", minSoft: "1.0.0", minForce: "0.9.0" })
+    ).toBe("none");
+    expect(
+      decideModeMiseAJour({ versionInstallee: "1.0.0", minSoft: "1.0.2", minForce: "0.9.0" })
+    ).toBe("soft");
+    expect(
+      decideModeMiseAJour({ versionInstallee: "1.0.0", minSoft: "1.0.2", minForce: "1.0.1" })
+    ).toBe("force");
+    expect(
+      decideModeMiseAJour({ versionInstallee: "1.0.2", minSoft: "1.0.2", minForce: "1.0.0" })
+    ).toBe("none");
   });
 });
