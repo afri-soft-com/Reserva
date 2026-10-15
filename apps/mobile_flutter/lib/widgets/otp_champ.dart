@@ -1,10 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:smart_auth/smart_auth.dart';
 import '../theme.dart';
 
-/// Champ OTP 6 chiffres avec autofill SMS (style WhatsApp / iOS one-time-code).
+bool get _estAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+/// Champ OTP 6 chiffres avec autofill SMS (iOS one-time-code + Android User Consent).
 class OtpChamp extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onCompleted;
@@ -26,7 +30,10 @@ class OtpChamp extends StatefulWidget {
 class _OtpChampState extends State<OtpChamp> {
   late final List<TextEditingController> _cases;
   late final List<FocusNode> _focus;
-  StreamSubscription? _smsSub;
+  /// Champ invisible : cible réelle de AutofillHints.oneTimeCode (iOS / Gboard).
+  final TextEditingController _autofillCtrl = TextEditingController();
+  final FocusNode _autofillFocus = FocusNode();
+  bool _ecouteAndroid = false;
 
   @override
   void initState() {
@@ -34,22 +41,68 @@ class _OtpChampState extends State<OtpChamp> {
     _cases = List.generate(6, (_) => TextEditingController());
     _focus = List.generate(6, (_) => FocusNode());
     widget.controller.addListener(_syncDepuisParent);
+    _autofillCtrl.addListener(_syncDepuisAutofill);
     if (widget.controller.text.length == 6) {
       _appliquerCode(widget.controller.text);
     }
-    // Android / iOS : écoute du presse-papiers SMS via autofill system
-    _demarrerAutofillSms();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _demarrerAutofillSms();
+      // Focus premier case — le champ autofill reste dans le même AutofillGroup.
+      if (mounted) _focus[0].requestFocus();
+    });
   }
 
   Future<void> _demarrerAutofillSms() async {
-    // AutofillHints.oneTimeCode déclenche le clavier / suggestions système.
-    // Sur Android 8+, Google Messages propose le code automatiquement.
+    if (!_estAndroid || _ecouteAndroid) return;
+    _ecouteAndroid = true;
+    try {
+      // User Consent : pas besoin de hash app dans le SMS (SerdiPay-safe).
+      final result = await SmartAuth.instance.getSmsWithUserConsentApi(
+        matcher: r'\d{6}',
+      );
+      if (!mounted) return;
+      if (result.hasData) {
+        final code = result.data?.code ?? _extraireCode(result.data?.sms ?? '');
+        if (code != null && code.length >= 4) {
+          _appliquerCode(code);
+          _publier();
+          TextInput.finishAutofillContext(shouldSave: false);
+          return;
+        }
+      }
+      // Timeout / échec (pas annulation user) → réécouter pour un renvoi SMS.
+      if (!result.isCanceled && mounted && _lireCode().length < 6) {
+        Future<void>.delayed(const Duration(milliseconds: 600), () {
+          if (mounted && _lireCode().length < 6) _demarrerAutofillSms();
+        });
+      }
+    } catch (e) {
+      debugPrint('OtpChamp SmartAuth: $e');
+    } finally {
+      _ecouteAndroid = false;
+    }
+  }
+
+  String? _extraireCode(String sms) {
+    final m = RegExp(r'\d{6}').firstMatch(sms);
+    return m?.group(0);
   }
 
   void _syncDepuisParent() {
     final t = widget.controller.text.replaceAll(RegExp(r'\D'), '');
     if (t.length <= 6 && t != _lireCode()) {
       _appliquerCode(t);
+    }
+  }
+
+  void _syncDepuisAutofill() {
+    final digits = _autofillCtrl.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length >= 4) {
+      _appliquerCode(digits);
+      _publier();
+      if (digits.length >= 6) {
+        TextInput.finishAutofillContext(shouldSave: false);
+      }
     }
   }
 
@@ -60,8 +113,18 @@ class _OtpChampState extends State<OtpChamp> {
     for (var i = 0; i < 6; i++) {
       final ch = i < digits.length ? digits[i] : '';
       if (_cases[i].text != ch) {
-        _cases[i].text = ch;
+        _cases[i].value = TextEditingValue(
+          text: ch,
+          selection: TextSelection.collapsed(offset: ch.length),
+        );
       }
+    }
+    final joined = digits.length > 6 ? digits.substring(0, 6) : digits;
+    if (_autofillCtrl.text != joined) {
+      _autofillCtrl.value = TextEditingValue(
+        text: joined,
+        selection: TextSelection.collapsed(offset: joined.length),
+      );
     }
   }
 
@@ -79,7 +142,7 @@ class _OtpChampState extends State<OtpChamp> {
   }
 
   void _surChange(int index, String value) {
-    // Collage du code complet (SMS autofill)
+    // Collage / suggestion clavier du code complet
     final digits = value.replaceAll(RegExp(r'\D'), '');
     if (digits.length > 1) {
       _appliquerCode(digits);
@@ -114,7 +177,12 @@ class _OtpChampState extends State<OtpChamp> {
   @override
   void dispose() {
     widget.controller.removeListener(_syncDepuisParent);
-    _smsSub?.cancel();
+    _autofillCtrl.removeListener(_syncDepuisAutofill);
+    if (_estAndroid) {
+      SmartAuth.instance.removeUserConsentApiListener();
+    }
+    _autofillCtrl.dispose();
+    _autofillFocus.dispose();
     for (final c in _cases) {
       c.dispose();
     }
@@ -138,47 +206,88 @@ class _OtpChampState extends State<OtpChamp> {
             ),
           ),
         AutofillGroup(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(6, (i) {
-              return SizedBox(
-                width: 48,
-                height: 56,
-                child: TextField(
-                  controller: _cases[i],
-                  focusNode: _focus[i],
-                  autofillHints: i == 0 ? const [AutofillHints.oneTimeCode] : null,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  maxLength: 6,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 1),
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(
-                    counterText: '',
-                    filled: true,
-                    fillColor: AppCouleurs.blanc,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: widget.erreur != null ? AppCouleurs.alerte : AppCouleurs.bordure,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: widget.erreur != null ? AppCouleurs.alerte : AppCouleurs.bordure,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppCouleurs.primaire, width: 2),
+          child: Stack(
+            children: [
+              // Cible autofill système (iOS Strongbox / Android Autofill).
+              // Doit rester focusable dans le groupe ; taille minimale pour iOS.
+              Positioned(
+                left: 0,
+                top: 0,
+                width: 1,
+                height: 1,
+                child: Opacity(
+                  opacity: 0.01,
+                  child: TextField(
+                    controller: _autofillCtrl,
+                    focusNode: _autofillFocus,
+                    autofillHints: const [AutofillHints.oneTimeCode],
+                    keyboardType: TextInputType.number,
+                    enableSuggestions: false,
+                    autocorrect: false,
+                    maxLength: 6,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      counterText: '',
                     ),
                   ),
-                  onChanged: (v) => _surChange(i, v),
                 ),
-              );
-            }),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(6, (i) {
+                  return SizedBox(
+                    width: 48,
+                    height: 56,
+                    child: TextField(
+                      controller: _cases[i],
+                      focusNode: _focus[i],
+                      // Premier case : aussi oneTimeCode (certains OEM Android).
+                      autofillHints: i == 0 ? const [AutofillHints.oneTimeCode] : null,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      maxLength: 6,
+                      enableSuggestions: false,
+                      autocorrect: false,
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 1),
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: InputDecoration(
+                        counterText: '',
+                        filled: true,
+                        fillColor: AppCouleurs.blanc,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: widget.erreur != null ? AppCouleurs.alerte : AppCouleurs.bordure,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: widget.erreur != null ? AppCouleurs.alerte : AppCouleurs.bordure,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppCouleurs.primaire, width: 2),
+                        ),
+                      ),
+                      onChanged: (v) => _surChange(i, v),
+                      onTap: () {
+                        // Aide iOS : rattacher le contexte autofill au groupe.
+                        if (i == 0) {
+                          _autofillFocus.requestFocus();
+                          Future<void>.delayed(const Duration(milliseconds: 50), () {
+                            if (mounted) _focus[0].requestFocus();
+                          });
+                        }
+                      },
+                    ),
+                  );
+                }),
+              ),
+            ],
           ),
         ),
         if (widget.erreur != null)
@@ -187,9 +296,11 @@ class _OtpChampState extends State<OtpChamp> {
             child: Text(widget.erreur!, style: const TextStyle(fontSize: 12, color: AppCouleurs.alerte)),
           ),
         const SizedBox(height: 6),
-        const Text(
-          'Le code SMS se remplit automatiquement lorsqu\'il est détecté.',
-          style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
+        Text(
+          _estAndroid
+              ? 'Autorisez la lecture du SMS quand Android le propose — le code se remplit seul.'
+              : 'Le code SMS se remplit automatiquement lorsqu\'il est détecté.',
+          style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
         ),
       ],
     );

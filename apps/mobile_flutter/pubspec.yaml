@@ -29,6 +29,7 @@ dependencies:
   livekit_client: ^2.3.1
   package_info_plus: ^8.1.2
   permission_handler: ^11.3.1
+  smart_auth: ^3.2.0
 
 dev_dependencies:
   flutter_test:

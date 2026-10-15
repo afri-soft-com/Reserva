@@ -46,12 +46,12 @@ export async function envoyerSms(
 }
 
 export async function envoyerOtpSms(telephone: string, code: string): Promise<ResultatEnvoiSms> {
-  // Texte simple : SerdiPay (via hub AfriSoft) refuse souvent les templates
-  // type `<#>` / `@domaine #code` (erreur MOVA_INT_001 / HTTP 400 provider).
-  // Autofill iOS/Android reste possible si le code apparaît en clair.
+  // Texte simple compatible SerdiPay (évite `<#>` / `@domaine #code` → MOVA_INT_001).
+  // Le code en clair + "code" déclenche iOS Autofill / Android User Consent.
+  // Hash SMS Retriever optionnel (fin de message, sans préfixe `<#>`).
   const hash = (process.env.SMS_APP_HASH || "").trim();
   const message = hash
-    ? `RESERVA code ${code}. Valide 5 min. ${hash}`
+    ? `RESERVA: votre code est ${code}. Valide 5 minutes. ${hash}`
     : `RESERVA: votre code est ${code}. Valide 5 minutes.`;
   return envoyerSms(telephone, message, "otp");
 }
