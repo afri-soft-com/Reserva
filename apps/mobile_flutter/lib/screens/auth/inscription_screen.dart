@@ -160,7 +160,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
         context.go('/accueil');
       }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      if (mounted) ToastWidget.show(context, _msgErreur(e), type: 'erreur');
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
