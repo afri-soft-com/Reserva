@@ -39,9 +39,10 @@ export function EnregistreurPwa() {
         }
         reg.addEventListener("updatefound", () => surUpdateFound(reg));
         // Vérifie périodiquement (onglet long ouvert)
+        // Poll SW pendant l'utilisation — aligne sur INTERVALLE_POLL_VERSIONS_MS (bannière).
         const id = window.setInterval(() => {
           reg.update().catch(() => undefined);
-        }, 60_000);
+        }, 30_000);
         (reg as ServiceWorkerRegistration & { __interval?: number }).__interval = id;
       })
       .catch(() => undefined);

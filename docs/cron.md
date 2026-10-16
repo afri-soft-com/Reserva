@@ -43,6 +43,15 @@ En l'absence de `CRON_SECRET` côté serveur, les endpoints cron renvoient une e
   l'écran Abonnements de l'admin.
 - **Réponse** : `{ expires, traiteLe }`.
 
+### Publication des seuils bannières de mise à jour
+
+- **URL** : `POST /app/cron/publier-seuils`
+- **Corps** : `{ "client": { "minSoft": "1.0.2" }, "pro": { ... }, "web": { ... } }` (canaux optionnels)
+- **Rôle** : monte `minSoft` / `minForce` de façon **monotone** (jamais de baisse). Les apps
+  mobile/web qui pollent `/app/versions` affichent alors la bannière en cours d'utilisation.
+- **CI** : `npm run sync:app-versions -- --canaux=web|mobile` après deploy Render / stores
+  (utilise `CRON_SECRET` ou le compte smoke admin).
+
 ### Libération des séquestres (délai anti-litige)
 
 - **URL** : `POST /admin/cron/liberer-sequestres`

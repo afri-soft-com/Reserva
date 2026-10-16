@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { authentifier, exigerRole } from "../../middlewares/auth";
+import { verifierSecretCron } from "../../middlewares/cron";
 import { valider } from "../../middlewares/valider";
-import { getVersions, putVersions } from "./app-versions.controller";
-import { schemaMettreAJourVersions } from "./app-versions.schema";
+import { getVersions, publierSeuils, putVersions } from "./app-versions.controller";
+import { schemaMettreAJourVersions, schemaPublierSeuils } from "./app-versions.schema";
 
 export const routesAppVersions = Router();
 
@@ -15,4 +16,12 @@ routesAppVersions.put(
   exigerRole("ADMIN"),
   valider(schemaMettreAJourVersions),
   putVersions,
+);
+
+/** CI / scheduler : publie les seuils après deploy (X-Cron-Secret). */
+routesAppVersions.post(
+  "/cron/publier-seuils",
+  verifierSecretCron,
+  valider(schemaPublierSeuils),
+  publierSeuils,
 );

@@ -8,8 +8,11 @@ import '../services/api_app_versions.dart';
 import '../theme.dart';
 import '../utils/comparer_versions.dart';
 
+/// Intervalle de relecture des seuils pendant l'utilisation (garde-fou CI).
+const Duration kIntervallePollMiseAJour = Duration(minutes: 2);
+
 /// Soft banner + force blocking overlay selon /api/app/versions.
-/// La bannière disparaît dès que la version installée ≥ minSoft (après MAJ store).
+/// Relit les seuils en cours d'utilisation ; réaffiche si minSoft augmente.
 class MiseAJourGate extends StatefulWidget {
   final Widget child;
   const MiseAJourGate({super.key, required this.child});
@@ -25,6 +28,7 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
   String? _storeUrl;
   bool _dismissSoft = false;
   bool _charge = true;
+  bool _chargementEnCours = false;
   Timer? _poll;
 
   @override
@@ -32,7 +36,8 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _charger();
-    _poll = Timer.periodic(const Duration(minutes: 30), (_) => _charger(silencieux: true));
+    // Poll fréquent : bannière dès qu'une MAJ est publiée côté API, sans relancer l'app.
+    _poll = Timer.periodic(kIntervallePollMiseAJour, (_) => _charger(silencieux: true));
   }
 
   @override
@@ -44,43 +49,52 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Au retour du store / de l'arrière-plan : relecture version installée.
     if (state == AppLifecycleState.resumed) {
       _charger(silencieux: true);
     }
   }
 
+  Future<void> _appliquerConfig({
+    required String installee,
+    required Map<String, dynamic> cfg,
+  }) async {
+    final android = cfg['storeUrlAndroid'] as String?;
+    final ios = cfg['storeUrlIos'] as String?;
+    final minSoft = cfg['minSoft'] as String? ?? '1.0.1';
+    final minForce = cfg['minForce'] as String? ?? '1.0.0';
+    final precedentSoft = _minSoft;
+
+    if (!mounted) return;
+    setState(() {
+      _installee = installee;
+      _minSoft = minSoft;
+      _minForce = minForce;
+      _storeUrl = Platform.isIOS ? ios : android;
+      _charge = false;
+      final mode = decideModeMiseAJour(
+        versionInstallee: installee,
+        minSoft: minSoft,
+        minForce: minForce,
+      );
+      // Nouvelle publication (minSoft ↑) ou plus de besoin de MAJ → réafficher / reset dismiss.
+      if (mode == 'none' ||
+          mode == 'force' ||
+          (precedentSoft != null && comparerVersions(minSoft, precedentSoft) > 0)) {
+        _dismissSoft = false;
+      }
+    });
+  }
+
   Future<void> _charger({bool silencieux = false}) async {
+    if (_chargementEnCours) return;
+    _chargementEnCours = true;
     try {
       final info = await PackageInfo.fromPlatform();
       final versions = await ApiAppVersions.lire();
       final canal = AppFlavorConfig.estPrestataire ? 'pro' : 'client';
       final cfg = Map<String, dynamic>.from(versions[canal] as Map? ?? {});
-      final android = cfg['storeUrlAndroid'] as String?;
-      final ios = cfg['storeUrlIos'] as String?;
-      final installee = info.version;
-      final minSoft = cfg['minSoft'] as String? ?? '1.0.1';
-      final minForce = cfg['minForce'] as String? ?? '1.0.0';
-
-      if (!mounted) return;
-      setState(() {
-        _installee = installee;
-        _minSoft = minSoft;
-        _minForce = minForce;
-        _storeUrl = Platform.isIOS ? ios : android;
-        _charge = false;
-        // Dès que la MAJ est faite, la bannière disparaît (même si dismissée avant).
-        if (decideModeMiseAJour(
-              versionInstallee: installee,
-              minSoft: minSoft,
-              minForce: minForce,
-            ) ==
-            'none') {
-          _dismissSoft = false;
-        }
-      });
-    } catch (e) {
-      // Réessaie une fois après échec réseau (démarrage froid / gateway).
+      await _appliquerConfig(installee: info.version, cfg: cfg);
+    } catch (_) {
       if (!silencieux) {
         await Future<void>.delayed(const Duration(seconds: 2));
         if (!mounted) return;
@@ -89,22 +103,15 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
           final versions = await ApiAppVersions.lire();
           final canal = AppFlavorConfig.estPrestataire ? 'pro' : 'client';
           final cfg = Map<String, dynamic>.from(versions[canal] as Map? ?? {});
-          if (!mounted) return;
-          setState(() {
-            _installee = info.version;
-            _minSoft = cfg['minSoft'] as String? ?? '1.0.1';
-            _minForce = cfg['minForce'] as String? ?? '1.0.0';
-            _storeUrl = Platform.isIOS
-                ? cfg['storeUrlIos'] as String?
-                : cfg['storeUrlAndroid'] as String?;
-            _charge = false;
-          });
+          await _appliquerConfig(installee: info.version, cfg: cfg);
           return;
         } catch (_) {
           /* ignore */
         }
       }
-      if (mounted) setState(() => _charge = false);
+      if (mounted && _charge) setState(() => _charge = false);
+    } finally {
+      _chargementEnCours = false;
     }
   }
 
@@ -210,7 +217,6 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     if (_charge) return widget.child;
 
-    // Colonne : bannière soft au-dessus du navigator (évite d'être masquée par l'AppBar).
     final corps = _soft
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -382,6 +382,14 @@ jobs:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
           PERF_SAMPLES: "15"
           PERF_FAIL_ON_SLOW: "0"
+      - name: Publier seuils bannières MAJ (web)
+        run: npm run db:generate && npm run sync:app-versions -- --canaux=web
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SMOKE_ADMIN_PHONE: ${{ secrets.SMOKE_ADMIN_PHONE }}
+          SMOKE_ADMIN_PIN: ${{ secrets.SMOKE_ADMIN_PIN }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
 
   deploy-android:
     name: Play Store
@@ -495,6 +503,15 @@ jobs:
           echo "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
           gem install fastlane --no-document
           fastlane deploy
+      - name: Publier seuils bannières MAJ (mobile)
+        working-directory: .
+        run: npm ci --ignore-scripts && npm run db:generate && npm run sync:app-versions -- --canaux=mobile
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SMOKE_ADMIN_PHONE: ${{ secrets.SMOKE_ADMIN_PHONE }}
+          SMOKE_ADMIN_PIN: ${{ secrets.SMOKE_ADMIN_PIN }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
 
   deploy-ios:
     name: App Store
@@ -652,3 +669,12 @@ jobs:
           printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > fastlane/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
           gem install fastlane --no-document
           fastlane deploy
+      - name: Publier seuils bannières MAJ (mobile)
+        working-directory: .
+        run: npm ci --ignore-scripts && npm run db:generate && npm run sync:app-versions -- --canaux=mobile
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SMOKE_ADMIN_PHONE: ${{ secrets.SMOKE_ADMIN_PHONE }}
+          SMOKE_ADMIN_PIN: ${{ secrets.SMOKE_ADMIN_PIN }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}

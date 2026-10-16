@@ -19,3 +19,17 @@ export const schemaMettreAJourVersions = z.object({
     })
     .optional(),
 });
+
+const schemaSeuilPublie = z.object({
+  minSoft: z.string().regex(/^\d+\.\d+\.\d+/, "Version a.b.c requise"),
+  minForce: z
+    .string()
+    .regex(/^\d+\.\d+\.\d+/, "Version a.b.c requise")
+    .optional(),
+});
+
+export const schemaPublierSeuils = z.object({
+  client: schemaSeuilPublie.optional(),
+  pro: schemaSeuilPublie.optional(),
+  web: schemaSeuilPublie.optional(),
+});

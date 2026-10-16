@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { decideModeMiseAJour, lireVersionsApp } from "../lib/api-app-versions";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { comparerVersions, decideModeMiseAJour, lireVersionsApp } from "../lib/api-app-versions";
 import { EVENT_SW_UPDATE, appliquerMiseAJourPwa } from "./EnregistreurPwa";
 
 export const EVENT_VERSIONS_MAJ = "reserva:versions-updated";
+
+/** Poll pendant l'utilisation — garde-fou CI (ne pas monter au-delà de 120s). */
+export const INTERVALLE_POLL_VERSIONS_MS = 60_000;
 
 const VERSION_WEB = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
 
@@ -12,9 +15,8 @@ type Mode = "none" | "soft" | "force" | "pwa";
 
 /**
  * Bannière / écran de mise à jour web :
- * - soft/force selon /app/versions (minSoft / minForce)
+ * - soft/force selon /app/versions (minSoft / minForce), relu en cours d'utilisation
  * - pwa quand un nouveau service worker attend
- * Disparaît après rechargement si la version installée ≥ seuils (ou SW activé).
  */
 export function BanniereMiseAJour() {
   const [mode, setMode] = useState<Mode>("none");
@@ -22,6 +24,7 @@ export function BanniereMiseAJour() {
   const [minSoft, setMinSoft] = useState("1.0.0");
   const [dismiss, setDismiss] = useState(false);
   const [pwaDispo, setPwaDispo] = useState(false);
+  const dernierSoft = useRef<string | null>(null);
 
   const evaluerApi = useCallback(async () => {
     try {
@@ -35,7 +38,12 @@ export function BanniereMiseAJour() {
         minSoft: soft,
         minForce: force,
       });
-      if (next === "force" || next === "soft") setDismiss(false);
+      const softAAugmente =
+        dernierSoft.current != null && comparerVersions(soft, dernierSoft.current) > 0;
+      if (next === "force" || next === "soft" || softAAugmente) {
+        setDismiss(false);
+      }
+      dernierSoft.current = soft;
       setMode(next);
     } catch {
       /* ignore réseau */
@@ -61,7 +69,7 @@ export function BanniereMiseAJour() {
       if (document.visibilityState === "visible") onFocus();
     };
     document.addEventListener("visibilitychange", onVis);
-    const id = window.setInterval(() => void evaluerApi(), 5 * 60_000);
+    const id = window.setInterval(() => void evaluerApi(), INTERVALLE_POLL_VERSIONS_MS);
     return () => {
       window.removeEventListener(EVENT_SW_UPDATE, onSw);
       window.removeEventListener(EVENT_VERSIONS_MAJ, onVersions);
@@ -105,7 +113,6 @@ export function BanniereMiseAJour() {
       : `Une mise à jour est disponible (vous : v${VERSION_WEB}, requis : ≥ ${minSoft}).`;
     return (
       <>
-        {/* fixed : au-dessus du header sticky (z-40), non masquée au scroll */}
         <div
           role="status"
           className="fixed inset-x-0 top-0 z-[90] flex items-center justify-between gap-3 bg-[#1A56DB] px-4 py-2.5 text-sm text-white shadow-md"

@@ -1,6 +1,7 @@
+#!/usr/bin/env node
 /**
- * Garde-fou CI : les bannières de mise à jour (mobile + web) restent câblées.
- * Échoue si un futur refactor retire le wiring ou l'endpoint public.
+ * Garde-fou CI : les bannières de mise à jour (mobile + web) restent câblées
+ * et se mettent à jour en cours d'utilisation. Échoue si un futur refactor casse le wiring.
  *
  * Usage: node scripts/check-update-banners.mjs
  */
@@ -42,8 +43,21 @@ mustInclude(
 );
 mustInclude(
   "apps/mobile_flutter/lib/widgets/mise_a_jour_gate.dart",
-  ["ApiAppVersions", "decideModeMiseAJour", "minSoft", "minForce"],
+  [
+    "ApiAppVersions",
+    "decideModeMiseAJour",
+    "minSoft",
+    "minForce",
+    "kIntervallePollMiseAJour",
+    "Timer.periodic",
+    "AppLifecycleState.resumed",
+  ],
   "mobile-gate"
+);
+mustMatch(
+  "apps/mobile_flutter/lib/widgets/mise_a_jour_gate.dart",
+  /kIntervallePollMiseAJour\s*=\s*Duration\(minutes:\s*([1-5])\)/,
+  "mobile-poll-max-5min"
 );
 mustInclude(
   "apps/mobile_flutter/lib/utils/comparer_versions.dart",
@@ -64,12 +78,29 @@ mustInclude(
     "EVENT_SW_UPDATE",
     "fixed",
     "EVENT_VERSIONS_MAJ",
+    "INTERVALLE_POLL_VERSIONS_MS",
+    "setInterval",
   ],
   "web-banner"
 );
+mustMatch(
+  "apps/web/src/components/BanniereMiseAJour.tsx",
+  /INTERVALLE_POLL_VERSIONS_MS\s*=\s*(\d+)/,
+  "web-poll-const"
+);
+{
+  const m = read("apps/web/src/components/BanniereMiseAJour.tsx").match(
+    /INTERVALLE_POLL_VERSIONS_MS\s*=\s*(\d+)/
+  );
+  const ms = Number(m?.[1] || 999999);
+  if (!(ms > 0 && ms <= 120_000)) {
+    throw new Error(`[web-poll-max-120s] INTERVALLE_POLL_VERSIONS_MS=${ms} doit être ≤ 120000`);
+  }
+  console.log("  ✓ web-poll-max-120s");
+}
 mustInclude(
   "apps/web/src/components/EnregistreurPwa.tsx",
-  ["EVENT_SW_UPDATE", "SKIP_WAITING", "appliquerMiseAJourPwa"],
+  ["EVENT_SW_UPDATE", "SKIP_WAITING", "appliquerMiseAJourPwa", "setInterval"],
   "web-pwa"
 );
 mustInclude("apps/web/public/sw.js", ["SKIP_WAITING", "reserva-admin"], "sw");
@@ -85,8 +116,13 @@ mustInclude(
 );
 mustInclude(
   "apps/api/src/modules/app-versions/app-versions.routes.ts",
-  ['"/versions"', "getVersions"],
+  ['"/versions"', "getVersions", "publier-seuils", "verifierSecretCron"],
   "api-versions"
+);
+mustInclude(
+  "apps/api/src/modules/app-versions/app-versions.service.ts",
+  ["publierSeuilsMonotones", "comparerVersions"],
+  "api-monotone"
 );
 mustInclude(
   "apps/web/src/app/admin/versions/page.tsx",
@@ -98,8 +134,27 @@ mustInclude(
   ["comparerVersions", "decideModeMiseAJour"],
   "shared-helpers"
 );
-
+mustInclude(
+  "scripts/sync-app-versions-prod.mjs",
+  ["publier-seuils", "--canaux", "GATEWAY_URL", "minSoft", "RENDER_API_KEY", "publier-seuils-db"],
+  "sync-script"
+);
+mustInclude(
+  "scripts/lib/publier-seuils-db.mjs",
+  ["APP_VERSION_", "configurationTarification", "PAYLOAD_JSON"],
+  "sync-db"
+);
+mustInclude(
+  "package.json",
+  ['"sync:app-versions"', '"check:update-banners"', '"ci:quality"'],
+  "npm-scripts"
+);
+mustInclude(
+  ".github/workflows/ci-cd.yml",
+  ["sync:app-versions", "Publier seuils bannières MAJ", "ci:quality"],
+  "ci-sync"
+);
 mustMatch("apps/mobile_flutter/pubspec.yaml", /^version:\s*\d+\.\d+\.\d+/m, "pubspec-version");
 mustMatch("apps/web/package.json", /"version":\s*"\d+\.\d+\.\d+"/, "web-package-version");
 
-console.log("✓ Bannières de mise à jour — wiring intact");
+console.log("✓ Bannières de mise à jour — wiring + poll + sync CI intacts");
