@@ -136,7 +136,7 @@ export async function creerReservation(clientId: string, input: CreerReservation
         telephoneTiers: input.telephoneTiers ?? premier?.telephone,
         beneficiairesJson: beneficiaires ? JSON.stringify(beneficiaires) : null,
         garantieActive: input.garantieActive ?? true,
-        acomptePourcent: input.acomptePourcent ?? 30,
+        acomptePourcent: input.acomptePourcent ?? 0,
         agentId: input.agentId,
       },
       include: {
@@ -152,7 +152,7 @@ export async function creerReservation(clientId: string, input: CreerReservation
     utilisateurId: clientId,
     reservationId: reservation.id,
     titre: "Réservation créée",
-    message: `Votre réservation ${reservation.numero} chez ${reservation.prestataire.nomEntreprise} est en attente de confirmation. Garantie arrivée ${reservation.garantieActive ? "ON" : "OFF"} · Acompte ${reservation.acomptePourcent}%.`,
+    message: `Votre réservation ${reservation.numero} chez ${reservation.prestataire.nomEntreprise} est en attente de confirmation. Garantie arrivée ${reservation.garantieActive ? "ON" : "OFF"}${reservation.acomptePourcent > 0 ? ` · Acompte ${reservation.acomptePourcent}%` : " · Paiement intégral"}.`,
     type: "CONFIRMATION",
   });
 
@@ -481,11 +481,11 @@ export async function marquerStatutFinal(utilisateurId: string, reservationId: s
 
   const miseAJour = await prisma.reservation.update({ where: { id: reservationId }, data: { statut } });
 
-  // Libère le séquestre : le prestataire peut alors demander un versement
+  // Planifie la libération du séquestre après le délai anti-litige (ex. +48 h)
   if (statut === "TERMINEE" || statut === "ABSENCE") {
-    const { libererSequestreReservation } = await import("../economie/economie.service");
-    await libererSequestreReservation(reservationId).catch((e) =>
-      console.error("[sequestre] libération", reservationId, e)
+    const { planifierLiberationSequestre } = await import("../economie/economie.service");
+    await planifierLiberationSequestre(reservationId).catch((e) =>
+      console.error("[sequestre] planification", reservationId, e)
     );
   }
 
@@ -582,7 +582,13 @@ async function creerNotification(params: {
  */
 export async function creerReservationsRecurrentes(
   clientId: string,
-  input: { serviceId: string; creneauId: string; nombreOccurrences?: number; notes?: string }
+  input: {
+    serviceId: string;
+    creneauId: string;
+    nombreOccurrences?: number;
+    notes?: string;
+    acomptePourcent?: number;
+  }
 ) {
   const nombreOccurrences = input.nombreOccurrences ?? 4;
   const creneauBase = await prisma.creneau.findUnique({
@@ -655,6 +661,7 @@ export async function creerReservationsRecurrentes(
             tauxCommissionApplique: tarif.tauxCommission,
             devise: creneauBase.service.devise,
             notes: input.notes ? `[Récurrent] ${input.notes}`.trim() : "[Récurrent]",
+            acomptePourcent: input.acomptePourcent ?? 0,
           },
           include: { service: true, prestataire: true, creneau: true },
         })

@@ -241,6 +241,13 @@ export const expirerAbonnements = asyncHandler(async (_req: Request, res: Respon
   envoyerSucces(res, resultat);
 });
 
+/** Cron : libère les séquestres dont le délai anti-litige (48 h) est écoulé */
+export const libererSequestres = asyncHandler(async (_req: Request, res: Response) => {
+  const { libererSequestresEchus } = await import("../economie/economie.service");
+  const resultat = await libererSequestresEchus();
+  envoyerSucces(res, resultat);
+});
+
 /** [ADMIN] Broadcast : envoie une notification SYSTEME à tous les utilisateurs (ou un rôle) */
 export const envoyerBroadcast = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();

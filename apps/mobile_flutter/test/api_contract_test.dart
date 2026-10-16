@@ -24,7 +24,7 @@ void main() {
       };
       expect(body['serviceId'], isNotEmpty);
       expect(body['creneauId'], isNotEmpty);
-      expect(body['acomptePourcent'], inInclusiveRange(10, 100));
+      expect(body['acomptePourcent'], inInclusiveRange(0, 100));
     });
 
     test('paiement — opérateurs supportés', () {

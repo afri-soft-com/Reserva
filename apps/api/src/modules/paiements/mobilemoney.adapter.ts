@@ -168,6 +168,73 @@ async function simulerPaiement(
   };
 }
 
+/** Initie un payout B2C vers le Mobile Money du prestataire (versement) */
+export async function initierPayoutVersementMobileMoney(params: {
+  operateur: OperateurMobileMoney;
+  telephonePaiement: string;
+  montant: number;
+  devise?: string;
+  versementId?: string;
+}): Promise<ResultatRemboursement & { enAttente?: boolean }> {
+  if (params.operateur === "ESPECES") {
+    return {
+      succes: true,
+      referenceExterne: `VRS-ESP-${Date.now()}`,
+      messageOperateur: "Versement en espèces — à traiter manuellement par l'admin",
+      enAttente: true,
+    };
+  }
+
+  if (env.MODE_PAIEMENT === "simulation") {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const reference = `VRS-SIM-${Date.now()}`;
+    console.log(
+      `\n[PAYOUT VERSEMENT SIMULÉ] ${params.operateur} — Montant: ${params.montant} ${params.devise || "CDF"} — Réf: ${reference}\n`
+    );
+    return {
+      succes: true,
+      referenceExterne: reference,
+      messageOperateur: "Versement Mobile Money approuvé (simulation)",
+      enAttente: false,
+    };
+  }
+
+  const amountCdf = await montantVersCdf(params.montant, params.devise || "CDF");
+  if (amountCdf < 500) {
+    return {
+      succes: false,
+      referenceExterne: "",
+      messageOperateur: `Montant trop faible pour payout Mobile Money (${amountCdf} FC).`,
+    };
+  }
+
+  const appId = env.AFRISOFT_HUB_APP_ID.trim().toLowerCase() || "reserva";
+  const reference = referenceHubPaiement(appId, "withdraw");
+  const hub = await initierPaiementViaHubAfriSoft({
+    operateur: params.operateur,
+    telephone: params.telephonePaiement,
+    amountCdf,
+    reference,
+    purpose: "withdraw",
+    kind: "B2C",
+    idempotencyKey: params.versementId
+      ? `${appId}:withdraw:${params.versementId}:${amountCdf}`
+      : undefined,
+    metadata: {
+      versement_id: params.versementId,
+      montant_metier: params.montant,
+      devise: params.devise || "CDF",
+    },
+  });
+
+  return {
+    succes: hub.succes,
+    referenceExterne: hub.reference || hub.paymentId || reference,
+    messageOperateur: hub.message,
+    enAttente: hub.succes ? Boolean(hub.enAttente) || hub.statut === "PENDING" : undefined,
+  };
+}
+
 /** Initie un remboursement vers le compte Mobile Money du client (B2C hub) */
 export async function rembourserMobileMoney(params: {
   operateur: OperateurMobileMoney;

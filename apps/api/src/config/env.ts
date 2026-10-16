@@ -19,6 +19,8 @@ export const env = {
   MODE_SMS: lireVariable("MODE_SMS", "simulation") as "simulation" | "production",
   WEB_URL: lireVariable("WEB_URL", "http://localhost:3001"),
   CRON_SECRET: lireVariable("CRON_SECRET"),
+  /** Délai anti-litige avant libération du séquestre (heures). Défaut 48. */
+  SEQUESTRE_DELAI_HEURES: parseInt(lireVariable("SEQUESTRE_DELAI_HEURES", "48"), 10),
   /** Hub AfriSoft SMS — uniquement serveur (HMAC). Voir docs/otp-afrisoft-sms.md */
   AFRISOFT_SMS_HUB_URL: lireVariable("AFRISOFT_SMS_HUB_URL", "https://sms.afri-soft.com"),
   /** Hub AfriSoft Paiements — HMAC. Voir docs/mobile-money-afrisoft-pay.md */

@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { env } from "../../config/env";
 import { ErreurNonTrouve, ErreurValidation, ErreurInterdit } from "../../utils/erreurs";
 import {
   calculerTarificationReservation,
@@ -7,6 +8,12 @@ import {
 } from "@reserva/shared";
 import { initierPaiementMobileMoney } from "../paiements/mobilemoney.adapter";
 import { OperateurMobileMoney } from "@reserva/shared";
+
+/** Délai anti-litige avant libération du séquestre (ms) */
+export function delaiAntiLitigeMs(): number {
+  const h = Number.isFinite(env.SEQUESTRE_DELAI_HEURES) ? env.SEQUESTRE_DELAI_HEURES : 48;
+  return Math.max(0, h) * 60 * 60 * 1000;
+}
 
 export const CLES_TARIF = {
   COMMISSION_PRESTATAIRE: "COMMISSION_PRESTATAIRE",
@@ -285,7 +292,7 @@ export async function enregistrerPaiementReservation(
     devise: reservation.devise,
     prestataireId: reservation.prestataireId,
     reservationId: reservation.id,
-    description: `Séquestre net ${reservation.numero} (libéré après prestation)`,
+    description: `Séquestre net ${reservation.numero} (libéré après délai anti-litige)`,
   });
 
   await client.reservation.update({
@@ -294,10 +301,44 @@ export async function enregistrerPaiementReservation(
   });
 }
 
-/** Libère le séquestre vers le solde disponible (après TERMINEE / ABSENCE). */
-export async function libererSequestreReservation(reservationId: string) {
+/**
+ * Planifie la libération du séquestre après le délai anti-litige (défaut +48 h).
+ * Si le délai est 0, libère immédiatement.
+ */
+export async function planifierLiberationSequestre(reservationId: string) {
   const reservation = await prisma.reservation.findUnique({ where: { id: reservationId } });
   if (!reservation || reservation.commissionStatut !== "EN_SEQUESTRE") return null;
+
+  const delaiMs = delaiAntiLitigeMs();
+  if (delaiMs <= 0) {
+    return libererSequestreReservation(reservationId);
+  }
+
+  const liberableLe = new Date(Date.now() + delaiMs);
+  await prisma.reservation.update({
+    where: { id: reservationId },
+    data: { sequestreLiberableLe: liberableLe },
+  });
+  return { planifieLe: liberableLe, montant: null as number | null };
+}
+
+/** Libère le séquestre vers le solde disponible (après délai anti-litige / cron). */
+export async function libererSequestreReservation(reservationId: string) {
+  const reservation = await prisma.reservation.findUnique({
+    where: { id: reservationId },
+    include: {
+      litiges: {
+        where: { statut: { in: ["OUVERT", "EN_MEDIATION"] } },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+  if (!reservation || reservation.commissionStatut !== "EN_SEQUESTRE") return null;
+  if (reservation.litiges.length > 0) {
+    console.log(`[sequestre] litige ouvert — report libération ${reservation.numero}`);
+    return null;
+  }
 
   const sequestres = await prisma.ecritureComptable.findMany({
     where: {
@@ -312,7 +353,7 @@ export async function libererSequestreReservation(reservationId: string) {
   if (montant <= 0) {
     await prisma.reservation.update({
       where: { id: reservationId },
-      data: { commissionStatut: "ACQUISE" },
+      data: { commissionStatut: "ACQUISE", sequestreLiberableLe: null },
     });
     return { montant: 0 };
   }
@@ -340,11 +381,36 @@ export async function libererSequestreReservation(reservationId: string) {
     });
     await tx.reservation.update({
       where: { id: reservationId },
-      data: { commissionStatut: "ACQUISE" },
+      data: { commissionStatut: "ACQUISE", sequestreLiberableLe: null },
     });
   });
 
   return { montant };
+}
+
+/** Cron : libère les séquestres dont le délai anti-litige est écoulé. */
+export async function libererSequestresEchus() {
+  const maintenant = new Date();
+  const candidats = await prisma.reservation.findMany({
+    where: {
+      commissionStatut: "EN_SEQUESTRE",
+      sequestreLiberableLe: { lte: maintenant },
+    },
+    select: { id: true, numero: true },
+    take: 200,
+  });
+
+  let liberes = 0;
+  let reportes = 0;
+  for (const r of candidats) {
+    const resultat = await libererSequestreReservation(r.id).catch((e) => {
+      console.error("[sequestre] échec libération", r.id, e);
+      return null;
+    });
+    if (resultat) liberes += 1;
+    else reportes += 1;
+  }
+  return { examines: candidats.length, liberes, reportes, traiteLe: maintenant };
 }
 
 /** Inverse proportionnellement les écritures lors d'un remboursement. */
@@ -558,7 +624,11 @@ async function soldePrestataire(prestataireId: string, devise?: string) {
       _sum: { montant: true },
     }),
     prisma.versementPrestataire.findMany({
-      where: { prestataireId, statut: "DEMANDE", ...(devise ? { devise } : {}) },
+      where: {
+        prestataireId,
+        statut: { in: ["DEMANDE", "EN_COURS"] },
+        ...(devise ? { devise } : {}),
+      },
     }),
   ]);
 
@@ -629,15 +699,16 @@ export async function demanderVersement(
 
   const solde = await soldePrestataire(prestataire.id, devise);
   if (input.montant > solde.disponible) {
+    const heures = Math.max(0, env.SEQUESTRE_DELAI_HEURES);
     throw new ErreurValidation(
       `Solde insuffisant. Disponible : ${solde.disponible} ${devise}` +
         (solde.enSequestre > 0
-          ? ` (${solde.enSequestre} ${devise} encore en séquestre jusqu'à la fin de la prestation)`
+          ? ` (${solde.enSequestre} ${devise} en séquestre — libération ${heures}h après la fin de prestation)`
           : "")
     );
   }
 
-  return prisma.versementPrestataire.create({
+  const versement = await prisma.versementPrestataire.create({
     data: {
       prestataireId: prestataire.id,
       montant: input.montant,
@@ -646,6 +717,97 @@ export async function demanderVersement(
       operateur: input.operateur,
       telephonePaiement: input.telephonePaiement,
     },
+  });
+
+  // Payout Mobile Money automatisé (sauf espèces → validation admin)
+  if (input.operateur === "ESPECES") {
+    return versement;
+  }
+
+  return executerPayoutVersement(versement.id);
+}
+
+/** Confirme un versement PAYE et débite le solde prestataire (idempotent). */
+export async function confirmerVersementPaye(
+  versementId: string,
+  opts?: { referenceExterne?: string; noteAdmin?: string }
+) {
+  const versement = await prisma.versementPrestataire.findUnique({ where: { id: versementId } });
+  if (!versement) throw new ErreurNonTrouve("Demande de versement introuvable");
+  if (versement.statut === "PAYE") return versement;
+  if (!["DEMANDE", "EN_COURS"].includes(versement.statut)) {
+    throw new ErreurValidation(`Versement non confirmable (statut ${versement.statut})`);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const maj = await tx.versementPrestataire.update({
+      where: { id: versementId },
+      data: {
+        statut: "PAYE",
+        noteAdmin: opts?.noteAdmin ?? versement.noteAdmin,
+        traiteLe: new Date(),
+        referenceExterne: opts?.referenceExterne || versement.referenceExterne || `VRS-${Date.now()}`,
+      },
+    });
+    await ecrire(tx as unknown as ClientTx, {
+      type: "VERSEMENT",
+      compte: "PRESTATAIRE",
+      sens: "DEBIT",
+      montant: versement.montant,
+      devise: versement.devise,
+      prestataireId: versement.prestataireId,
+      versementId: versement.id,
+      description: `Versement ${maj.referenceExterne}`,
+    });
+    return maj;
+  });
+}
+
+async function executerPayoutVersement(versementId: string) {
+  const versement = await prisma.versementPrestataire.findUnique({ where: { id: versementId } });
+  if (!versement) throw new ErreurNonTrouve("Demande de versement introuvable");
+  if (!["DEMANDE", "EN_COURS"].includes(versement.statut)) return versement;
+
+  const operateur = (versement.operateur || "MPESA") as OperateurMobileMoney;
+  const telephone = versement.telephonePaiement || "";
+  if (!telephone && operateur !== "ESPECES") {
+    throw new ErreurValidation("Numéro Mobile Money requis pour le versement automatique");
+  }
+
+  const { initierPayoutVersementMobileMoney } = await import("../paiements/mobilemoney.adapter");
+  const payout = await initierPayoutVersementMobileMoney({
+    operateur,
+    telephonePaiement: telephone,
+    montant: versement.montant,
+    devise: versement.devise,
+    versementId: versement.id,
+  });
+
+  if (!payout.succes) {
+    await prisma.versementPrestataire.update({
+      where: { id: versementId },
+      data: {
+        statut: "ECHOUE",
+        noteAdmin: payout.messageOperateur?.slice(0, 400),
+        traiteLe: new Date(),
+      },
+    });
+    throw new ErreurValidation(payout.messageOperateur || "Échec du payout Mobile Money");
+  }
+
+  if (payout.enAttente) {
+    return prisma.versementPrestataire.update({
+      where: { id: versementId },
+      data: {
+        statut: "EN_COURS",
+        referenceExterne: payout.referenceExterne,
+      },
+    });
+  }
+
+  return confirmerVersementPaye(versementId, {
+    referenceExterne: payout.referenceExterne,
+    noteAdmin: payout.messageOperateur,
   });
 }
 
@@ -680,39 +842,35 @@ export async function traiterVersementAdmin(
 ) {
   const versement = await prisma.versementPrestataire.findUnique({ where: { id: versementId } });
   if (!versement) throw new ErreurNonTrouve("Demande de versement introuvable");
-  if (versement.statut !== "DEMANDE") {
+  if (!["DEMANDE", "EN_COURS", "ECHOUE"].includes(versement.statut)) {
     throw new ErreurValidation("Cette demande a déjà été traitée");
   }
 
   if (!input.payer) {
+    if (versement.statut === "EN_COURS") {
+      throw new ErreurValidation("Payout déjà initié auprès de l'opérateur — attendez la confirmation");
+    }
     return prisma.versementPrestataire.update({
       where: { id: versementId },
       data: { statut: "REFUSE", noteAdmin: input.noteAdmin, traiteLe: new Date() },
     });
   }
 
-  return prisma.$transaction(async (tx) => {
-    const maj = await tx.versementPrestataire.update({
-      where: { id: versementId },
-      data: {
-        statut: "PAYE",
-        noteAdmin: input.noteAdmin,
-        traiteLe: new Date(),
-        referenceExterne: `VRS-${Date.now()}`,
-      },
+  // Espèces ou retry admin : payout MoMo auto, sinon confirmation comptable
+  const operateur = (versement.operateur || "ESPECES") as OperateurMobileMoney;
+  if (operateur === "ESPECES") {
+    return confirmerVersementPaye(versementId, {
+      referenceExterne: `VRS-ESP-${Date.now()}`,
+      noteAdmin: input.noteAdmin,
     });
-    await ecrire(tx as unknown as ClientTx, {
-      type: "VERSEMENT",
-      compte: "PRESTATAIRE",
-      sens: "DEBIT",
-      montant: versement.montant,
-      devise: versement.devise,
-      prestataireId: versement.prestataireId,
-      versementId: versement.id,
-      description: `Versement ${maj.referenceExterne}`,
-    });
-    return maj;
-  });
+  }
+
+  if (versement.statut === "EN_COURS") {
+    // Déjà initié — forcer confirmation manuelle si l'admin valide (webhook manquant)
+    return confirmerVersementPaye(versementId, { noteAdmin: input.noteAdmin });
+  }
+
+  return executerPayoutVersement(versementId);
 }
 
 async function totaliserEnCdf(

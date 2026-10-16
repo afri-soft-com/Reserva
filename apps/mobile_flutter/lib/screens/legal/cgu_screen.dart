@@ -40,7 +40,7 @@ class CguScreen extends StatelessWidget {
           _section('4. Paiements & commissions',
               pro
                   ? 'Les paiements transitent selon les modalités définies par RESERVA. Une commission et des frais de service '
-                      'peuvent être prélevés. Les versements prestataire sont soumis à un seuil minimum et à validation admin.'
+                      'peuvent être prélevés. Les fonds sont séquestrés jusqu\'à 48 h après la prestation (délai anti-litige), puis le versement Mobile Money est initié automatiquement (seuil minimum applicable).'
                   : 'Les prix affichés incluent le cas échéant les frais de service. Les paiements Mobile Money sont confirmés '
                       'par l\'opérateur. En mode simulation locale, aucun débit réel n\'est effectué.'),
           _section('5. Données personnelles',

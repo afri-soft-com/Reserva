@@ -67,7 +67,7 @@ class _FinancesPrestataireScreenState extends State<FinancesPrestataireScreen> {
         'telephonePaiement': _telCtrl.text.trim(),
       });
       if (mounted) {
-        ToastWidget.show(context, 'Demande de versement envoyée', type: 'succes');
+        ToastWidget.show(context, 'Versement Mobile Money initié', type: 'succes');
         _montantCtrl.clear();
         await _charger();
       }
@@ -179,6 +179,11 @@ class _FinancesPrestataireScreenState extends State<FinancesPrestataireScreen> {
               style: const TextStyle(color: AppCouleurs.succes, fontWeight: FontWeight.w600)),
           Text('En séquestre : ${seq.toStringAsFixed(devise == 'USD' ? 2 : 0)} $devise',
               style: const TextStyle(color: AppCouleurs.avertissement, fontSize: 13)),
+          if (seq > 0)
+            const Text(
+              'Libération automatique 48 h après la fin de prestation (délai anti-litige).',
+              style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire),
+            ),
         ],
       ),
     );

@@ -16,6 +16,7 @@ export const routesAdmin = Router();
 // Endpoint pour scheduler externe — protégé par secret partagé (voir docs/cron.md)
 routesAdmin.post("/cron/rapport-hebdo", verifierSecretCron, adminController.rapportHebdomadaire);
 routesAdmin.post("/cron/expirer-abonnements", verifierSecretCron, adminController.expirerAbonnements);
+routesAdmin.post("/cron/liberer-sequestres", verifierSecretCron, adminController.libererSequestres);
 
 // Toutes les routes admin sont protégées par le rôle ADMIN
 routesAdmin.get("/statistiques", authentifier, exigerRole("ADMIN"), adminController.statistiques);

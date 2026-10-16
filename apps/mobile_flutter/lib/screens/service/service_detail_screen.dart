@@ -30,6 +30,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   String? _selectedCreneauId;
   bool _reservationEnCours = false;
   int _occurrences = 1;
+  /// Acompte optionnel (30 %) — sinon paiement intégral à la réservation
+  bool _avecAcompte = false;
   List<dynamic> _packages = [];
   bool _chargementPackages = true;
 
@@ -81,11 +83,13 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     }
     setState(() => _reservationEnCours = true);
     try {
+      final acomptePourcent = _avecAcompte ? 30 : 0;
       if (_occurrences > 1) {
         final resultat = await ApiReservations.creerReservationRecurrente(
           serviceId: widget.serviceId,
           creneauId: _selectedCreneauId!,
           nombreOccurrences: _occurrences,
+          acomptePourcent: acomptePourcent,
         );
         final creees = (resultat['nombreCreees'] as num?)?.toInt() ?? _occurrences;
         final souhaitees = (resultat['nombreSouhaitees'] as num?)?.toInt() ?? _occurrences;
@@ -105,6 +109,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         await ApiReservations.creerReservation(
           serviceId: widget.serviceId,
           creneauId: _selectedCreneauId!,
+          acomptePourcent: acomptePourcent,
         );
         if (mounted) {
           ToastWidget.show(context, AppTraductions.t('reservationEffectuee'), type: 'succes');
@@ -244,6 +249,24 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                         DropdownMenuItem(value: 12, child: Text(AppTraductions.t('semaines12'))),
                       ],
                       onChanged: (v) => setState(() => _occurrences = v ?? 1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Carte(
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _avecAcompte,
+                      onChanged: (v) => setState(() => _avecAcompte = v ?? false),
+                      activeColor: AppCouleurs.primaire,
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Acompte optionnel (30 %) — solde plus tard',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
                     ),
                   ],
                 ),

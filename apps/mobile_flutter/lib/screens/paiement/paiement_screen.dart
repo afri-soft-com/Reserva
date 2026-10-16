@@ -478,7 +478,9 @@ class _PaiementScreenState extends State<PaiementScreen> {
               ),
             ],
             const SizedBox(height: 16),
-            if (r.reservation.statutPaiement != 'PAYE' && montantRestant > 0) ...[
+            if (r.reservation.statutPaiement != 'PAYE' &&
+                montantRestant > 0 &&
+                r.reservation.acomptePourcent > 0) ...[
               Row(
                 children: [
                   Checkbox(

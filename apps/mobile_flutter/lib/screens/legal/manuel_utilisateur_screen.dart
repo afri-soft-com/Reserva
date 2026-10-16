@@ -63,7 +63,7 @@ class ManuelUtilisateurScreen extends StatelessWidget {
     (Icons.dashboard_outlined, 'Tableau de bord', 'L\'onglet Prestataire résume vos réservations du jour, statistiques et actions rapides.'),
     (Icons.calendar_month, 'Calendrier', 'Visualisez et gérez les créneaux, indisponibilités et politiques d\'annulation.'),
     (Icons.qr_code_scanner, 'Scan QR', 'Validez la présence client en scannant le QR de la réservation ou du billet.'),
-    (Icons.payments_outlined, 'Soldes & versements', 'Suivez votre net à recevoir ; les versements sont traités par l\'admin plateforme.'),
+    (Icons.payments_outlined, 'Soldes & versements', 'Le net est libéré 48 h après la prestation (anti-litige), puis versé automatiquement en Mobile Money.'),
     (Icons.reviews_outlined, 'Avis', 'Répondez aux retours clients pour améliorer votre note et votre ranking.'),
     (Icons.storefront_outlined, 'Bonnes pratiques', 'Mettez à jour vos disponibilités, tarifs et photos — comme sur Booking / Trip.'),
   ];

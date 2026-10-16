@@ -43,6 +43,16 @@ En l'absence de `CRON_SECRET` côté serveur, les endpoints cron renvoient une e
   l'écran Abonnements de l'admin.
 - **Réponse** : `{ expires, traiteLe }`.
 
+### Libération des séquestres (délai anti-litige)
+
+- **URL** : `POST /admin/cron/liberer-sequestres`
+- **Fréquence recommandée** : toutes les heures
+- **Rôle** : libère le net prestataire encore en séquestre lorsque
+  `sequestreLiberableLe` est dépassé (défaut **+48 h** après `TERMINEE` /
+  `ABSENCE`, configurable via `SEQUESTRE_DELAI_HEURES`). Un litige `OUVERT` ou
+  `EN_MEDIATION` reporte la libération.
+- **Réponse** : `{ examines, liberes, reportes, traiteLe }`.
+
 ### Exemples (crontab)
 
 ```cron
@@ -54,6 +64,9 @@ En l'absence de `CRON_SECRET` côté serveur, les endpoints cron renvoient une e
 
 # Expiration des abonnements chaque nuit à 02h00
 0 2 * * * curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/api/admin/cron/expirer-abonnements
+
+# Libération séquestres anti-litige chaque heure
+0 * * * * curl -X POST -H "X-Cron-Secret: $CRON_SECRET" http://localhost:4000/api/admin/cron/liberer-sequestres
 ```
 
 L'API expire aussi les abonnements au démarrage du serveur (scheduler interne).

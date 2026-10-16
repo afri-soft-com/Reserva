@@ -232,9 +232,13 @@ export async function traiterWebhookAfriSoft(payload: {
   metadata?: Record<string, unknown>;
 }) {
   const purpose = String(payload.purpose || "pay").toLowerCase();
-  // Les payouts (refund) sont suivis séparément — pas de crédit réservation
-  if (purpose === "withdraw" || purpose === "refund") {
-    return { ignore: true, raison: "payout" };
+  // Payout versement prestataire (B2C withdraw)
+  if (purpose === "withdraw") {
+    return traiterWebhookPayoutVersement(payload);
+  }
+  // Remboursements client : pas de crédit réservation ici
+  if (purpose === "refund") {
+    return { ignore: true, raison: "payout_refund" };
   }
 
   const refs = [payload.reference, payload.payment_id].filter(Boolean) as string[];
@@ -275,6 +279,53 @@ export async function traiterWebhookAfriSoft(payload: {
   }
 
   return appliquerPaiementConfirme(transaction.id);
+}
+
+/** Webhook hub B2C — finalise un versement prestataire (withdraw). */
+async function traiterWebhookPayoutVersement(payload: {
+  event?: string;
+  payment_id?: string;
+  status?: string;
+  reference?: string;
+  failure_reason?: string;
+}) {
+  const refs = [payload.reference, payload.payment_id].filter(Boolean) as string[];
+  if (refs.length === 0) {
+    return { ignore: true, raison: "payout_sans_reference" };
+  }
+
+  const versement = await prisma.versementPrestataire.findFirst({
+    where: { referenceExterne: { in: refs } },
+  });
+  if (!versement) {
+    return { ignore: true, raison: "versement_introuvable" };
+  }
+
+  const status = String(payload.status || "").toUpperCase();
+  const event = String(payload.event || "").toLowerCase();
+
+  if (status === "FAILED" || event.includes("failed")) {
+    if (versement.statut === "PAYE") return { dejaTraite: true, versement };
+    const maj = await prisma.versementPrestataire.update({
+      where: { id: versement.id },
+      data: {
+        statut: "ECHOUE",
+        noteAdmin: (payload.failure_reason || "Payout refusé par l'opérateur").slice(0, 400),
+        traiteLe: new Date(),
+      },
+    });
+    return { dejaTraite: false, versement: maj };
+  }
+
+  if (status !== "COMPLETED" && !event.includes("completed")) {
+    return { ignore: true, raison: "statut_non_final" };
+  }
+
+  const { confirmerVersementPaye } = await import("../economie/economie.service");
+  const maj = await confirmerVersementPaye(versement.id, {
+    referenceExterne: payload.reference || versement.referenceExterne || undefined,
+  });
+  return { dejaTraite: versement.statut === "PAYE", versement: maj };
 }
 
 /** Liste l'historique des transactions d'une réservation */

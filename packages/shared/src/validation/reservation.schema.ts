@@ -40,7 +40,8 @@ export const schemaCreerReservation = z
     /** Kit famille : plusieurs bénéficiaires sur la même réservation */
     beneficiaires: z.array(schemaBeneficiaireReservation).max(8).optional(),
     garantieActive: z.boolean().default(true),
-    acomptePourcent: z.coerce.number().int().min(10).max(100).default(30),
+    /** 0 = paiement intégral uniquement ; >0 = acompte optionnel au % indiqué */
+    acomptePourcent: z.coerce.number().int().min(0).max(100).default(0),
     agentId: z.string().uuid().optional(),
   })
   .refine(

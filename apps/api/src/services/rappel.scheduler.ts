@@ -1,6 +1,7 @@
 import { genererRappels } from "./rappel.service";
 import { expirerAbonnements } from "../modules/admin/admin.service";
 import { appliquerExigenceDocuments } from "../modules/prestataires/kyc-exigence.service";
+import { libererSequestresEchus } from "../modules/economie/economie.service";
 
 let intervalle: ReturnType<typeof setInterval> | null = null;
 
@@ -12,6 +13,10 @@ async function tourRappels() {
   const docs = await appliquerExigenceDocuments();
   if (docs.rappels > 0 || docs.bloques > 0) {
     console.log(`  Exigence documents : ${docs.rappels} rappel(s), ${docs.bloques} bloqué(s)`);
+  }
+  const seq = await libererSequestresEchus();
+  if (seq.liberes > 0) {
+    console.log(`  Séquestres libérés : ${seq.liberes}`);
   }
 }
 

@@ -13,6 +13,7 @@ const schemaReservationRecurrente = z.object({
   creneauId: z.string().uuid("Identifiant de créneau invalide"),
   nombreOccurrences: z.coerce.number().int().min(2).max(12).default(4),
   notes: z.string().trim().max(500).optional(),
+  acomptePourcent: z.coerce.number().int().min(0).max(100).default(0),
 });
 
 const schemaReproduireReservation = z.object({

@@ -219,7 +219,7 @@ class Reservation {
     this.recurrenceGroupeId,
     this.garantieActive = true,
     this.garantieUtilisee = false,
-    this.acomptePourcent = 30,
+    this.acomptePourcent = 0,
     required this.creeLe,
     required this.misAJourLe,
   });
@@ -246,7 +246,7 @@ class Reservation {
     recurrenceGroupeId: json['recurrenceGroupeId'] as String?,
     garantieActive: json['garantieActive'] as bool? ?? true,
     garantieUtilisee: json['garantieUtilisee'] as bool? ?? false,
-    acomptePourcent: (json['acomptePourcent'] as num?)?.toInt() ?? 30,
+    acomptePourcent: (json['acomptePourcent'] as num?)?.toInt() ?? 0,
     creeLe: json['creeLe'] as String,
     misAJourLe: json['misAJourLe'] as String,
   );

@@ -204,6 +204,8 @@ model Reservation {
   montantNetPrestataire  Float    @default(0)
   tauxCommissionApplique Float    @default(0)
   commissionStatut       String   @default("EN_ATTENTE")
+  /// Date à partir de laquelle le séquestre peut être libéré (délai anti-litige, ex. +48 h)
+  sequestreLiberableLe   DateTime?
   notes               String?
   reservePourTiers    Boolean  @default(false)
   nomTiers            String?
@@ -213,8 +215,8 @@ model Reservation {
   /// Garantie arrivée RESERVA (crédit auto si non délivré)
   garantieActive      Boolean  @default(true)
   garantieUtilisee    Boolean  @default(false)
-  /// Acompte % demandé à la réservation (solde J-1 / sur place)
-  acomptePourcent     Int      @default(30)
+  /// Acompte % optionnel (0 = paiement intégral ; >0 = acompte possible au paiement)
+  acomptePourcent     Int      @default(0)
   agentId             String?
   agent               Utilisateur? @relation("ReservationsAgent", fields: [agentId], references: [id])
   motifAnnulation     String?
@@ -237,6 +239,7 @@ model Reservation {
   @@index([clientId])
   @@index([prestataireId])
   @@index([statut])
+  @@index([sequestreLiberableLe])
   @@index([agentId])
   @@map("reservations")
 }

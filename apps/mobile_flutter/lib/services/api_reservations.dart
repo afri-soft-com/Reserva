@@ -12,6 +12,7 @@ class ApiReservations {
     bool reservePourTiers = false,
     String? nomTiers,
     String? telephoneTiers,
+    int acomptePourcent = 0,
   }) async {
     final data = await ApiClient.post('/reservations', body: {
       'serviceId': serviceId,
@@ -20,6 +21,7 @@ class ApiReservations {
       'reservePourTiers': reservePourTiers,
       if (nomTiers != null) 'nomTiers': nomTiers,
       if (telephoneTiers != null) 'telephoneTiers': telephoneTiers,
+      'acomptePourcent': acomptePourcent,
     });
     return ReservationDetaillee.fromJson(data);
   }
@@ -29,12 +31,14 @@ class ApiReservations {
     required String creneauId,
     required int nombreOccurrences,
     String? notes,
+    int acomptePourcent = 0,
   }) async {
     return (await ApiClient.post('/reservations/recurrentes', body: {
       'serviceId': serviceId,
       'creneauId': creneauId,
       'nombreOccurrences': nombreOccurrences,
       if (notes != null && notes.trim().isNotEmpty) 'notes': notes,
+      'acomptePourcent': acomptePourcent,
     })) as Map<String, dynamic>;
   }
 
