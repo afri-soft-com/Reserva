@@ -25,8 +25,16 @@ export async function demarrerInscription(input: InscriptionInput) {
 
   const utilisateurExistant = await prisma.utilisateur.findUnique({ where: { telephone } });
   if (utilisateurExistant) {
-    // Compte déjà vérifié → connexion PIN
+    // Compte déjà vérifié → connexion PIN (sauf si PIN pas encore créé)
     if (utilisateurExistant.telephoneVerifie) {
+      if (!utilisateurExistant.pinHash) {
+        return {
+          utilisateurId: utilisateurExistant.id,
+          telephone,
+          pinRequis: true,
+          smsEnvoye: true,
+        };
+      }
       throw new ErreurValidation(
         "Ce numéro est déjà inscrit. Connectez-vous avec votre PIN, ou utilisez « PIN oublié »."
       );

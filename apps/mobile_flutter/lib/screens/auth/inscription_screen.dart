@@ -84,16 +84,20 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
         role: AppFlavorConfig.roleApi,
         smsAppHash: smsHash,
       );
-      if (mounted) {
-        final smsOk = data['smsEnvoye'] != false;
-        ToastWidget.show(
-          context,
-          smsOk
-              ? 'Code SMS envoyé (une seule fois). Ensuite, connexion par PIN uniquement.'
-              : 'Service SMS momentanément indisponible. Saisissez le code dès réception, ou réessayez dans une minute.',
-          type: smsOk ? 'succes' : 'erreur',
-        );
+      if (!mounted) return;
+      if (data['pinRequis'] == true) {
+        setState(() => _etape = 'PIN');
+        ToastWidget.show(context, 'Numéro déjà vérifié. Créez votre PIN.', type: 'succes');
+        return;
       }
+      final smsOk = data['smsEnvoye'] != false;
+      ToastWidget.show(
+        context,
+        smsOk
+            ? 'Code SMS envoyé (une seule fois). Ensuite, connexion par PIN uniquement.'
+            : 'Service SMS momentanément indisponible. Saisissez le code dès réception, ou réessayez dans une minute.',
+        type: smsOk ? 'succes' : 'erreur',
+      );
     } catch (e) {
       final msg = _msgErreur(e);
       // Compte créé mais OTP non reçu / inscription inachevée → renvoyer le SMS
