@@ -67,12 +67,17 @@ async function dumpOtpLogs() {
   const data = await res.json();
   const lines = (data.logs || [])
     .map((l) => l.message || "")
-    .filter((m) => /OTP SMS|SMS |MODE_SMS|Hub SMS|afrisoft/i.test(m));
+    .filter((m) => /OTP SMS|OTP CODE|SMS |MODE_SMS|Hub SMS|afrisoft/i.test(m));
   if (!lines.length) {
     console.log("  (aucune ligne OTP/SMS récente — retentez « Recevoir le SMS » puis relancez ce diagnostic)");
     return;
   }
   console.log(lines.slice(-40).join("\n"));
+  const codes = lines.filter((m) => /\[OTP CODE\]/.test(m));
+  if (codes.length) {
+    console.log("── Codes OTP (mode dégradé, support) ──");
+    console.log(codes.slice(-5).join("\n"));
+  }
 }
 
 function signer(secret, ts, method, path, body) {

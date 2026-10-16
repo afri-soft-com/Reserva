@@ -53,8 +53,18 @@ flutter run --flavor pro -t lib/main_pro.dart --dart-define=API_URL=http://192.1
 
 iOS : schemes Xcode `client` / `pro` (configs `Debug-client`, `Release-pro`, etc.).
 
+## Panne SerdiPay (`MOVA_INT_001`)
+
+Si le hub répond `503` / `MOVA_INT_001` (« An error occor while processing the sms ») pour **tout** texte et tout numéro :
+
+1. Ce n’est **pas** un bug du format OTP RESERVA — le provider SerdiPay côté AfriSoft refuse l’envoi.
+2. L’API passe en mode dégradé : OTP **conservé** en base, réponse `smsEnvoye: false`, code loggé `[OTP CODE]` sur Render (support uniquement).
+3. Escalader AfriSoft / SerdiPay (crédit SMS, sender, clés provider). Health hub `ok` ≠ envoi réel OK.
+4. Diagnostic : Actions → **Diagnostiquer SMS OTP** avec un numéro réel.
+
 ## Sécurité
 
 - Clés HMAC **uniquement** côté API core — jamais dans Flutter / web
 - Cooldown 60 s et max 5 SMS / 15 min par utilisateur (serveur)
 - Ne pas utiliser les numéros démo `2439000000xx` pour un envoi réel
+- Ne jamais renvoyer le code OTP dans le JSON API (même en panne provider)

@@ -77,7 +77,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
       if (!mounted) return;
       setState(() => _etape = 'OTP');
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      await ApiAuth.inscrire(
+      final data = await ApiAuth.inscrire(
         _telephoneCtrl.text.trim(),
         _nomCtrl.text.trim(),
         codeParrainage: _codeParrainageCtrl.text.trim(),
@@ -85,10 +85,13 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
         smsAppHash: smsHash,
       );
       if (mounted) {
+        final smsOk = data['smsEnvoye'] != false;
         ToastWidget.show(
           context,
-          'Code SMS envoyé (une seule fois). Ensuite, connexion par PIN uniquement.',
-          type: 'succes',
+          smsOk
+              ? 'Code SMS envoyé (une seule fois). Ensuite, connexion par PIN uniquement.'
+              : 'Service SMS momentanément indisponible. Saisissez le code dès réception, ou réessayez dans une minute.',
+          type: smsOk ? 'succes' : 'erreur',
         );
       }
     } catch (e) {
@@ -97,27 +100,39 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
       final deja = msg.toLowerCase().contains('déjà inscrit') ||
           msg.toLowerCase().contains('deja inscrit') ||
           msg.toLowerCase().contains('déjà associé');
+      final smsDown = msg.toLowerCase().contains('sms') &&
+          (msg.toLowerCase().contains('indisponible') ||
+              msg.toLowerCase().contains('impossible d\'envoyer'));
       if (deja) {
         try {
           final smsHash = await obtenirSmsAppHash();
           if (!mounted) return;
           setState(() => _etape = 'OTP');
           await Future<void>.delayed(const Duration(milliseconds: 300));
-          await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim(), smsAppHash: smsHash);
+          final data = await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim(), smsAppHash: smsHash);
           if (mounted) {
-            ToastWidget.show(context, 'Nouveau code SMS envoyé.', type: 'succes');
+            final smsOk = data['smsEnvoye'] != false;
+            ToastWidget.show(
+              context,
+              smsOk
+                  ? 'Nouveau code SMS envoyé.'
+                  : 'Service SMS momentanément indisponible. Saisissez le code dès réception.',
+              type: smsOk ? 'succes' : 'erreur',
+            );
           }
           return;
         } catch (e2) {
           if (mounted) {
-            setState(() => _etape = 'FORMULAIRE');
+            // Garde l'écran OTP si le compte existe : l'utilisateur peut encore saisir un code.
+            setState(() => _etape = 'OTP');
             ToastWidget.show(context, _msgErreur(e2), type: 'erreur');
           }
           return;
         }
       }
       if (mounted) {
-        setState(() => _etape = 'FORMULAIRE');
+        // Panne SMS : rester sur OTP pour saisir un code reçu / communiqué par support.
+        setState(() => _etape = smsDown ? 'OTP' : 'FORMULAIRE');
         ToastWidget.show(context, msg, type: 'erreur');
       }
     } finally {
@@ -376,8 +391,17 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
           onPressed: () async {
             final hash = await obtenirSmsAppHash();
             try {
-              await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim(), smsAppHash: hash);
-              if (mounted) ToastWidget.show(context, 'Nouveau code envoyé.', type: 'succes');
+              final data = await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim(), smsAppHash: hash);
+              if (mounted) {
+                final smsOk = data['smsEnvoye'] != false;
+                ToastWidget.show(
+                  context,
+                  smsOk
+                      ? 'Nouveau code envoyé.'
+                      : 'Service SMS momentanément indisponible. Réessayez plus tard.',
+                  type: smsOk ? 'succes' : 'erreur',
+                );
+              }
             } catch (e) {
               if (mounted) ToastWidget.show(context, _msgErreur(e), type: 'erreur');
             }

@@ -14,8 +14,8 @@ export class ErreurApplication extends Error {
 
 /** 400 — Données d'entrée invalides */
 export class ErreurValidation extends ErreurApplication {
-  constructor(message: string) {
-    super(message, 400, "VALIDATION_ECHEC");
+  constructor(message: string, code = "VALIDATION_ECHEC") {
+    super(message, 400, code);
   }
 }
 

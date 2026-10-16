@@ -93,18 +93,20 @@ export async function envoyerSmsViaHubAfriSoft(params: {
     const code = errObj.code || json.code || errObj.message || json.message || res.statusText;
     const detail = errObj.message || json.message || "";
     lastErr = new Error(`Hub SMS ${res.status}: ${code}${detail && detail !== code ? ` — ${detail}` : ""}`);
-    // Erreurs contenu / provider (ex. MOVA_INT_001 SerdiPay 400) : pas de retry inutile.
+    // MOVA_/SerdiPay 400 : souvent contenu OU panne provider. On retente 1× avec
+    // backoff long (panne intermittente SerdiPay), puis on abandonne.
     const providerContentFail =
       String(code).startsWith("MOVA_") ||
       /SerdiPay\s*\(400\)/i.test(String(detail)) ||
       /error occor/i.test(String(detail));
-    const retryable = RETRYABLE_HUB.has(res.status) && !providerContentFail;
+    const retryProviderOnce = providerContentFail && attempt === 1 && RETRYABLE_HUB.has(res.status);
+    const retryable = (RETRYABLE_HUB.has(res.status) && !providerContentFail) || retryProviderOnce;
     console.error(
       `[Hub SMS] ${res.status} ${base} phone=${phone} attempt=${attempt}/${maxAttempts}`,
       JSON.stringify(json).slice(0, 280)
     );
     if (!retryable || attempt === maxAttempts) throw lastErr;
-    await sleep(1000 * attempt);
+    await sleep(retryProviderOnce ? 8000 : 1000 * attempt);
   }
 
   throw lastErr || new Error("Hub SMS: échec inconnu");

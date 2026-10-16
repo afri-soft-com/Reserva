@@ -27,9 +27,14 @@ async function dumpLogs() {
   const data = await res.json();
   const lines = (data.logs || [])
     .map((l) => l.message || "")
-    .filter((m) => /OTP SMS|Hub SMS|MODE_SMS|AFRISOFT|envoyerOtp|sms\.afri/i.test(m));
+    .filter((m) => /OTP SMS|OTP CODE|Hub SMS|MODE_SMS|AFRISOFT|envoyerOtp|sms\.afri/i.test(m));
   console.log("── Logs core (extrait OTP/SMS) ──");
   console.log(lines.slice(-50).join("\n") || "(vide)");
+  const codes = lines.filter((m) => /\[OTP CODE\]/.test(m));
+  if (codes.length) {
+    console.log("── OTP CODE (dégradé) ──");
+    console.log(codes.slice(-3).join("\n"));
+  }
 }
 
 async function main() {

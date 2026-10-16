@@ -48,20 +48,13 @@ export async function envoyerSms(
 export async function envoyerOtpSms(
   telephone: string,
   code: string,
-  smsAppHash?: string | null
+  _smsAppHash?: string | null
 ): Promise<ResultatEnvoiSms> {
-  // Texte simple compatible SerdiPay (évite `<#>` / `@domaine #code` → MOVA_INT_001).
-  // Hash SMS Retriever (11 car.) en fin de SMS = autofill Android sans permission.
-  const hashEnv = (process.env.SMS_APP_HASH || "").trim();
-  const hashApp = (smsAppHash || "").trim();
-  const hash = /^[A-Za-z0-9+/=_-]{11}$/.test(hashApp)
-    ? hashApp
-    : /^[A-Za-z0-9+/=_-]{11}$/.test(hashEnv)
-      ? hashEnv
-      : "";
-  const message = hash
-    ? `RESERVA: votre code est ${code}. Valide 5 minutes.\n${hash}`
-    : `RESERVA: votre code est ${code}. Valide 5 minutes.`;
+  // Plain text uniquement : SerdiPay (via hub AfriSoft) rejette souvent `<#>`,
+  // `@domaine #code` et le hash SMS Retriever (MOVA_INT_001). Autofill Android
+  // reste possible via User Consent / saisie manuelle.
+  void _smsAppHash;
+  const message = `RESERVA: votre code est ${code}. Valide 5 minutes.`;
   return envoyerSms(telephone, message, "otp");
 }
 

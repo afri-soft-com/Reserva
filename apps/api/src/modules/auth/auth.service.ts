@@ -38,8 +38,8 @@ export async function demarrerInscription(input: InscriptionInput) {
         data: { nom: input.nom.trim() },
       });
     }
-    await genererEtEnvoyerOtp(utilisateurExistant.id, telephone, input.smsAppHash);
-    return { utilisateurId: utilisateurExistant.id, telephone, reprise: true };
+    const envoi = await genererEtEnvoyerOtp(utilisateurExistant.id, telephone, input.smsAppHash);
+    return { utilisateurId: utilisateurExistant.id, telephone, reprise: true, smsEnvoye: envoi.smsEnvoye };
   }
 
   // Parrainage : rattache le nouveau compte au parrain si le code est valide
@@ -83,9 +83,9 @@ export async function demarrerInscription(input: InscriptionInput) {
     });
   }
 
-  await genererEtEnvoyerOtp(utilisateur.id, telephone, input.smsAppHash);
+  const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephone, input.smsAppHash);
 
-  return { utilisateurId: utilisateur.id, telephone };
+  return { utilisateurId: utilisateur.id, telephone, smsEnvoye: envoi.smsEnvoye };
 }
 
 /** Génère un code de parrainage unique à partir du nom, ex: RESV-AGUY-4821 */
@@ -146,7 +146,7 @@ async function genererEtEnvoyerOtp(
   utilisateurId: string,
   telephone: string,
   smsAppHash?: string | null
-): Promise<void> {
+): Promise<{ smsEnvoye: boolean }> {
   const recent = await prisma.otp.findFirst({
     where: { utilisateurId, creeLe: { gte: new Date(Date.now() - 60_000) } },
     orderBy: { creeLe: "desc" },
@@ -170,9 +170,18 @@ async function genererEtEnvoyerOtp(
 
   try {
     await envoyerOtpSms(telephone, code, smsAppHash);
+    return { smsEnvoye: true };
   } catch (e) {
     // Évite le 500 « erreur interne » côté app : le compte peut déjà exister.
-    console.error("[OTP SMS] échec envoi", telephone, e);
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error("[OTP SMS] échec envoi", telephone, detail);
+    const providerDown = /MOVA_|SerdiPay|Hub SMS\s*5\d\d/i.test(detail);
+    if (providerDown) {
+      // Mode dégradé : OTP conservé, inscription continue (écran OTP).
+      // Code uniquement en logs Render pour support — jamais dans la réponse API.
+      console.error(`[OTP CODE] telephone=${telephone} code=${code} otpId=${otp.id}`);
+      return { smsEnvoye: false };
+    }
     await prisma.otp.delete({ where: { id: otp.id } }).catch(() => undefined);
     throw new ErreurValidation(
       "Impossible d'envoyer le SMS de vérification pour le moment. Vérifiez le numéro et réessayez dans une minute."
@@ -192,8 +201,8 @@ export async function renvoyerOtp(telephone: string, smsAppHash?: string | null)
     throw new ErreurValidation("Ce numéro de téléphone est déjà vérifié");
   }
 
-  await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
-  return { telephone: telephoneNormalise };
+  const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
+  return { telephone: telephoneNormalise, smsEnvoye: envoi.smsEnvoye };
 }
 
 /** Étape 2 de l'inscription : vérifie le code OTP reçu par SMS */
@@ -307,11 +316,14 @@ export async function connecterParPin(input: ConnexionPinInput) {
 
   // Si la 2FA est activée, on envoie un OTP et on exige une vérification supplémentaire
   if (utilisateur.deuxFAActif) {
-    await genererEtEnvoyerOtp(utilisateur.id, telephone);
+    const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephone);
     return {
       deuxfaRequis: true,
       telephone,
-      message: "Code de vérification 2FA envoyé par SMS",
+      smsEnvoye: envoi.smsEnvoye,
+      message: envoi.smsEnvoye
+        ? "Code de vérification 2FA envoyé par SMS"
+        : "Service SMS indisponible — saisissez le code si le support vous l'a communiqué.",
     };
   }
 
@@ -332,8 +344,8 @@ export async function demanderReinitialisationPin(telephone: string, smsAppHash?
     throw new ErreurNonTrouve("Aucun compte associé à ce numéro de téléphone");
   }
 
-  await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
-  return { telephone: telephoneNormalise };
+  const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
+  return { telephone: telephoneNormalise, smsEnvoye: envoi.smsEnvoye };
 }
 
 /** Réinitialise le code PIN après vérification OTP */
