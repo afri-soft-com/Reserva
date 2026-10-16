@@ -43,13 +43,19 @@ class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
   Future<void> _demander() async {
     setState(() => _chargement = true);
     try {
-      await ApiAuth.demanderReinitialisationPin(_telephoneCtrl.text.trim());
+      final hash = await obtenirSmsAppHash();
+      if (!mounted) return;
+      setState(() => _etape = 'OTP');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await ApiAuth.demanderReinitialisationPin(_telephoneCtrl.text.trim(), smsAppHash: hash);
       if (mounted) {
         ToastWidget.show(context, 'Code de réinitialisation envoyé par SMS.', type: 'succes');
-        setState(() => _etape = 'OTP');
       }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      if (mounted) {
+        setState(() => _etape = 'TELEPHONE');
+        ToastWidget.show(context, e.toString(), type: 'erreur');
+      }
     } finally {
       if (mounted) setState(() => _chargement = false);
     }

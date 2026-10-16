@@ -6,6 +6,7 @@ class ApiAuth {
     String nom, {
     String? codeParrainage,
     String role = 'CLIENT',
+    String? smsAppHash,
   }) async {
     return (await ApiClient.post('/auth/inscription', body: {
       'telephone': telephone,
@@ -13,11 +14,15 @@ class ApiAuth {
       'langue': 'fr',
       'role': role,
       if (codeParrainage != null && codeParrainage.trim().isNotEmpty) 'codeParrainage': codeParrainage.trim(),
+      if (smsAppHash != null && smsAppHash.isNotEmpty) 'smsAppHash': smsAppHash,
     })) as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> renvoyerOtp(String telephone) async {
-    return (await ApiClient.post('/auth/otp/renvoyer', body: {'telephone': telephone})) as Map<String, dynamic>;
+  static Future<Map<String, dynamic>> renvoyerOtp(String telephone, {String? smsAppHash}) async {
+    return (await ApiClient.post('/auth/otp/renvoyer', body: {
+      'telephone': telephone,
+      if (smsAppHash != null && smsAppHash.isNotEmpty) 'smsAppHash': smsAppHash,
+    })) as Map<String, dynamic>;
   }
 
   static Future<Map<String, dynamic>> verifierOtp(String telephone, String code) async {
@@ -52,8 +57,11 @@ class ApiAuth {
     return (await ApiClient.get('/auth/profil')) as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> demanderReinitialisationPin(String telephone) async {
-    return (await ApiClient.post('/auth/pin/reinitialiser/demander', body: {'telephone': telephone})) as Map<String, dynamic>;
+  static Future<Map<String, dynamic>> demanderReinitialisationPin(String telephone, {String? smsAppHash}) async {
+    return (await ApiClient.post('/auth/pin/reinitialiser/demander', body: {
+      'telephone': telephone,
+      if (smsAppHash != null && smsAppHash.isNotEmpty) 'smsAppHash': smsAppHash,
+    })) as Map<String, dynamic>;
   }
 
   static Future<Map<String, dynamic>> reinitialiserPin(String telephone, String code, String nouveauPin) async {

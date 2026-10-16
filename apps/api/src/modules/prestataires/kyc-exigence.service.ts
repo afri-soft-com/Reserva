@@ -68,11 +68,27 @@ export async function obtenirConfigExigenceKyc(): Promise<ConfigExigenceKyc> {
   try {
     const parse = JSON.parse(ligne.valeur) as Partial<ConfigExigenceKyc>;
     const base = configVide(categories);
+    const saved = parse.documents || {};
+    // Si une catégorie est absente du JSON sauvegardé → [] (pas les défauts),
+    // sinon décocher Santé puis recharger réintroduirait les docs par défaut.
+    const documents: Record<string, DocKycId[]> = {};
+    for (const c of categories) {
+      documents[c] = Array.isArray(saved[c]) ? (saved[c] as DocKycId[]) : [];
+    }
+    // Conservé pour l'UI première visite uniquement si aucune clé documents
+    if (!parse.documents) {
+      return {
+        actif: !!parse.actif,
+        delaiJours: Math.max(0, Math.min(365, Number(parse.delaiJours ?? 7) || 0)),
+        activeLe: parse.activeLe ?? null,
+        documents: base.documents,
+      };
+    }
     return {
       actif: !!parse.actif,
       delaiJours: Math.max(0, Math.min(365, Number(parse.delaiJours ?? 7) || 0)),
       activeLe: parse.activeLe ?? null,
-      documents: { ...base.documents, ...(parse.documents || {}) },
+      documents,
     };
   } catch {
     return configVide(categories);

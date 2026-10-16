@@ -1508,18 +1508,30 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                               style: const TextStyle(fontWeight: FontWeight.w600)),
                             subtitle: Text('${debut.substring(0, 10)} • Places: ${capTotale - capReservee}/$capTotale',
                               style: const TextStyle(fontSize: 12)),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, color: AppCouleurs.alerte, size: 20),
-                              onPressed: capReservee > 0 ? null : () async {
-                                try {
-                                  await ApiPrestataire.supprimerCreneau(c['id'] as String);
-                                  creneaux = await ApiPrestataire.listerCreneauxService(serviceId);
-                                  setSheetState(() {});
-                                  if (mounted) ToastWidget.show(context, 'Créneau supprimé', type: 'succes');
-                                } catch (e) {
-                                  if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
-                                }
-                              },
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined, color: AppCouleurs.primaire, size: 20),
+                                  onPressed: () => _showModifierCreneauDialog(c, () async {
+                                    creneaux = await ApiPrestataire.listerCreneauxService(serviceId);
+                                    setSheetState(() {});
+                                  }),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: AppCouleurs.alerte, size: 20),
+                                  onPressed: capReservee > 0 ? null : () async {
+                                    try {
+                                      await ApiPrestataire.supprimerCreneau(c['id'] as String);
+                                      creneaux = await ApiPrestataire.listerCreneauxService(serviceId);
+                                      setSheetState(() {});
+                                      if (mounted) ToastWidget.show(context, 'Créneau supprimé', type: 'succes');
+                                    } catch (e) {
+                                      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -1601,6 +1613,88 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 }
               },
               child: const Text('Ajouter'),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  void _showModifierCreneauDialog(Map<String, dynamic> creneau, VoidCallback onRafraichir) {
+    final debutIso = creneau['debut'] as String? ?? '';
+    final finIso = creneau['fin'] as String? ?? '';
+    final dateCtrl = TextEditingController(text: debutIso.length >= 10 ? debutIso.substring(0, 10) : '');
+    final debutCtrl = TextEditingController(text: debutIso.length >= 16 ? debutIso.substring(11, 16) : '09:00');
+    final finCtrl = TextEditingController(text: finIso.length >= 16 ? finIso.substring(11, 16) : '10:00');
+    final capCtrl = TextEditingController(text: '${creneau['capaciteTotale'] ?? 1}');
+    final id = creneau['id'] as String;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setDialogState) {
+        return AlertDialog(
+          title: const Text('Modifier le créneau'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: dateCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Date',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.calendar_today),
+                      onPressed: () async {
+                        DateTime initial;
+                        try {
+                          initial = DateTime.parse(dateCtrl.text);
+                        } catch (_) {
+                          initial = DateTime.now();
+                        }
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: initial,
+                          firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null) {
+                          final y = picked.year.toString();
+                          final m = picked.month.toString().padLeft(2, '0');
+                          final d = picked.day.toString().padLeft(2, '0');
+                          dateCtrl.text = '$y-$m-$d';
+                          setDialogState(() {});
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(controller: debutCtrl, decoration: const InputDecoration(labelText: 'Début (HH:MM)')),
+                const SizedBox(height: 8),
+                TextField(controller: finCtrl, decoration: const InputDecoration(labelText: 'Fin (HH:MM)')),
+                const SizedBox(height: 8),
+                TextField(controller: capCtrl, decoration: const InputDecoration(labelText: 'Capacité'), keyboardType: TextInputType.number),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await ApiPrestataire.modifierCreneau(id, {
+                    'debut': '${dateCtrl.text}T${debutCtrl.text}:00.000Z',
+                    'fin': '${dateCtrl.text}T${finCtrl.text}:00.000Z',
+                    'capaciteTotale': int.parse(capCtrl.text),
+                  });
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  onRafraichir();
+                  if (mounted) ToastWidget.show(context, 'Créneau modifié', type: 'succes');
+                } catch (e) {
+                  if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+                }
+              },
+              child: const Text('Enregistrer'),
             ),
           ],
         );

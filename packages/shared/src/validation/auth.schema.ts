@@ -12,6 +12,13 @@ export const schemaTelephone = z
   .trim()
   .regex(REGEX_TELEPHONE_RDC, "Numéro de téléphone congolais invalide (ex: 0991234567)");
 
+/** Hash SMS Retriever Android (11 car.) — calculé par l'app, sans permission READ_SMS. */
+const schemaSmsAppHash = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9+/=_-]{11}$/, "Hash SMS app invalide")
+  .optional();
+
 export const schemaInscription = z.object({
   telephone: schemaTelephone,
   nom: z.string().trim().min(2, "Le nom doit contenir au moins 2 caractères").max(100),
@@ -20,6 +27,8 @@ export const schemaInscription = z.object({
   codeParrainage: z.string().trim().min(3).max(20).optional(),
   /** Rôle demandé par l'app (Client vs RESERVA Pro). ADMIN interdit. */
   role: z.enum(["CLIENT", "PRESTATAIRE"]).default("CLIENT"),
+  /** Hash SMS Retriever (autofill sans dialogue de permission). */
+  smsAppHash: schemaSmsAppHash,
 });
 export type InscriptionInput = z.infer<typeof schemaInscription>;
 
@@ -78,11 +87,13 @@ export type Verifier2FAInput = z.infer<typeof schemaVerifier2FA>;
 
 export const schemaDemandeRenvoiOtp = z.object({
   telephone: schemaTelephone,
+  smsAppHash: schemaSmsAppHash,
 });
 export type DemandeRenvoiOtpInput = z.infer<typeof schemaDemandeRenvoiOtp>;
 
 export const schemaDemandeReinitialisationPin = z.object({
   telephone: schemaTelephone,
+  smsAppHash: schemaSmsAppHash,
 });
 export type DemandeReinitialisationPinInput = z.infer<typeof schemaDemandeReinitialisationPin>;
 

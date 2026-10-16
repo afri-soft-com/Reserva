@@ -45,13 +45,22 @@ export async function envoyerSms(
   }
 }
 
-export async function envoyerOtpSms(telephone: string, code: string): Promise<ResultatEnvoiSms> {
+export async function envoyerOtpSms(
+  telephone: string,
+  code: string,
+  smsAppHash?: string | null
+): Promise<ResultatEnvoiSms> {
   // Texte simple compatible SerdiPay (évite `<#>` / `@domaine #code` → MOVA_INT_001).
-  // Le code en clair + "code" déclenche iOS Autofill / Android User Consent.
-  // Hash SMS Retriever optionnel (fin de message, sans préfixe `<#>`).
-  const hash = (process.env.SMS_APP_HASH || "").trim();
+  // Hash SMS Retriever (11 car.) en fin de SMS = autofill Android sans permission.
+  const hashEnv = (process.env.SMS_APP_HASH || "").trim();
+  const hashApp = (smsAppHash || "").trim();
+  const hash = /^[A-Za-z0-9+/=_-]{11}$/.test(hashApp)
+    ? hashApp
+    : /^[A-Za-z0-9+/=_-]{11}$/.test(hashEnv)
+      ? hashEnv
+      : "";
   const message = hash
-    ? `RESERVA: votre code est ${code}. Valide 5 minutes. ${hash}`
+    ? `RESERVA: votre code est ${code}. Valide 5 minutes.\n${hash}`
     : `RESERVA: votre code est ${code}. Valide 5 minutes.`;
   return envoyerSms(telephone, message, "otp");
 }

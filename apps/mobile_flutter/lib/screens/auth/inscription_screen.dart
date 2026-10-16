@@ -72,11 +72,17 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
     }
     setState(() => _chargement = true);
     try {
+      // Hash + écran OTP d'abord → SMS Retriever écoute avant l'arrivée du SMS (sans permission).
+      final smsHash = await obtenirSmsAppHash();
+      if (!mounted) return;
+      setState(() => _etape = 'OTP');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       await ApiAuth.inscrire(
         _telephoneCtrl.text.trim(),
         _nomCtrl.text.trim(),
         codeParrainage: _codeParrainageCtrl.text.trim(),
         role: AppFlavorConfig.roleApi,
+        smsAppHash: smsHash,
       );
       if (mounted) {
         ToastWidget.show(
@@ -84,7 +90,6 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
           'Code SMS envoyé (une seule fois). Ensuite, connexion par PIN uniquement.',
           type: 'succes',
         );
-        setState(() => _etape = 'OTP');
       }
     } catch (e) {
       final msg = _msgErreur(e);
@@ -94,18 +99,27 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
           msg.toLowerCase().contains('déjà associé');
       if (deja) {
         try {
-          await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim());
+          final smsHash = await obtenirSmsAppHash();
+          if (!mounted) return;
+          setState(() => _etape = 'OTP');
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim(), smsAppHash: smsHash);
           if (mounted) {
             ToastWidget.show(context, 'Nouveau code SMS envoyé.', type: 'succes');
-            setState(() => _etape = 'OTP');
           }
           return;
         } catch (e2) {
-          if (mounted) ToastWidget.show(context, _msgErreur(e2), type: 'erreur');
+          if (mounted) {
+            setState(() => _etape = 'FORMULAIRE');
+            ToastWidget.show(context, _msgErreur(e2), type: 'erreur');
+          }
           return;
         }
       }
-      if (mounted) ToastWidget.show(context, msg, type: 'erreur');
+      if (mounted) {
+        setState(() => _etape = 'FORMULAIRE');
+        ToastWidget.show(context, msg, type: 'erreur');
+      }
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -359,7 +373,15 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
         const SizedBox(height: 16),
         _boutonPrincipal('Vérifier', _gererOtp),
         TextButton(
-          onPressed: () => ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim()),
+          onPressed: () async {
+            final hash = await obtenirSmsAppHash();
+            try {
+              await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim(), smsAppHash: hash);
+              if (mounted) ToastWidget.show(context, 'Nouveau code envoyé.', type: 'succes');
+            } catch (e) {
+              if (mounted) ToastWidget.show(context, _msgErreur(e), type: 'erreur');
+            }
+          },
           child: const Text('Renvoyer le code', style: TextStyle(fontWeight: FontWeight.w600)),
         ),
       ],

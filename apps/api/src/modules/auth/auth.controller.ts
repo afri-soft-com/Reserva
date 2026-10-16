@@ -10,7 +10,7 @@ export const inscrire = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const renvoyerCode = asyncHandler(async (req: Request, res: Response) => {
-  const resultat = await authService.renvoyerOtp(req.body.telephone);
+  const resultat = await authService.renvoyerOtp(req.body.telephone, req.body.smsAppHash);
   envoyerSucces(res, resultat);
 });
 
@@ -69,7 +69,7 @@ export const verifier2FA = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const demanderReinitialisation = asyncHandler(async (req: Request, res: Response) => {
-  const resultat = await authService.demanderReinitialisationPin(req.body.telephone);
+  const resultat = await authService.demanderReinitialisationPin(req.body.telephone, req.body.smsAppHash);
   envoyerSucces(res, resultat);
 });
 

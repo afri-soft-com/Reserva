@@ -8,7 +8,22 @@ import '../theme.dart';
 
 bool get _estAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-/// Champ OTP 6 chiffres avec autofill SMS (iOS one-time-code + Android User Consent).
+/// Hash SMS Retriever (11 car.) pour autofill sans permission READ_SMS.
+Future<String?> obtenirSmsAppHash() async {
+  if (!_estAndroid) return null;
+  try {
+    final result = await SmartAuth.instance.getAppSignature();
+    if (!result.hasData) return null;
+    final hash = (result.data ?? '').trim();
+    if (hash.length >= 11) return hash.substring(0, 11);
+    return hash.isEmpty ? null : hash;
+  } catch (e) {
+    debugPrint('obtenirSmsAppHash: $e');
+    return null;
+  }
+}
+
+/// Champ OTP 6 chiffres — Android SMS Retriever (sans dialogue) + iOS oneTimeCode.
 class OtpChamp extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onCompleted;
@@ -30,7 +45,6 @@ class OtpChamp extends StatefulWidget {
 class _OtpChampState extends State<OtpChamp> {
   late final List<TextEditingController> _cases;
   late final List<FocusNode> _focus;
-  /// Champ invisible : cible réelle de AutofillHints.oneTimeCode (iOS / Gboard).
   final TextEditingController _autofillCtrl = TextEditingController();
   final FocusNode _autofillFocus = FocusNode();
   bool _ecouteAndroid = false;
@@ -47,7 +61,6 @@ class _OtpChampState extends State<OtpChamp> {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _demarrerAutofillSms();
-      // Focus premier case — le champ autofill reste dans le même AutofillGroup.
       if (mounted) _focus[0].requestFocus();
     });
   }
@@ -56,8 +69,8 @@ class _OtpChampState extends State<OtpChamp> {
     if (!_estAndroid || _ecouteAndroid) return;
     _ecouteAndroid = true;
     try {
-      // User Consent : pas besoin de hash app dans le SMS (SerdiPay-safe).
-      final result = await SmartAuth.instance.getSmsWithUserConsentApi(
+      // SMS Retriever : aucune permission / aucun dialogue utilisateur.
+      final result = await SmartAuth.instance.getSmsWithRetrieverApi(
         matcher: r'\d{6}',
       );
       if (!mounted) return;
@@ -70,14 +83,13 @@ class _OtpChampState extends State<OtpChamp> {
           return;
         }
       }
-      // Timeout / échec (pas annulation user) → réécouter pour un renvoi SMS.
       if (!result.isCanceled && mounted && _lireCode().length < 6) {
         Future<void>.delayed(const Duration(milliseconds: 600), () {
           if (mounted && _lireCode().length < 6) _demarrerAutofillSms();
         });
       }
     } catch (e) {
-      debugPrint('OtpChamp SmartAuth: $e');
+      debugPrint('OtpChamp SmartAuth Retriever: $e');
     } finally {
       _ecouteAndroid = false;
     }
@@ -142,7 +154,6 @@ class _OtpChampState extends State<OtpChamp> {
   }
 
   void _surChange(int index, String value) {
-    // Collage / suggestion clavier du code complet
     final digits = value.replaceAll(RegExp(r'\D'), '');
     if (digits.length > 1) {
       _appliquerCode(digits);
@@ -179,7 +190,7 @@ class _OtpChampState extends State<OtpChamp> {
     widget.controller.removeListener(_syncDepuisParent);
     _autofillCtrl.removeListener(_syncDepuisAutofill);
     if (_estAndroid) {
-      SmartAuth.instance.removeUserConsentApiListener();
+      SmartAuth.instance.removeSmsRetrieverApiListener();
     }
     _autofillCtrl.dispose();
     _autofillFocus.dispose();
@@ -208,8 +219,6 @@ class _OtpChampState extends State<OtpChamp> {
         AutofillGroup(
           child: Stack(
             children: [
-              // Cible autofill système (iOS Strongbox / Android Autofill).
-              // Doit rester focusable dans le groupe ; taille minimale pour iOS.
               Positioned(
                 left: 0,
                 top: 0,
@@ -242,7 +251,6 @@ class _OtpChampState extends State<OtpChamp> {
                     child: TextField(
                       controller: _cases[i],
                       focusNode: _focus[i],
-                      // Premier case : aussi oneTimeCode (certains OEM Android).
                       autofillHints: i == 0 ? const [AutofillHints.oneTimeCode] : null,
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
@@ -274,15 +282,6 @@ class _OtpChampState extends State<OtpChamp> {
                         ),
                       ),
                       onChanged: (v) => _surChange(i, v),
-                      onTap: () {
-                        // Aide iOS : rattacher le contexte autofill au groupe.
-                        if (i == 0) {
-                          _autofillFocus.requestFocus();
-                          Future<void>.delayed(const Duration(milliseconds: 50), () {
-                            if (mounted) _focus[0].requestFocus();
-                          });
-                        }
-                      },
                     ),
                   );
                 }),
@@ -296,11 +295,9 @@ class _OtpChampState extends State<OtpChamp> {
             child: Text(widget.erreur!, style: const TextStyle(fontSize: 12, color: AppCouleurs.alerte)),
           ),
         const SizedBox(height: 6),
-        Text(
-          _estAndroid
-              ? 'Autorisez la lecture du SMS quand Android le propose — le code se remplit seul.'
-              : 'Le code SMS se remplit automatiquement lorsqu\'il est détecté.',
-          style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
+        const Text(
+          'Le code SMS se remplit automatiquement dès réception.',
+          style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
         ),
       ],
     );

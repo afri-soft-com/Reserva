@@ -74,6 +74,17 @@ class _KycScreenState extends State<KycScreen> {
 
   bool get _peutModifier => _kyc?['peutModifier'] == true;
 
+  Set<String> get _docsRequis {
+    final checklist = _kyc?['checklist'] as Map<String, dynamic>? ?? {};
+    final requis = checklist['requis'] as List? ?? [];
+    return requis.map((e) => e.toString()).toSet();
+  }
+
+  bool get _exigenceActive =>
+      (_kyc?['checklist'] as Map<String, dynamic>?)?['exigenceActive'] == true;
+
+  bool _docObligatoire(String id) => _exigenceActive && _docsRequis.contains(id);
+
   String _libelleStatut(String? s) {
     switch (s) {
       case StatutKyc.brouillon:
@@ -285,6 +296,20 @@ class _KycScreenState extends State<KycScreen> {
             ),
           ],
           const SizedBox(height: 20),
+          if (!_exigenceActive) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppCouleurs.succes.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Aucun document obligatoire pour votre catégorie. Vous pouvez compléter votre dossier plus tard ou soumettre pour activer le profil.',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           const Text('1. Identité', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
@@ -307,20 +332,20 @@ class _KycScreenState extends State<KycScreen> {
             titre: 'Photo recto',
             url: _rectoUrl,
             onUrl: (u) => _rectoUrl = u,
-            obligatoire: true,
+            obligatoire: _docObligatoire('piece_identite') || _docObligatoire('permis'),
           ),
           if (_typePiece != TypePieceIdentite.passeport)
             _docTile(
               titre: 'Photo verso',
               url: _versoUrl,
               onUrl: (u) => _versoUrl = u,
-              obligatoire: true,
+              obligatoire: _docObligatoire('piece_identite'),
             ),
           _docTile(
             titre: 'Selfie de vérification',
             url: _selfieUrl,
             onUrl: (u) => _selfieUrl = u,
-            obligatoire: true,
+            obligatoire: _docObligatoire('selfie') || _docObligatoire('photo_profil'),
           ),
           const SizedBox(height: 16),
           const Text('2. Entreprise', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
@@ -347,19 +372,22 @@ class _KycScreenState extends State<KycScreen> {
             titre: 'Document RCCM',
             url: _rccmDocUrl,
             onUrl: (u) => _rccmDocUrl = u,
-            obligatoire: false,
+            obligatoire: _docObligatoire('rccm'),
           ),
           _docTile(
             titre: 'Document NIF',
             url: _nifDocUrl,
             onUrl: (u) => _nifDocUrl = u,
-            obligatoire: false,
+            obligatoire: _docObligatoire('nif'),
           ),
           _docTile(
             titre: 'Attestation / autre justificatif',
             url: _attestationUrl,
             onUrl: (u) => _attestationUrl = u,
-            obligatoire: false,
+            obligatoire: _docObligatoire('attestation') ||
+                _docObligatoire('assurance_vehicule') ||
+                _docObligatoire('carte_rose') ||
+                _docObligatoire('visite_technique'),
           ),
           if (manquants.isNotEmpty) ...[
             const SizedBox(height: 12),

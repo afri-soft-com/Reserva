@@ -2,6 +2,13 @@ import { prisma } from "../../config/prisma";
 import { ErreurValidation, ErreurNonTrouve, ErreurInterdit } from "../../utils/erreurs";
 import { MettreAJourKycInput, ReviserKycInput } from "./kyc.schema";
 import { attribuerPlanGratuit } from "../economie/economie.service";
+import {
+  DOCUMENTS_KYC_DISPO,
+  DocKycId,
+  analyseConformite,
+  docsRequisPour,
+  obtenirConfigExigenceKyc,
+} from "./kyc-exigence.service";
 
 const CHAMPS_KYC = [
   "kycStatut",
@@ -31,9 +38,14 @@ export type ChecklistKyc = {
   adresseLegale: boolean;
   complet: boolean;
   manquants: string[];
+  /** false = admin a désactivé l'exigence ou aucun doc pour la catégorie */
+  exigenceActive: boolean;
+  requis: DocKycId[];
 };
 
-function construireChecklist(p: {
+async function construireChecklist(p: {
+  categorie: string;
+  kycStatut: string;
   pieceIdentiteType: string | null;
   pieceIdentiteNumero: string | null;
   pieceIdentiteRectoUrl: string | null;
@@ -45,28 +57,46 @@ function construireChecklist(p: {
   documentRccmUrl: string | null;
   documentNifUrl: string | null;
   attestationUrl: string | null;
-}): ChecklistKyc {
-  const manquants: string[] = [];
-  const pieceIdentite =
-    !!p.pieceIdentiteType &&
-    !!p.pieceIdentiteNumero &&
-    !!p.pieceIdentiteRectoUrl &&
-    (p.pieceIdentiteType === "PASSEPORT" || !!p.pieceIdentiteVersoUrl);
-  if (!pieceIdentite) {
-    manquants.push("Pièce d'identité (type, numéro, recto" + (p.pieceIdentiteType === "PASSEPORT" ? ")" : " + verso)"));
+  documentJustificatifUrl: string | null;
+}): Promise<ChecklistKyc> {
+  const config = await obtenirConfigExigenceKyc();
+  const requis = config.actif ? docsRequisPour(config, p.categorie) : [];
+
+  // Exigence off ou aucun document coché pour la catégorie → rien d'obligatoire
+  if (requis.length === 0) {
+    return {
+      pieceIdentite: true,
+      selfie: true,
+      entreprise: true,
+      documentsEntreprise: true,
+      adresseLegale: true,
+      complet: true,
+      manquants: [],
+      exigenceActive: false,
+      requis: [],
+    };
   }
 
-  const selfie = !!p.selfieUrl;
-  if (!selfie) manquants.push("Selfie de vérification");
-
-  const entreprise = !!(p.rccm || p.nif);
-  if (!entreprise) manquants.push("RCCM ou NIF");
-
-  const documentsEntreprise = !!(p.documentRccmUrl || p.documentNifUrl || p.attestationUrl);
-  if (!documentsEntreprise) manquants.push("Document entreprise (RCCM, NIF ou attestation)");
-
-  const adresseLegale = !!p.adresseLegale;
-  if (!adresseLegale) manquants.push("Adresse légale");
+  const analyse = analyseConformite(p, config);
+  const set = new Set(requis);
+  const pieceIdentite = !set.has("piece_identite") || !analyse.manquants.includes("piece_identite");
+  const selfie =
+    (!set.has("selfie") && !set.has("photo_profil")) ||
+    (!analyse.manquants.includes("selfie") && !analyse.manquants.includes("photo_profil"));
+  const entreprise =
+    (!set.has("rccm") && !set.has("nif")) ||
+    ((!set.has("rccm") || !analyse.manquants.includes("rccm")) &&
+      (!set.has("nif") || !analyse.manquants.includes("nif")));
+  const documentsEntreprise =
+    (!set.has("attestation") &&
+      !set.has("assurance_vehicule") &&
+      !set.has("carte_rose") &&
+      !set.has("visite_technique")) ||
+    (!analyse.manquants.includes("attestation") &&
+      !analyse.manquants.includes("assurance_vehicule") &&
+      !analyse.manquants.includes("carte_rose") &&
+      !analyse.manquants.includes("visite_technique"));
+  const adresseLegale = !set.has("adresse_legale") || !analyse.manquants.includes("adresse_legale");
 
   return {
     pieceIdentite,
@@ -74,8 +104,10 @@ function construireChecklist(p: {
     entreprise,
     documentsEntreprise,
     adresseLegale,
-    complet: pieceIdentite && selfie && entreprise && documentsEntreprise && adresseLegale,
-    manquants,
+    complet: analyse.manquants.length === 0,
+    manquants: analyse.manquantsLibelles,
+    exigenceActive: true,
+    requis,
   };
 }
 
@@ -87,10 +119,30 @@ async function notifierKyc(utilisateurId: string, titre: string, message: string
 
 /** Résumé KYC + checklist pour le prestataire connecté */
 export async function obtenirMonKyc(utilisateurId: string) {
-  const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
+  let prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
   if (!prestataire) throw new ErreurNonTrouve("Profil prestataire non trouvé");
 
-  const checklist = construireChecklist(prestataire);
+  let checklist = await construireChecklist(prestataire);
+
+  // Config admin sans docs obligatoires → ne pas bloquer le profil en attente
+  if (
+    !checklist.exigenceActive &&
+    ["BROUILLON", "INFO_MANQUANTE", "EN_REVUE"].includes(prestataire.kycStatut)
+  ) {
+    prestataire = await prisma.prestataire.update({
+      where: { id: prestataire.id },
+      data: {
+        kycStatut: "VALIDE",
+        kycValideLe: new Date(),
+        kycMotifRejet: null,
+        statut: prestataire.statut === "REJETE" ? prestataire.statut : "APPROUVE",
+      },
+    });
+    if (prestataire.statut === "APPROUVE") {
+      await attribuerPlanGratuit(prestataire.id).catch(() => {});
+    }
+    checklist = await construireChecklist(prestataire);
+  }
   const dossier: Record<string, unknown> = {};
   for (const cle of CHAMPS_KYC) {
     dossier[cle] = (prestataire as Record<string, unknown>)[cle];
@@ -99,8 +151,10 @@ export async function obtenirMonKyc(utilisateurId: string) {
   return {
     prestataireId: prestataire.id,
     statut: prestataire.statut,
+    categorie: prestataire.categorie,
     ...dossier,
     checklist,
+    documentsDisponibles: DOCUMENTS_KYC_DISPO,
     peutModifier: ["BROUILLON", "INFO_MANQUANTE", "REFUSE"].includes(prestataire.kycStatut),
     peutSoumettre: checklist.complet && ["BROUILLON", "INFO_MANQUANTE", "REFUSE"].includes(prestataire.kycStatut),
   };
@@ -139,9 +193,30 @@ export async function soumettreKyc(utilisateurId: string) {
     throw new ErreurValidation("Ce dossier KYC a déjà été soumis ou validé");
   }
 
-  const checklist = construireChecklist(prestataire);
+  const checklist = await construireChecklist(prestataire);
   if (!checklist.complet) {
     throw new ErreurValidation(`Dossier incomplet : ${checklist.manquants.join(" ; ")}`);
+  }
+
+  // Aucun document exigé → validation automatique (respecte la config admin)
+  if (!checklist.exigenceActive) {
+    await prisma.prestataire.update({
+      where: { id: prestataire.id },
+      data: {
+        kycStatut: "VALIDE",
+        kycSoumisLe: new Date(),
+        kycValideLe: new Date(),
+        kycMotifRejet: null,
+        statut: "APPROUVE",
+      },
+    });
+    await attribuerPlanGratuit(prestataire.id).catch(() => {});
+    await notifierKyc(
+      utilisateurId,
+      "Profil prêt",
+      "Aucun document obligatoire n'est requis pour le moment. Votre profil prestataire est actif."
+    );
+    return obtenirMonKyc(utilisateurId);
   }
 
   await prisma.prestataire.update({
@@ -179,7 +254,7 @@ export async function obtenirDossierKycAdmin(prestataireId: string) {
     include: { utilisateur: { select: { nom: true, telephone: true, email: true, creeLe: true } } },
   });
   if (!prestataire) throw new ErreurNonTrouve("Prestataire non trouvé");
-  return { ...prestataire, checklist: construireChecklist(prestataire) };
+  return { ...prestataire, checklist: await construireChecklist(prestataire) };
 }
 
 /** [ADMIN] Valider / demander infos / refuser le KYC */
@@ -192,7 +267,7 @@ export async function reviserKyc(adminId: string, input: ReviserKycInput) {
   }
 
   if (input.decision === "VALIDER") {
-    const checklist = construireChecklist(prestataire);
+    const checklist = await construireChecklist(prestataire);
     if (!checklist.complet) {
       throw new ErreurValidation(`Impossible de valider : ${checklist.manquants.join(" ; ")}`);
     }

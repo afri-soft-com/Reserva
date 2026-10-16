@@ -468,6 +468,59 @@ export async function recommanderServices(utilisateurId: string, limite = 10) {
   }));
 }
 
+/** [PRESTATAIRE] Modifie un créneau (horaires / capacité) */
+export async function modifierCreneau(
+  utilisateurId: string,
+  creneauId: string,
+  input: { debut?: string; fin?: string; capaciteTotale?: number }
+) {
+  const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
+  if (!prestataire) {
+    throw new ErreurNonTrouve("Profil prestataire non trouvé");
+  }
+
+  const creneau = await prisma.creneau.findUnique({
+    where: { id: creneauId },
+    include: { service: true },
+  });
+  if (!creneau || creneau.service.prestataireId !== prestataire.id) {
+    throw new ErreurNonTrouve("Créneau non trouvé");
+  }
+
+  const debut = input.debut ? new Date(input.debut) : creneau.debut;
+  const fin = input.fin ? new Date(input.fin) : creneau.fin;
+  const capaciteTotale =
+    input.capaciteTotale !== undefined ? input.capaciteTotale : creneau.capaciteTotale;
+
+  if (fin <= debut) {
+    throw new ErreurValidation("La date de fin doit être après la date de début");
+  }
+  if (debut < new Date() && (input.debut || input.fin)) {
+    throw new ErreurValidation("Impossible de déplacer un créneau dans le passé");
+  }
+  if (capaciteTotale < creneau.capaciteReservee) {
+    throw new ErreurValidation(
+      `La capacité ne peut pas être inférieure aux réservations déjà prises (${creneau.capaciteReservee})`
+    );
+  }
+
+  const chevauchement = await prisma.creneau.findFirst({
+    where: {
+      serviceId: creneau.serviceId,
+      id: { not: creneauId },
+      OR: [{ debut: { lt: fin }, fin: { gt: debut } }],
+    },
+  });
+  if (chevauchement) {
+    throw new ErreurConflit("Ce créneau chevauche un autre créneau existant pour ce service");
+  }
+
+  return prisma.creneau.update({
+    where: { id: creneauId },
+    data: { debut, fin, capaciteTotale },
+  });
+}
+
 /** [PRESTATAIRE] Bloque (supprime) un crÃ©neau futur sans rÃ©servation */
 export async function supprimerCreneau(utilisateurId: string, creneauId: string) {
   const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });

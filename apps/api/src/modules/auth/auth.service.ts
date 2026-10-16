@@ -38,7 +38,7 @@ export async function demarrerInscription(input: InscriptionInput) {
         data: { nom: input.nom.trim() },
       });
     }
-    await genererEtEnvoyerOtp(utilisateurExistant.id, telephone);
+    await genererEtEnvoyerOtp(utilisateurExistant.id, telephone, input.smsAppHash);
     return { utilisateurId: utilisateurExistant.id, telephone, reprise: true };
   }
 
@@ -83,7 +83,7 @@ export async function demarrerInscription(input: InscriptionInput) {
     });
   }
 
-  await genererEtEnvoyerOtp(utilisateur.id, telephone);
+  await genererEtEnvoyerOtp(utilisateur.id, telephone, input.smsAppHash);
 
   return { utilisateurId: utilisateur.id, telephone };
 }
@@ -142,7 +142,11 @@ async function crediterParrainage(parrainId: string, filleulId: string): Promise
 }
 
 /** Génère un nouvel OTP, l'enregistre en base et l'envoie par SMS (cooldown 60 s / numéro). */
-async function genererEtEnvoyerOtp(utilisateurId: string, telephone: string): Promise<void> {
+async function genererEtEnvoyerOtp(
+  utilisateurId: string,
+  telephone: string,
+  smsAppHash?: string | null
+): Promise<void> {
   const recent = await prisma.otp.findFirst({
     where: { utilisateurId, creeLe: { gte: new Date(Date.now() - 60_000) } },
     orderBy: { creeLe: "desc" },
@@ -165,7 +169,7 @@ async function genererEtEnvoyerOtp(utilisateurId: string, telephone: string): Pr
   });
 
   try {
-    await envoyerOtpSms(telephone, code);
+    await envoyerOtpSms(telephone, code, smsAppHash);
   } catch (e) {
     // Évite le 500 « erreur interne » côté app : le compte peut déjà exister.
     console.error("[OTP SMS] échec envoi", telephone, e);
@@ -177,7 +181,7 @@ async function genererEtEnvoyerOtp(utilisateurId: string, telephone: string): Pr
 }
 
 /** Renvoie un nouvel OTP (ex: si le précédent a expiré ou n'est pas arrivé) */
-export async function renvoyerOtp(telephone: string) {
+export async function renvoyerOtp(telephone: string, smsAppHash?: string | null) {
   const telephoneNormalise = normaliserTelephone(telephone);
   const utilisateur = await prisma.utilisateur.findUnique({ where: { telephone: telephoneNormalise } });
 
@@ -188,7 +192,7 @@ export async function renvoyerOtp(telephone: string) {
     throw new ErreurValidation("Ce numéro de téléphone est déjà vérifié");
   }
 
-  await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise);
+  await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
   return { telephone: telephoneNormalise };
 }
 
@@ -320,7 +324,7 @@ export async function connecterParPin(input: ConnexionPinInput) {
 }
 
 /** Demande la réinitialisation du code PIN — envoie un OTP par SMS */
-export async function demanderReinitialisationPin(telephone: string) {
+export async function demanderReinitialisationPin(telephone: string, smsAppHash?: string | null) {
   const telephoneNormalise = normaliserTelephone(telephone);
   const utilisateur = await prisma.utilisateur.findUnique({ where: { telephone: telephoneNormalise } });
 
@@ -328,7 +332,7 @@ export async function demanderReinitialisationPin(telephone: string) {
     throw new ErreurNonTrouve("Aucun compte associé à ce numéro de téléphone");
   }
 
-  await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise);
+  await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
   return { telephone: telephoneNormalise };
 }
 

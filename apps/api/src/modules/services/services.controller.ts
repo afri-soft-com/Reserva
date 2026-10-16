@@ -37,6 +37,16 @@ export const supprimerCreneau = asyncHandler(async (req: Request, res: Response)
   envoyerSucces(res, resultat);
 });
 
+export const modifierCreneau = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await servicesService.modifierCreneau(
+    req.utilisateur.utilisateurId,
+    req.params.creneauId,
+    req.body
+  );
+  envoyerSucces(res, resultat);
+});
+
 export const recommandations = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const limite = Math.min(parseInt(req.query.limite as string) || 10, 20);

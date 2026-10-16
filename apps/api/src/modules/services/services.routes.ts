@@ -3,7 +3,7 @@ import { z } from "zod";
 import * as servicesController from "./services.controller";
 import { valider } from "../../middlewares/valider";
 import { authentifier, exigerRole } from "../../middlewares/auth";
-import { schemaRechercheServices, schemaCreerCreneau } from "@reserva/shared";
+import { schemaRechercheServices, schemaCreerCreneau, schemaModifierCreneau } from "@reserva/shared";
 
 export const routesServices = Router();
 
@@ -40,6 +40,14 @@ routesServices.post(
   exigerRole("PRESTATAIRE"),
   valider(schemaCreneauxRecurrents),
   servicesController.creerCreneauxRecurrents
+);
+
+routesServices.patch(
+  "/creneaux/:creneauId",
+  authentifier,
+  exigerRole("PRESTATAIRE"),
+  valider(schemaModifierCreneau),
+  servicesController.modifierCreneau
 );
 
 routesServices.delete(

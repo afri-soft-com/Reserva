@@ -244,6 +244,10 @@ class ApiPrestataire {
     return (await ApiClient.post('/services/creneaux', body: body)) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> modifierCreneau(String creneauId, Map<String, dynamic> body) async {
+    return (await ApiClient.patch('/services/creneaux/$creneauId', body: body)) as Map<String, dynamic>;
+  }
+
   static Future<void> supprimerCreneau(String creneauId) async {
     await ApiClient.request('DELETE', '/services/creneaux/$creneauId');
   }

@@ -34,7 +34,8 @@ class _ChangerPinScreenState extends State<ChangerPinScreen> {
     if (telephone == null) return;
     setState(() => _chargement = true);
     try {
-      await ApiAuth.demanderReinitialisationPin(telephone);
+      final hash = await obtenirSmsAppHash();
+      await ApiAuth.demanderReinitialisationPin(telephone, smsAppHash: hash);
       if (mounted) ToastWidget.show(context, 'Code de vérification envoyé par SMS.', type: 'succes');
     } catch (e) {
       if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');

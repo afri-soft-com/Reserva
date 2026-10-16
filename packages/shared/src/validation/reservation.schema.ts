@@ -79,6 +79,15 @@ export const schemaCreerCreneau = z.object({
 });
 export type CreerCreneauInput = z.infer<typeof schemaCreerCreneau>;
 
+export const schemaModifierCreneau = z.object({
+  debut: z.string().datetime({ message: "Date de début invalide (format ISO requis)" }).optional(),
+  fin: z.string().datetime({ message: "Date de fin invalide (format ISO requis)" }).optional(),
+  capaciteTotale: z.coerce.number().int().min(1).optional(),
+}).refine((d) => d.debut !== undefined || d.fin !== undefined || d.capaciteTotale !== undefined, {
+  message: "Indiquez au moins un champ à modifier (début, fin ou capacité)",
+});
+export type ModifierCreneauInput = z.infer<typeof schemaModifierCreneau>;
+
 export const schemaInitierPaiement = z.object({
   reservationId: z.string().uuid(),
   operateur: z.enum(["MPESA", "AIRTEL_MONEY", "ORANGE_MONEY", "ESPECES"]),
