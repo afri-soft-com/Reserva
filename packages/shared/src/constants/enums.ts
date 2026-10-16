@@ -124,20 +124,8 @@ export const DEVISE = {
 
 export type Devise = (typeof DEVISE)[keyof typeof DEVISE];
 
-export const VILLES_RDC = [
-  "Kinshasa",
-  "Lubumbashi",
-  "Goma",
-  "Mbuji-Mayi",
-  "Kisangani",
-  "Bukavu",
-  "Kananga",
-  "Kolwezi",
-  "Likasi",
-  "Matadi",
-] as const;
-
-export type VilleRdc = (typeof VILLES_RDC)[number];
+export { VILLES_RDC, VILLES_RDC_DETAIL, PROVINCES_RDC } from "./villes-rdc";
+export type { VilleRdc, VilleRdcEntry } from "./villes-rdc";
 
 export const LANGUE = {
   FR: "fr",

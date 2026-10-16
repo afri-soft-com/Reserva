@@ -71,6 +71,39 @@ export class ServiceVoix {
     });
 
     const token = await at.toJwt();
+
+    // Notifie l'interlocuteur pour qu'il rejoigne l'appel (pas de push FCM encore)
+    try {
+      let destinataireId: string | null = null;
+      if (input.conversationId) {
+        const autre = await prisma.conversationParticipant.findFirst({
+          where: { conversationId: input.conversationId, utilisateurId: { not: utilisateurId } },
+        });
+        destinataireId = autre?.utilisateurId ?? null;
+      } else if (input.reservationId) {
+        const resa = await prisma.reservation.findUnique({
+          where: { id: input.reservationId },
+          include: { prestataire: { select: { utilisateurId: true } } },
+        });
+        if (resa) {
+          destinataireId =
+            resa.clientId === utilisateurId ? resa.prestataire.utilisateurId : resa.clientId;
+        }
+      }
+      if (destinataireId) {
+        await prisma.notification.create({
+          data: {
+            utilisateurId: destinataireId,
+            titre: "Appel vocal entrant",
+            message: `${user?.nom || "Un utilisateur"} vous appelle sur RESERVA. Ouvrez la conversation ou la réservation pour répondre.`,
+            type: "SYSTEME",
+          },
+        });
+      }
+    } catch (e) {
+      console.error("[voix] notification appel", e);
+    }
+
     return {
       token,
       url: env.LIVEKIT_URL,

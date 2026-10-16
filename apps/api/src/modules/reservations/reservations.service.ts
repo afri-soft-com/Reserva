@@ -479,7 +479,17 @@ export async function marquerStatutFinal(utilisateurId: string, reservationId: s
     throw new ErreurValidation("Seule une réservation confirmée (ou en cours) peut être clôturée");
   }
 
-  return prisma.reservation.update({ where: { id: reservationId }, data: { statut } });
+  const miseAJour = await prisma.reservation.update({ where: { id: reservationId }, data: { statut } });
+
+  // Libère le séquestre : le prestataire peut alors demander un versement
+  if (statut === "TERMINEE" || statut === "ABSENCE") {
+    const { libererSequestreReservation } = await import("../economie/economie.service");
+    await libererSequestreReservation(reservationId).catch((e) =>
+      console.error("[sequestre] libération", reservationId, e)
+    );
+  }
+
+  return miseAJour;
 }
 
 /**

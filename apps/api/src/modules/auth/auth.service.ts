@@ -75,7 +75,7 @@ export async function demarrerInscription(input: InscriptionInput) {
         utilisateurId: utilisateur.id,
         nomEntreprise: input.nom,
         categorie: "HOTELLERIE",
-        ville: "Kinshasa",
+        ville: "À compléter",
         quartier: "À compléter",
         description: "Profil prestataire — à compléter après validation.",
         statut: "EN_ATTENTE_VALIDATION",

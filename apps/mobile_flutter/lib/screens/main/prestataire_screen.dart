@@ -18,6 +18,7 @@ import '../prestataire/indisponibilites_prestataire_screen.dart';
 import '../prestataire/politique_annulation_screen.dart';
 import '../prestataire/file_terrain_screen.dart';
 import '../prestataire/kyc_screen.dart';
+import '../prestataire/finances_screen.dart';
 
 class PrestataireScreen extends StatefulWidget {
   const PrestataireScreen({super.key});
@@ -47,14 +48,30 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     _charger();
   }
 
+  bool _activationRequise = false;
+  final _codeActivationCtrl = TextEditingController();
+
   Future<void> _charger() async {
     setState(() => _chargement = true);
     try {
+      final profil = await ApiPrestataire.obtenirProfil();
+      final activationRequise = profil['activationRequise'] == true;
+      if (!mounted) return;
+      setState(() {
+        _profilStatut = profil['statut'] as String?;
+        _kycMotif = profil['kycMotifRejet'] as String?;
+        _exigenceDocuments = profil['exigenceDocuments'] as Map<String, dynamic>?;
+        _activationRequise = activationRequise;
+      });
+      if (activationRequise ||
+          _profilStatut == 'EN_ATTENTE_VALIDATION' ||
+          _profilStatut == 'REJETE') {
+        return;
+      }
       final results = await Future.wait([
         ApiPrestataire.obtenirTableauDeBord(),
         ApiPrestataire.listerMesServices(),
         ApiPrestataire.obtenirAvisRecus(),
-        ApiPrestataire.obtenirProfil(),
         ApiPrestataire.obtenirAbonnement(),
       ]);
       if (mounted) {
@@ -62,16 +79,36 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
           _dashboard = results[0] as DashboardData;
           _services = results[1] as List<dynamic>;
           _avisData = results[2] as AvisRecusData;
-          final profil = results[3] as Map<String, dynamic>;
-          _profilStatut = profil['statut'] as String?;
-          _kycMotif = profil['kycMotifRejet'] as String?;
-          _exigenceDocuments = profil['exigenceDocuments'] as Map<String, dynamic>?
+          _exigenceDocuments = _exigenceDocuments
               ?? (results[0] as DashboardData).exigenceDocuments;
-          _abonnement = results[4] as Map<String, dynamic>?;
+          _abonnement = results[3] as Map<String, dynamic>?;
         });
       }
     } catch (_) {
       if (mounted) { ToastWidget.show(context, 'Erreur chargement tableau de bord', type: 'erreur'); }
+    } finally {
+      if (mounted) setState(() => _chargement = false);
+    }
+  }
+
+  Future<void> _activerEspace() async {
+    final code = _codeActivationCtrl.text.replaceAll(RegExp(r'\D'), '');
+    if (code.length != 6) {
+      ToastWidget.show(context, 'Entrez le code à 6 chiffres reçu par SMS', type: 'erreur');
+      return;
+    }
+    setState(() => _chargement = true);
+    try {
+      await ApiPrestataire.activerEspace(code);
+      if (mounted) {
+        ToastWidget.show(context, 'Espace Pro activé', type: 'succes');
+        _codeActivationCtrl.clear();
+        await _charger();
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastWidget.show(context, e.toString().replaceFirst('Exception: ', ''), type: 'erreur');
+      }
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -101,6 +138,71 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         backgroundColor: AppCouleurs.fond,
         appBar: AppBar(title: const Text('Mon espace')),
         body: const Padding(padding: EdgeInsets.all(16), child: Squelette()),
+      );
+    }
+
+    if (_activationRequise) {
+      return Scaffold(
+        backgroundColor: AppCouleurs.fond,
+        appBar: AppBar(title: const Text('Activation')),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_open, size: 64, color: AppCouleurs.primaire),
+                const SizedBox(height: 16),
+                const Text(
+                  'Code d\'activation requis',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Votre dossier est approuvé. Saisissez le code à 6 chiffres reçu par SMS (ou e-mail) pour ouvrir votre espace de travail.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppCouleurs.texteSecondaire),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _codeActivationCtrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: 8),
+                  decoration: const InputDecoration(
+                    labelText: 'Code d\'activation',
+                    border: OutlineInputBorder(),
+                    counterText: '',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _chargement ? null : _activerEspace,
+                    child: const Text('Activer mon espace'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    try {
+                      await ApiPrestataire.renvoyerCodeActivation();
+                      if (mounted) ToastWidget.show(context, 'Nouveau code envoyé', type: 'succes');
+                    } catch (e) {
+                      if (mounted) {
+                        ToastWidget.show(context, e.toString().replaceFirst('Exception: ', ''), type: 'erreur');
+                      }
+                    }
+                  },
+                  child: const Text('Renvoyer le code'),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -184,6 +286,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             tooltip: 'Plus d\'actions',
             onSelected: _gererActionMenu,
             itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'finances',
+                child: ListTile(
+                  leading: Icon(Icons.account_balance_wallet),
+                  title: Text('Mes finances'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
               PopupMenuItem(
                 value: 'file_terrain',
                 child: ListTile(
@@ -1830,6 +1941,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
 
   Future<void> _gererActionMenu(String valeur) async {
     switch (valeur) {
+      case 'finances':
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const FinancesPrestataireScreen()),
+        );
+        break;
       case 'file_terrain':
         await Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const FileTerrainScreen()),

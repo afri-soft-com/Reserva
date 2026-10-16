@@ -44,7 +44,14 @@ export async function obtenirMonProfilPrestataire(utilisateurId: string) {
     throw new ErreurNonTrouve("Profil prestataire non trouvé");
   }
   const exigenceDocuments = await statutExigencePourPrestataire(prestataire.id).catch(() => null);
-  return { ...prestataire, exigenceDocuments };
+  const activationRequise =
+    prestataire.statut === "APPROUVE" && !prestataire.activationConfirmeeLe;
+  return {
+    ...prestataire,
+    exigenceDocuments,
+    activationRequise,
+    espaceActif: prestataire.statut === "APPROUVE" && !!prestataire.activationConfirmeeLe,
+  };
 }
 
 /** Met à jour le profil prestataire (par son propriétaire) */
@@ -93,9 +100,9 @@ export async function validerPrestataire(input: ValiderPrestataireInput) {
     await prisma.notification.create({
       data: {
         utilisateurId: prestataire.utilisateurId,
-        titre: "Profil approuvé",
+        titre: "Profil approuvé — activation requise",
         message:
-          "Votre profil prestataire est actif. Vous pouvez publier vos services. Pensez à compléter vos documents si l'administration l'exige.",
+          "Votre dossier est approuvé. Saisissez le code d'activation reçu par SMS (ou e-mail) dans RESERVA Pro pour ouvrir votre espace de travail.",
         type: "SYSTEME",
       },
     }).catch(() => {});
@@ -125,6 +132,7 @@ export async function listerPrestatairesProches(params: {
   const delta = rayonKm / 111;
   const where: any = {
     statut: "APPROUVE",
+    activationConfirmeeLe: { not: null },
     latitude: { gte: latitude - delta, lte: latitude + delta },
     longitude: { gte: longitude - delta, lte: longitude + delta },
   };
@@ -151,6 +159,11 @@ async function exigerPrestataireApprouve(utilisateurId: string) {
   if (prestataire.statut !== "APPROUVE") {
     throw new ErreurInterdit(
       "Votre profil prestataire doit être approuvé par l'équipe RESERVA avant de pouvoir proposer des services"
+    );
+  }
+  if (!prestataire.activationConfirmeeLe) {
+    throw new ErreurInterdit(
+      "Saisissez le code d'activation reçu par SMS (ou e-mail) pour ouvrir votre espace de travail."
     );
   }
   const config = await obtenirConfigExigenceKyc();

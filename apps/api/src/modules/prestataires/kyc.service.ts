@@ -124,11 +124,12 @@ export async function obtenirMonKyc(utilisateurId: string) {
 
   let checklist = await construireChecklist(prestataire);
 
-  // Config admin sans docs obligatoires → ne pas bloquer le profil en attente
+  // Config admin sans docs obligatoires → approuver le dossier, activation SMS toujours requise
   if (
     !checklist.exigenceActive &&
     ["BROUILLON", "INFO_MANQUANTE", "EN_REVUE"].includes(prestataire.kycStatut)
   ) {
+    const etaitEnAttente = prestataire.statut !== "APPROUVE" && prestataire.statut !== "REJETE";
     prestataire = await prisma.prestataire.update({
       where: { id: prestataire.id },
       data: {
@@ -140,6 +141,12 @@ export async function obtenirMonKyc(utilisateurId: string) {
     });
     if (prestataire.statut === "APPROUVE") {
       await attribuerPlanGratuit(prestataire.id).catch(() => {});
+      if (etaitEnAttente && !prestataire.activationConfirmeeLe) {
+        const { genererEtEnvoyerCodeActivation } = await import("./activation.service");
+        await genererEtEnvoyerCodeActivation(utilisateurId).catch((e) =>
+          console.error("[activation]", e)
+        );
+      }
     }
     checklist = await construireChecklist(prestataire);
   }
@@ -198,7 +205,7 @@ export async function soumettreKyc(utilisateurId: string) {
     throw new ErreurValidation(`Dossier incomplet : ${checklist.manquants.join(" ; ")}`);
   }
 
-  // Aucun document exigé → validation automatique (respecte la config admin)
+  // Aucun document exigé → approbation auto + code d'activation SMS
   if (!checklist.exigenceActive) {
     await prisma.prestataire.update({
       where: { id: prestataire.id },
@@ -208,13 +215,16 @@ export async function soumettreKyc(utilisateurId: string) {
         kycValideLe: new Date(),
         kycMotifRejet: null,
         statut: "APPROUVE",
+        activationConfirmeeLe: null,
       },
     });
     await attribuerPlanGratuit(prestataire.id).catch(() => {});
+    const { genererEtEnvoyerCodeActivation } = await import("./activation.service");
+    await genererEtEnvoyerCodeActivation(utilisateurId).catch((e) => console.error("[activation]", e));
     await notifierKyc(
       utilisateurId,
-      "Profil prêt",
-      "Aucun document obligatoire n'est requis pour le moment. Votre profil prestataire est actif."
+      "Profil approuvé — activation requise",
+      "Saisissez le code d'activation reçu par SMS pour ouvrir votre espace de travail."
     );
     return obtenirMonKyc(utilisateurId);
   }

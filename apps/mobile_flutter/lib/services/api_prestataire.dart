@@ -213,6 +213,22 @@ class ApiPrestataire {
     return (await ApiClient.get('/prestataires/moi')) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> activerEspace(String code) async {
+    return (await ApiClient.post('/prestataires/moi/activation', body: {'code': code})) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> renvoyerCodeActivation() async {
+    return (await ApiClient.post('/prestataires/moi/activation/renvoyer')) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> obtenirFinances() async {
+    return (await ApiClient.get('/economie/moi/finances')) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> demanderVersement(Map<String, dynamic> body) async {
+    return (await ApiClient.post('/economie/moi/versements', body: body)) as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> obtenirKyc() async {
     return (await ApiClient.get('/prestataires/moi/kyc')) as Map<String, dynamic>;
   }

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import * as prestatairesController from "./prestataires.controller";
 import { valider } from "../../middlewares/valider";
 import { authentifier, exigerRole } from "../../middlewares/auth";
@@ -10,6 +11,10 @@ import {
   schemaModifierServiceOffert,
 } from "./prestataires.schema";
 import { schemaMettreAJourKyc, schemaReviserKyc } from "./kyc.schema";
+
+const schemaActiverEspace = z.object({
+  code: z.string().trim().regex(/^\d{6}$/, "Code à 6 chiffres"),
+});
 
 export const routesPrestataires = Router();
 
@@ -35,6 +40,21 @@ routesPrestataires.patch(
   prestatairesController.mettreAJourKyc
 );
 routesPrestataires.post("/moi/kyc/soumettre", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.soumettreKyc);
+
+// Activation espace Pro (code reçu après approbation admin)
+routesPrestataires.post(
+  "/moi/activation",
+  authentifier,
+  exigerRole("PRESTATAIRE"),
+  valider(schemaActiverEspace),
+  prestatairesController.activerEspace
+);
+routesPrestataires.post(
+  "/moi/activation/renvoyer",
+  authentifier,
+  exigerRole("PRESTATAIRE"),
+  prestatairesController.renvoyerActivation
+);
 
 // Gestion des services proposés
 routesPrestataires.post(

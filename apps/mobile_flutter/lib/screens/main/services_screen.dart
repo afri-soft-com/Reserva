@@ -11,6 +11,7 @@ import '../../providers/langue_provider.dart';
 import '../../models/models.dart';
 import '../../services/api_services.dart';
 import '../../services/api_favoris.dart';
+import '../../services/api_referentiel.dart';
 import '../../services/service_cache.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/squelette.dart';
@@ -47,7 +48,9 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   bool _positionnement = false;
   bool _filtresEtendus = false;
 
-  static const _villes = ['Kinshasa', 'Lubumbashi', 'Goma', 'Bukavu', 'Kisangani', 'Mbuji-Mayi', 'Kananga'];
+  List<String> _villes = const [
+    'Kinshasa', 'Lubumbashi', 'Goma', 'Bukavu', 'Kisangani', 'Mbuji-Mayi', 'Kananga',
+  ];
   static const _optionsTri = {
     'Recommandés': null,
     'Prix ↑': 'prix_asc',
@@ -70,6 +73,9 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   @override
   void initState() {
     super.initState();
+    ApiReferentiel.listerVilles().then((v) {
+      if (mounted && v.isNotEmpty) setState(() => _villes = v);
+    }).catchError((_) {});
     _charger();
     _searchCtrl.addListener(_onSearchChanged);
   }

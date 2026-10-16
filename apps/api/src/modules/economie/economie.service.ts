@@ -276,21 +276,75 @@ export async function enregistrerPaiementReservation(
     reservationId: reservation.id,
     description: `Frais de service ${reservation.numero}`,
   });
+  // Séquestre : le net n'est pas retirable tant que la prestation n'est pas TERMINEE/ABSENCE
   await ecrire(client, {
-    type: "NET_PRESTATAIRE",
+    type: "NET_SEQUESTRE",
     compte: "PRESTATAIRE",
     sens: "CREDIT",
     montant: net,
     devise: reservation.devise,
     prestataireId: reservation.prestataireId,
     reservationId: reservation.id,
-    description: `Net prestataire ${reservation.numero}`,
+    description: `Séquestre net ${reservation.numero} (libéré après prestation)`,
   });
 
   await client.reservation.update({
     where: { id: reservation.id },
-    data: { commissionStatut: "ACQUISE" },
+    data: { commissionStatut: "EN_SEQUESTRE" },
   });
+}
+
+/** Libère le séquestre vers le solde disponible (après TERMINEE / ABSENCE). */
+export async function libererSequestreReservation(reservationId: string) {
+  const reservation = await prisma.reservation.findUnique({ where: { id: reservationId } });
+  if (!reservation || reservation.commissionStatut !== "EN_SEQUESTRE") return null;
+
+  const sequestres = await prisma.ecritureComptable.findMany({
+    where: {
+      reservationId,
+      prestataireId: reservation.prestataireId,
+      type: "NET_SEQUESTRE",
+      sens: "CREDIT",
+      compte: "PRESTATAIRE",
+    },
+  });
+  const montant = sequestres.reduce((s, e) => s + e.montant, 0);
+  if (montant <= 0) {
+    await prisma.reservation.update({
+      where: { id: reservationId },
+      data: { commissionStatut: "ACQUISE" },
+    });
+    return { montant: 0 };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await ecrire(tx, {
+      type: "NET_SEQUESTRE",
+      compte: "PRESTATAIRE",
+      sens: "DEBIT",
+      montant,
+      devise: reservation.devise,
+      prestataireId: reservation.prestataireId,
+      reservationId: reservation.id,
+      description: `Libération séquestre ${reservation.numero}`,
+    });
+    await ecrire(tx, {
+      type: "NET_PRESTATAIRE",
+      compte: "PRESTATAIRE",
+      sens: "CREDIT",
+      montant,
+      devise: reservation.devise,
+      prestataireId: reservation.prestataireId,
+      reservationId: reservation.id,
+      description: `Net disponible ${reservation.numero}`,
+    });
+    await tx.reservation.update({
+      where: { id: reservationId },
+      data: { commissionStatut: "ACQUISE" },
+    });
+  });
+
+  return { montant };
 }
 
 /** Inverse proportionnellement les écritures lors d'un remboursement. */
@@ -310,7 +364,8 @@ export async function enregistrerRemboursement(
   montantRembourse: number
 ) {
   if (montantRembourse <= 0 || reservation.montantPaye <= 0) return;
-  if (reservation.commissionStatut !== "ACQUISE") return;
+  // Remboursement possible tant que le net est en séquestre ou déjà acquis
+  if (!["ACQUISE", "EN_SEQUESTRE"].includes(reservation.commissionStatut)) return;
 
   const ratio = Math.min(1, montantRembourse / reservation.montantPaye);
   await ecrire(client, {
@@ -334,7 +389,7 @@ export async function enregistrerRemboursement(
     description: `Annulation frais ${reservation.numero}`,
   });
   await ecrire(client, {
-    type: "REMBOURSEMENT",
+    type: reservation.commissionStatut === "EN_SEQUESTRE" ? "NET_SEQUESTRE" : "REMBOURSEMENT",
     compte: "PRESTATAIRE",
     sens: "DEBIT",
     montant: reservation.montantNetPrestataire * ratio,
@@ -344,7 +399,7 @@ export async function enregistrerRemboursement(
     description: `Annulation net ${reservation.numero}`,
   });
 
-  const statut = ratio >= 0.999 ? "REMBOURSEE" : "ACQUISE";
+  const statut = ratio >= 0.999 ? "REMBOURSEE" : reservation.commissionStatut;
   await client.reservation.update({
     where: { id: reservation.id },
     data: { commissionStatut: statut },
@@ -477,13 +532,29 @@ async function soldePrestataire(prestataireId: string, devise?: string) {
   const where: any = { prestataireId, compte: "PRESTATAIRE" };
   if (devise) where.devise = devise;
 
-  const [credits, debits, demandes] = await Promise.all([
+  // Disponible = uniquement NET_PRESTATAIRE (hors séquestre)
+  const whereDispo = { ...where, type: { in: ["NET_PRESTATAIRE", "VERSEMENT", "REMBOURSEMENT", "AJUSTEMENT"] } };
+  const whereSeq = { ...where, type: "NET_SEQUESTRE" };
+
+  const [creditsDispo, debitsDispo, creditsSeq, debitsSeq, demandes] = await Promise.all([
     prisma.ecritureComptable.aggregate({
-      where: { ...where, sens: "CREDIT" },
+      where: { ...whereDispo, sens: "CREDIT", type: "NET_PRESTATAIRE" },
       _sum: { montant: true },
     }),
     prisma.ecritureComptable.aggregate({
-      where: { ...where, sens: "DEBIT" },
+      where: {
+        ...where,
+        sens: "DEBIT",
+        type: { in: ["VERSEMENT", "REMBOURSEMENT", "AJUSTEMENT"] },
+      },
+      _sum: { montant: true },
+    }),
+    prisma.ecritureComptable.aggregate({
+      where: { ...whereSeq, sens: "CREDIT" },
+      _sum: { montant: true },
+    }),
+    prisma.ecritureComptable.aggregate({
+      where: { ...whereSeq, sens: "DEBIT" },
       _sum: { montant: true },
     }),
     prisma.versementPrestataire.findMany({
@@ -491,13 +562,15 @@ async function soldePrestataire(prestataireId: string, devise?: string) {
     }),
   ]);
 
-  const credit = credits._sum.montant ?? 0;
-  const debit = debits._sum.montant ?? 0;
+  const credit = creditsDispo._sum.montant ?? 0;
+  const debit = debitsDispo._sum.montant ?? 0;
+  const sequestre = Math.max(0, (creditsSeq._sum.montant ?? 0) - (debitsSeq._sum.montant ?? 0));
   const enAttente = demandes.reduce((s, v) => s + v.montant, 0);
   return {
-    brut: credit,
+    brut: credit + sequestre,
     verse: debit,
     enAttente,
+    enSequestre: sequestre,
     disponible: Math.max(0, credit - debit - enAttente),
   };
 }
@@ -543,6 +616,9 @@ export async function demanderVersement(
   if (prestataire.statut !== "APPROUVE") {
     throw new ErreurInterdit("Profil prestataire non approuvé");
   }
+  if (!prestataire.activationConfirmeeLe) {
+    throw new ErreurInterdit("Activez d'abord votre espace avec le code d'activation");
+  }
 
   const devise = input.devise === "USD" ? "USD" : "CDF";
   const config = await obtenirConfigTarif();
@@ -553,7 +629,12 @@ export async function demanderVersement(
 
   const solde = await soldePrestataire(prestataire.id, devise);
   if (input.montant > solde.disponible) {
-    throw new ErreurValidation(`Solde insuffisant. Disponible : ${solde.disponible} ${devise}`);
+    throw new ErreurValidation(
+      `Solde insuffisant. Disponible : ${solde.disponible} ${devise}` +
+        (solde.enSequestre > 0
+          ? ` (${solde.enSequestre} ${devise} encore en séquestre jusqu'à la fin de la prestation)`
+          : "")
+    );
   }
 
   return prisma.versementPrestataire.create({

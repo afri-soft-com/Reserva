@@ -26,6 +26,7 @@ class _AppelVocalScreenState extends State<AppelVocalScreen> {
   Room? _room;
   bool _connexion = true;
   bool _muet = false;
+  bool _interlocuteurPresent = false;
   String? _erreur;
   String? _interlocuteur;
 
@@ -57,10 +58,12 @@ class _AppelVocalScreenState extends State<AppelVocalScreen> {
       }
 
       final room = Room();
+      room.addListener(_surEvenementRoom);
       await room.connect(url, token);
       await room.localParticipant?.setMicrophoneEnabled(true);
 
       if (!mounted) {
+        room.removeListener(_surEvenementRoom);
         await room.disconnect();
         return;
       }
@@ -68,14 +71,27 @@ class _AppelVocalScreenState extends State<AppelVocalScreen> {
         _room = room;
         _connexion = false;
         _interlocuteur = data['interlocuteur'] as String?;
+        _interlocuteurPresent = room.remoteParticipants.isNotEmpty;
       });
     } catch (e) {
       if (mounted) {
+        var msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+        if (msg.contains('non configurés') || msg.contains('LIVEKIT')) {
+          msg = 'Appels vocaux indisponibles pour le moment. Réessayez plus tard ou contactez le support.';
+        }
         setState(() {
           _connexion = false;
-          _erreur = e.toString();
+          _erreur = msg;
         });
       }
+    }
+  }
+
+  void _surEvenementRoom() {
+    if (!mounted || _room == null) return;
+    final present = _room!.remoteParticipants.isNotEmpty;
+    if (present != _interlocuteurPresent) {
+      setState(() => _interlocuteurPresent = present);
     }
   }
 
@@ -88,6 +104,7 @@ class _AppelVocalScreenState extends State<AppelVocalScreen> {
   }
 
   Future<void> _raccrocher() async {
+    _room?.removeListener(_surEvenementRoom);
     await _room?.disconnect();
     _room = null;
     if (mounted) Navigator.of(context).pop();
@@ -95,6 +112,7 @@ class _AppelVocalScreenState extends State<AppelVocalScreen> {
 
   @override
   void dispose() {
+    _room?.removeListener(_surEvenementRoom);
     _room?.disconnect();
     super.dispose();
   }
@@ -125,9 +143,22 @@ class _AppelVocalScreenState extends State<AppelVocalScreen> {
               Text(
                 _connexion
                     ? 'Connexion…'
-                    : (_erreur != null ? 'Échec de l\'appel' : 'En communication'),
+                    : (_erreur != null
+                        ? 'Échec de l\'appel'
+                        : (_interlocuteurPresent
+                            ? 'En communication'
+                            : 'Appel en cours — en attente de ${_interlocuteur ?? 'l\'interlocuteur'}…')),
+                textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
               ),
+              if (!_connexion && _erreur == null && !_interlocuteurPresent) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'L\'autre personne a reçu une notification. Elle doit ouvrir l\'appel depuis la conversation.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
               if (_erreur != null) ...[
                 const SizedBox(height: 12),
                 Text(_erreur!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent)),

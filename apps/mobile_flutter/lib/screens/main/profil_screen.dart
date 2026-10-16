@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/langue_provider.dart';
 import '../../models/models.dart';
 import '../../services/api_prestataire.dart';
+import '../../services/api_referentiel.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/toast.dart';
 import '../../providers/theme_provider.dart';
@@ -336,6 +337,10 @@ void _showDevenirPrestataireDialog(BuildContext context) {
   final longitudeCtrl = TextEditingController();
   bool chargementLocalisation = false;
   bool envoi = false;
+  List<String> villes = ['Kinshasa', 'Lubumbashi', 'Goma', 'Bukavu', 'Kisangani'];
+  ApiReferentiel.listerVilles().then((v) {
+    if (v.isNotEmpty) villes = v;
+  }).catchError((_) {});
 
   showDialog(
     context: context,
@@ -366,9 +371,30 @@ void _showDevenirPrestataireDialog(BuildContext context) {
                 onChanged: (v) => setDialogState(() => categorie = v ?? 'SANTE'),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: villeCtrl,
-                decoration: const InputDecoration(labelText: 'Ville *', border: OutlineInputBorder()),
+              Autocomplete<String>(
+                optionsBuilder: (text) {
+                  final q = text.text.trim().toLowerCase();
+                  if (q.isEmpty) return villes.take(20);
+                  return villes.where((v) => v.toLowerCase().contains(q)).take(30);
+                },
+                onSelected: (v) {
+                  villeCtrl.text = v;
+                  setDialogState(() {});
+                },
+                fieldViewBuilder: (context, controller, focus, onSubmit) {
+                  controller.text = villeCtrl.text;
+                  controller.selection = TextSelection.collapsed(offset: controller.text.length);
+                  controller.addListener(() => villeCtrl.text = controller.text);
+                  return TextField(
+                    controller: controller,
+                    focusNode: focus,
+                    decoration: const InputDecoration(
+                      labelText: 'Ville *',
+                      border: OutlineInputBorder(),
+                      hintText: 'Ex: Kinshasa, Goma, Matadi…',
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
               TextField(

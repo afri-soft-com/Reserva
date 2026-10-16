@@ -40,7 +40,7 @@ function creneauEstBloque(
 export async function rechercherServices(filtres: RechercheServicesInput) {
   const ou: any = {
     actif: true,
-    prestataire: { statut: "APPROUVE" },
+    prestataire: { statut: "APPROUVE", activationConfirmeeLe: { not: null } },
   };
 
   if (filtres.categorie) {
@@ -425,7 +425,7 @@ export async function recommanderServices(utilisateurId: string, limite = 10) {
 
   const prestataireIds = categoriesReservees.map((r) => r.prestataireId);
 
-  let ou: any = { actif: true, prestataire: { statut: "APPROUVE" } };
+  let ou: any = { actif: true, prestataire: { statut: "APPROUVE", activationConfirmeeLe: { not: null } } };
 
   if (prestataireIds.length > 0) {
     // RÃ©cupÃ¨re les catÃ©gories des prestataires frÃ©quentÃ©s

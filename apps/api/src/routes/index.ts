@@ -25,6 +25,7 @@ import { routesEconomie } from "../modules/economie/economie.routes";
 import { routesInnovations } from "../modules/innovations/innovations.routes";
 import { routesVoix } from "../modules/voix/voix.routes";
 import { routesAppVersions } from "../modules/app-versions/app-versions.routes";
+import { routesReferentiel } from "../modules/referentiel/referentiel.routes";
 
 export const routesApi = Router();
 
@@ -54,3 +55,4 @@ routesApi.use("/economie", routesEconomie);
 routesApi.use("/innovations", routesInnovations);
 routesApi.use("/voix", routesVoix);
 routesApi.use("/app", routesAppVersions);
+routesApi.use("/referentiel", routesReferentiel);

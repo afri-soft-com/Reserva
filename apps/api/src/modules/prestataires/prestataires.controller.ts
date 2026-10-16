@@ -127,3 +127,17 @@ export const reviserKyc = asyncHandler(async (req: Request, res: Response) => {
   const resultat = await kycService.reviserKyc(req.utilisateur.utilisateurId, req.body);
   envoyerSucces(res, resultat);
 });
+
+export const activerEspace = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const { verifierCodeActivation } = await import("./activation.service");
+  const resultat = await verifierCodeActivation(req.utilisateur.utilisateurId, req.body.code);
+  envoyerSucces(res, resultat);
+});
+
+export const renvoyerActivation = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const { renvoyerCodeActivation } = await import("./activation.service");
+  const resultat = await renvoyerCodeActivation(req.utilisateur.utilisateurId);
+  envoyerSucces(res, resultat);
+});

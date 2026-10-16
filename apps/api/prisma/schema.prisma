@@ -89,6 +89,8 @@ model Prestataire {
   longitude                       Float?
   statut                          String @default("EN_ATTENTE_VALIDATION")
   motifRejet                      String?
+  /// Null = approuvé mais code d'activation pas encore saisi (espace Pro bloqué)
+  activationConfirmeeLe           DateTime?
 
   /// KYC complet — dossier d'identité / entreprise
   /// BROUILLON | EN_REVUE | INFO_MANQUANTE | VALIDE | REFUSE
