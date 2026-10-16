@@ -57,7 +57,14 @@ mustInclude(
 );
 mustInclude(
   "apps/web/src/components/BanniereMiseAJour.tsx",
-  ["decideModeMiseAJour", "lireVersionsApp", "NEXT_PUBLIC_APP_VERSION", "EVENT_SW_UPDATE"],
+  [
+    "decideModeMiseAJour",
+    "lireVersionsApp",
+    "NEXT_PUBLIC_APP_VERSION",
+    "EVENT_SW_UPDATE",
+    "fixed",
+    "EVENT_VERSIONS_MAJ",
+  ],
   "web-banner"
 );
 mustInclude(

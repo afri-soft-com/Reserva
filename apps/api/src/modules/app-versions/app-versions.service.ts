@@ -14,24 +14,62 @@ export type ConfigVersionCanal = {
 
 export type ConfigVersions = Record<CanalVersion, ConfigVersionCanal>;
 
+/** Seuils par défaut : minSoft = dernière version store connue (pousse les builds plus anciens). */
 const DEFAUTS: ConfigVersions = {
   client: {
-    minSoft: "1.0.0",
-    minForce: "0.9.0",
+    minSoft: "1.0.1",
+    minForce: "1.0.0",
     storeUrlAndroid: "https://play.google.com/store/apps/details?id=com.reserva.client",
     storeUrlIos: "https://apps.apple.com/app/id6820885784",
   },
   pro: {
-    minSoft: "1.0.0",
-    minForce: "0.9.0",
+    minSoft: "1.0.1",
+    minForce: "1.0.0",
     storeUrlAndroid: "https://play.google.com/store/apps/details?id=com.reserva.pro",
     storeUrlIos: "https://apps.apple.com/app/id6820887223",
   },
   web: {
-    minSoft: "1.0.0",
-    minForce: "0.9.0",
+    minSoft: "1.0.1",
+    minForce: "1.0.0",
   },
 };
+
+/** Insère les clés APP_VERSION_* absentes (n'écrase jamais une valeur admin). */
+export async function assurerClesVersionsApp() {
+  const entrees: { cle: string; valeur: string; description: string }[] = [];
+  for (const canal of Object.keys(DEFAUTS) as CanalVersion[]) {
+    const cfg = DEFAUTS[canal];
+    entrees.push(
+      { cle: cle(canal, "minSoft"), valeur: cfg.minSoft, description: `Version soft ${canal}` },
+      { cle: cle(canal, "minForce"), valeur: cfg.minForce, description: `Version force ${canal}` },
+    );
+    if (cfg.storeUrlAndroid) {
+      entrees.push({
+        cle: cle(canal, "storeUrlAndroid"),
+        valeur: cfg.storeUrlAndroid,
+        description: `Store Android ${canal}`,
+      });
+    }
+    if (cfg.storeUrlIos) {
+      entrees.push({
+        cle: cle(canal, "storeUrlIos"),
+        valeur: cfg.storeUrlIos,
+        description: `Store iOS ${canal}`,
+      });
+    }
+  }
+  let creees = 0;
+  for (const e of entrees) {
+    const exist = await prisma.configurationTarification.findFirst({ where: { cle: e.cle } });
+    if (!exist) {
+      await prisma.configurationTarification.create({
+        data: { cle: e.cle, valeur: e.valeur, description: e.description, type: "TEXTE", actif: true },
+      });
+      creees += 1;
+    }
+  }
+  return { creees, total: entrees.length };
+}
 
 function cle(canal: CanalVersion, champ: string) {
   return `${PREFIX}${canal.toUpperCase()}_${champ}`;

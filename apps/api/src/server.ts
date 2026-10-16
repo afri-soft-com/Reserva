@@ -31,6 +31,10 @@ async function demarrer() {
     await assurerClesTarificationCroissance().catch((e) =>
       console.warn("⚠ Clés tarification croissance :", e instanceof Error ? e.message : e)
     );
+    const { assurerClesVersionsApp } = await import("./modules/app-versions/app-versions.service");
+    await assurerClesVersionsApp().catch((e) =>
+      console.warn("⚠ Clés versions apps :", e instanceof Error ? e.message : e)
+    );
 
     const serveur = createServer(app);
     initialiserSocket(serveur);

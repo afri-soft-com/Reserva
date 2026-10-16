@@ -1,18 +1,22 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ConfigVersions,
+  decideModeMiseAJour,
   lireVersionsApp,
   mettreAJourVersionsApp,
 } from "../../../lib/api-app-versions";
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { toastErreur, toastSucces } from "../../../components/Toast";
+import { EVENT_VERSIONS_MAJ } from "../../../components/BanniereMiseAJour";
+
+const VERSION_WEB = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
 
 const VIDE: ConfigVersions = {
-  client: { minSoft: "1.0.0", minForce: "0.9.0", storeUrlAndroid: "", storeUrlIos: "" },
-  pro: { minSoft: "1.0.0", minForce: "0.9.0", storeUrlAndroid: "", storeUrlIos: "" },
-  web: { minSoft: "1.0.0", minForce: "0.9.0" },
+  client: { minSoft: "1.0.1", minForce: "1.0.0", storeUrlAndroid: "", storeUrlIos: "" },
+  pro: { minSoft: "1.0.1", minForce: "1.0.0", storeUrlAndroid: "", storeUrlIos: "" },
+  web: { minSoft: "1.0.1", minForce: "1.0.0" },
 };
 
 export default function PageVersions() {
@@ -27,13 +31,26 @@ export default function PageVersions() {
       .finally(() => setChargement(false));
   }, []);
 
+  const apercuWeb = useMemo(
+    () =>
+      decideModeMiseAJour({
+        versionInstallee: VERSION_WEB,
+        minSoft: cfg.web.minSoft,
+        minForce: cfg.web.minForce,
+      }),
+    [cfg.web.minSoft, cfg.web.minForce],
+  );
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setSauve(true);
     try {
       const next = await mettreAJourVersionsApp(cfg);
       setCfg(next);
-      toastSucces("Versions enregistrées");
+      toastSucces("Versions enregistrées — les apps relisent les seuils au prochain contrôle");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(EVENT_VERSIONS_MAJ));
+      }
     } catch (err) {
       toastErreur(extraireMessageErreur(err));
     } finally {
@@ -71,12 +88,33 @@ export default function PageVersions() {
       <div>
         <h1 className="text-2xl font-extrabold text-gray-900">Versions apps</h1>
         <p className="mt-1 max-w-3xl text-sm text-gray-500">
-          <strong>minSoft</strong> = bannière bleue « Mettre à jour » (fermable).{" "}
-          <strong>minForce</strong> = écran bloquant. Dès que l&apos;utilisateur installe une
-          version ≥ au seuil, la bannière disparaît automatiquement (mobile au retour du store ;
-          web après rechargement / activation PWA). Ex. pub store 1.0.2 → mettez minSoft à{" "}
-          <code className="rounded bg-gray-100 px-1">1.0.2</code> pour les clients encore en 1.0.1.
+          La bannière s&apos;affiche seulement si la version <em>installée</em> est{" "}
+          <strong>strictement inférieure</strong> au seuil. Ex. app store en{" "}
+          <code className="rounded bg-gray-100 px-1">1.0.1</code> → mettez{" "}
+          <code className="rounded bg-gray-100 px-1">minSoft = 1.0.1</code> pour les clients
+          encore en 1.0.0 ; pour tester sur votre appareil déjà en 1.0.1, mettez{" "}
+          <code className="rounded bg-gray-100 px-1">1.0.2</code>.
         </p>
+      </div>
+
+      <div
+        className={`rounded-xl border px-4 py-3 text-sm ${
+          apercuWeb === "force"
+            ? "border-red-200 bg-red-50 text-red-800"
+            : apercuWeb === "soft"
+              ? "border-blue-200 bg-blue-50 text-blue-900"
+              : "border-gray-200 bg-gray-50 text-gray-600"
+        }`}
+      >
+        Console web actuelle : <strong>v{VERSION_WEB}</strong> → mode{" "}
+        <strong>{apercuWeb}</strong>
+        {apercuWeb === "none" && (
+          <span>
+            {" "}
+            (augmentez <code className="rounded bg-white px-1">web.minSoft</code> au-dessus de{" "}
+            {VERSION_WEB} pour afficher la bannière ici).
+          </span>
+        )}
       </div>
 
       <form onSubmit={onSubmit} className="space-y-8">

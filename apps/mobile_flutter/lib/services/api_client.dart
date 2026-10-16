@@ -109,7 +109,8 @@ class ApiClient {
       throw Exception(erreur?['message'] as String? ?? 'Une erreur est survenue.');
     }
     final donnees = decoded['donnees'];
-    if (donnees is Map<String, dynamic>) return donnees;
+    // jsonDecode peut renvoyer Map<dynamic,dynamic> selon la plateforme — normaliser.
+    if (donnees is Map) return Map<String, dynamic>.from(donnees);
     if (donnees is List) return donnees;
     return decoded;
   }

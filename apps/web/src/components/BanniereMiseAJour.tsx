@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { decideModeMiseAJour, lireVersionsApp } from "../lib/api-app-versions";
 import { EVENT_SW_UPDATE, appliquerMiseAJourPwa } from "./EnregistreurPwa";
 
+export const EVENT_VERSIONS_MAJ = "reserva:versions-updated";
+
 const VERSION_WEB = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
 
 type Mode = "none" | "soft" | "force" | "pwa";
@@ -33,7 +35,7 @@ export function BanniereMiseAJour() {
         minSoft: soft,
         minForce: force,
       });
-      if (next === "force") setDismiss(false);
+      if (next === "force" || next === "soft") setDismiss(false);
       setMode(next);
     } catch {
       /* ignore réseau */
@@ -46,18 +48,25 @@ export function BanniereMiseAJour() {
       setPwaDispo(true);
       setDismiss(false);
     };
+    const onVersions = () => {
+      void evaluerApi();
+    };
     window.addEventListener(EVENT_SW_UPDATE, onSw);
+    window.addEventListener(EVENT_VERSIONS_MAJ, onVersions);
     const onFocus = () => {
       void evaluerApi();
     };
     window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", () => {
+    const onVis = () => {
       if (document.visibilityState === "visible") onFocus();
-    });
+    };
+    document.addEventListener("visibilitychange", onVis);
     const id = window.setInterval(() => void evaluerApi(), 5 * 60_000);
     return () => {
       window.removeEventListener(EVENT_SW_UPDATE, onSw);
+      window.removeEventListener(EVENT_VERSIONS_MAJ, onVersions);
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(id);
     };
   }, [evaluerApi]);
@@ -95,29 +104,33 @@ export function BanniereMiseAJour() {
       ? "Une nouvelle version de la console est prête à être installée."
       : `Une mise à jour est disponible (vous : v${VERSION_WEB}, requis : ≥ ${minSoft}).`;
     return (
-      <div
-        role="status"
-        className="sticky top-0 z-[90] flex items-center justify-between gap-3 bg-[#1A56DB] px-4 py-2.5 text-sm text-white shadow-md"
-      >
-        <span className="font-medium">{message}</span>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            className="rounded bg-white px-3 py-1 font-semibold text-[#1A56DB] hover:bg-blue-50"
-            onClick={() => void recharger()}
-          >
-            Mettre à jour
-          </button>
-          <button
-            type="button"
-            className="rounded px-2 py-1 opacity-80 hover:bg-white/10 hover:opacity-100"
-            onClick={() => setDismiss(true)}
-            aria-label="Fermer"
-          >
-            ×
-          </button>
+      <>
+        {/* fixed : au-dessus du header sticky (z-40), non masquée au scroll */}
+        <div
+          role="status"
+          className="fixed inset-x-0 top-0 z-[90] flex items-center justify-between gap-3 bg-[#1A56DB] px-4 py-2.5 text-sm text-white shadow-md"
+        >
+          <span className="font-medium">{message}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              className="rounded bg-white px-3 py-1 font-semibold text-[#1A56DB] hover:bg-blue-50"
+              onClick={() => void recharger()}
+            >
+              Mettre à jour
+            </button>
+            <button
+              type="button"
+              className="rounded px-2 py-1 opacity-80 hover:bg-white/10 hover:opacity-100"
+              onClick={() => setDismiss(true)}
+              aria-label="Fermer"
+            >
+              ×
+            </button>
+          </div>
         </div>
-      </div>
+        <div aria-hidden className="h-11 shrink-0" />
+      </>
     );
   }
 

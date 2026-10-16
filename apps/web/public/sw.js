@@ -1,5 +1,5 @@
 /* RESERVA admin — service worker (cache shell + mise à jour contrôlée) */
-const CACHE = "reserva-admin-v2";
+const CACHE = "reserva-admin-v3";
 const PRECACHE = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/logo.svg"];
 
 self.addEventListener("install", (event) => {
