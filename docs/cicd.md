@@ -51,7 +51,8 @@ Le pipeline **réduit le risque**, il ne garantit pas l’absence totale de dysf
 | Contexte | Comportement |
 |----------|----------------|
 | **CI régression** | `backup-service.mjs` puis `db-migrate-service.mjs` |
-| **Render start** | idem ; core a un **disk** `/var/data` → `BACKUP_DIR=/var/data/backups` |
+| **Render build (core)** | `db-migrate-service.mjs core` dans `buildCommand` |
+| **CI smoke-prod** | `npm run migrate:prod -- core` via API Render (connexion externe) |
 | **pg_dump** | installé dans `buildCommand` (`postgresql-client`) |
 | **Baseline** | migrations `20261009090000_baseline` (4 schémas) |
 | **DB déjà via db push** | `migrate resolve --applied` puis redeploy ; fallback `MIGRATE_FALLBACK_PUSH=1` |

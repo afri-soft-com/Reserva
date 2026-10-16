@@ -335,6 +335,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Migrations prod (Postgres Render)
+        run: npm run migrate:prod -- core
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          MIGRATE_FALLBACK_PUSH: "1"
       - name: Ensure catalogue prod (seed si vide)
         run: npm run ensure:prod-catalogue
         env:

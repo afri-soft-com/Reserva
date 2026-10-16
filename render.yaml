@@ -60,9 +60,8 @@ services:
     region: frankfurt
     rootDir: .
     autoDeploy: false
-    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build:shared && npm run db:generate && npm run build -w apps/api
-    # Migrate/backup hors start: les disques Render historiques masquent */prisma au runtime.
-    # Migrations: job CI (DATABASE_URL) ou one-off. Start = process HTTP uniquement.
+    # Migrate au build (start ne peut plus : disque Render masque prisma/ au runtime).
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build:shared && npm run db:generate && MIGRATE_FALLBACK_PUSH=1 node scripts/db-migrate-service.mjs core && npm run build -w apps/api
     startCommand: npm run start -w apps/api
     healthCheckPath: /api/sante
     envVars:

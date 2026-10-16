@@ -51,6 +51,7 @@
     "smoke:prod": "node scripts/smoke-production.mjs",
     "hub:readiness": "node scripts/hub-readiness.mjs",
     "ensure:prod-catalogue": "node scripts/ensure-prod-catalogue.mjs",
+    "migrate:prod": "node scripts/migrate-prod.mjs",
     "wait:render": "node scripts/wait-render-ready.mjs",
     "db:migrate:core": "node scripts/db-migrate-service.mjs core",
     "db:migrate:hotels": "node scripts/db-migrate-service.mjs hotels",
