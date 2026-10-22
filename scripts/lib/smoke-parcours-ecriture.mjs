@@ -64,8 +64,8 @@ export async function executerParcoursEcriture(opts) {
   console.log("\n══ Écriture métier (anti-régression) ══");
 
   console.log("→ Admin smoke (prépare comptes client/pro)");
-  const admin = await login(gateway, adminPhone, pin);
-  await desactiver2faSmoke(gateway, admin.token, [clientPhone, proPhone]);
+  const adminPrep = await login(gateway, adminPhone, pin);
+  await desactiver2faSmoke(gateway, adminPrep.token, [clientPhone, proPhone]);
 
   // --- 1. Cycle réservation ---
   console.log("→ Login client");
