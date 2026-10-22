@@ -139,34 +139,7 @@ jobs:
           mkdir -p ios/fastlane
           KEY_PATH="$PWD/ios/fastlane/AuthKey_${KEY_ID}.p8"
           printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > "$KEY_PATH"
-          cat > ios/fastlane/Fastfile <<'FASTEOF'
-default_platform(:ios)
-platform :ios do
-  lane :regen_profiles do
-    api_key = app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_filepath: ENV["ASC_KEY_FILEPATH"],
-      duration: 1200,
-      in_house: false
-    )
-    sigh(
-      api_key: api_key,
-      app_identifier: "com.reserva.client",
-      force: true,
-      output_path: "/tmp",
-      filename: "reserva-client.mobileprovision"
-    )
-    sigh(
-      api_key: api_key,
-      app_identifier: "com.reserva.pro",
-      force: true,
-      output_path: "/tmp",
-      filename: "reserva-pro.mobileprovision"
-    )
-  end
-end
-FASTEOF
+          echo "ZGVmYXVsdF9wbGF0Zm9ybSg6aW9zKQpwbGF0Zm9ybSA6aW9zIGRvCiAgbGFuZSA6cmVnZW5fcHJvZmlsZXMgZG8KICAgIGFwaV9rZXkgPSBhcHBfc3RvcmVfY29ubmVjdF9hcGlfa2V5KAogICAgICBrZXlfaWQ6IEVOVlsiQVNDX0tFWV9JRCJdLAogICAgICBpc3N1ZXJfaWQ6IEVOVlsiQVNDX0lTU1VFUl9JRCJdLAogICAgICBrZXlfZmlsZXBhdGg6IEVOVlsiQVNDX0tFWV9GSUxFUEFUSCJdLAogICAgICBkdXJhdGlvbjogMTIwMCwKICAgICAgaW5faG91c2U6IGZhbHNlCiAgICApCiAgICBzaWdoKAogICAgICBhcGlfa2V5OiBhcGlfa2V5LAogICAgICBhcHBfaWRlbnRpZmllcjogImNvbS5yZXNlcnZhLmNsaWVudCIsCiAgICAgIGZvcmNlOiB0cnVlLAogICAgICBvdXRwdXRfcGF0aDogIi90bXAiLAogICAgICBmaWxlbmFtZTogInJlc2VydmEtY2xpZW50Lm1vYmlsZXByb3Zpc2lvbiIKICAgICkKICAgIHNpZ2goCiAgICAgIGFwaV9rZXk6IGFwaV9rZXksCiAgICAgIGFwcF9pZGVudGlmaWVyOiAiY29tLnJlc2VydmEucHJvIiwKICAgICAgZm9yY2U6IHRydWUsCiAgICAgIG91dHB1dF9wYXRoOiAiL3RtcCIsCiAgICAgIGZpbGVuYW1lOiAicmVzZXJ2YS1wcm8ubW9iaWxlcHJvdmlzaW9uIgogICAgKQogIGVuZAplbmQK" | base64 -d > ios/fastlane/Fastfile
           (
             cd ios
             ASC_KEY_ID="$KEY_ID" ASC_ISSUER_ID="$ISSUER" ASC_KEY_FILEPATH="$KEY_PATH" \
