@@ -51,10 +51,11 @@ export async function envoyerOtpSms(
   _smsAppHash?: string | null
 ): Promise<ResultatEnvoiSms> {
   // Plain text uniquement : SerdiPay (via hub AfriSoft) rejette souvent `<#>`,
-  // `@domaine #code` et le hash SMS Retriever (MOVA_INT_001). Autofill Android
-  // reste possible via User Consent / saisie manuelle.
+  // `@domaine #code` et le hash SMS Retriever (MOVA_INT_001).
+  // Android autofill = SMS User Consent (dialogue 1 tap), pas Retriever.
+  // iOS = suggestion clavier oneTimeCode (Messages).
   void _smsAppHash;
-  const message = `RESERVA: votre code est ${code}. Valide 5 minutes.`;
+  const message = `RESERVA: votre code de verification est ${code}. Valide 5 minutes.`;
   return envoyerSms(telephone, message, "otp");
 }
 
