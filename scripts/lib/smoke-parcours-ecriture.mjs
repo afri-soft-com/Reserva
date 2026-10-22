@@ -70,6 +70,12 @@ export async function executerParcoursEcriture(opts) {
   // --- 1. Cycle réservation ---
   console.log("→ Login client");
   const client = await login(gateway, clientPhone, pin);
+  const roleClient = client.utilisateur?.role || client.utilisateur?.Role;
+  if (roleClient && roleClient !== "CLIENT" && roleClient !== "AGENT") {
+    throw new Error(
+      `Compte smoke ${clientPhone} a le rôle ${roleClient} (attendu CLIENT). Corrigez SMOKE_CLIENT_PHONE.`
+    );
+  }
 
   console.log("→ Recherche service SANTE");
   const servicesData = await get(gateway, "/services?categorie=SANTE&ville=Kinshasa&parPage=20", client.token);

@@ -1,0 +1,234 @@
+name: Deploy App Store (manuel)
+
+# Upload IPA Client + Pro sans dependre du smoke prod.
+# Actions → Deploy App Store (manuel) → Run workflow (repo afri-soft-com)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-ios
+  cancel-in-progress: false
+
+jobs:
+  app-store:
+    name: Upload App Store
+    if: github.repository == 'afri-soft-com/Reserva'
+    # ASC exige iOS 26 SDK → Xcode 26+ (image macos-26)
+    runs-on: macos-26
+    concurrency:
+      group: deploy-ios
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/mobile_flutter
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app && xcodebuild -version
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.32.6"
+          cache: true
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Inject CFBundleVersion
+        run: |
+          ruby -e "
+            path='pubspec.yaml'
+            t=File.read(path)
+            t=t.sub(/version:\s*([^\+\n]+)\+\d+/, 'version: \\1+${{ github.run_number }}')
+            File.write(path, t)
+            puts File.read(path).lines.grep(/version:/).first
+          "
+      - name: CocoaPods
+        working-directory: apps/mobile_flutter/ios
+        run: |
+          flutter precache --ios
+          rm -f Podfile.lock
+          pod install --repo-update
+      - name: Import signing + ExportOptions (Client + Pro)
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISION_PROFILE_CLIENT_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_CLIENT_BASE64 }}
+          IOS_PROVISION_PROFILE_PRO_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_PRO_BASE64 }}
+          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN=reserva-ci.keychain-db
+          security create-keychain -p "" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          # Secrets souvent collés avec newline/CRLF ; p12 modernes → MAC fail sur security
+          CERT_PASS=$(printf '%s' "$IOS_CERTIFICATE_PASSWORD" | tr -d '\r\n')
+          printf '%s' "$IOS_CERTIFICATE_BASE64" | tr -d '\r\n' | base64 -d > /tmp/cert.p12
+          openssl pkcs12 -in /tmp/cert.p12 -passin pass:"$CERT_PASS" -nodes -legacy -out /tmp/cert.pem 2>/dev/null \
+            || openssl pkcs12 -in /tmp/cert.p12 -passin pass:"$CERT_PASS" -nodes -out /tmp/cert.pem
+          openssl pkcs12 -export -inkey /tmp/cert.pem -in /tmp/cert.pem -out /tmp/cert-legacy.p12 \
+            -passout pass:"$CERT_PASS" -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES -macalg sha1
+          security import /tmp/cert-legacy.p12 -k "$KEYCHAIN" -P "$CERT_PASS" -A -T /usr/bin/codesign -T /usr/bin/security
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed 's/"//g')
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
+          rm -f /tmp/cert.pem /tmp/cert.p12
+          echo "→ Identités codesign:"
+          security find-identity -v -p codesigning
+
+          # Signing manuel Distribution (évite "No development certificates")
+          TEAM=$(printf '%s' "$APPLE_TEAM_ID" | tr -d '\r\n')
+          sed -i.bak 's/iPhone Developer/Apple Distribution/g' ios/Runner.xcodeproj/project.pbxproj
+          {
+            echo "CODE_SIGN_STYLE=Manual"
+            echo "CODE_SIGN_IDENTITY=Apple Distribution"
+            echo "DEVELOPMENT_TEAM=${TEAM}"
+            echo "PROVISIONING_PROFILE_SPECIFIER=RESERVA Client App Store"
+          } >> ios/Flutter/Release-client.xcconfig
+          {
+            echo "CODE_SIGN_STYLE=Manual"
+            echo "CODE_SIGN_IDENTITY=Apple Distribution"
+            echo "DEVELOPMENT_TEAM=${TEAM}"
+            echo "PROVISIONING_PROFILE_SPECIFIER=RESERVA Pro App Store"
+          } >> ios/Flutter/Release-pro.xcconfig
+
+          PROF_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROF_DIR"
+
+          install_profile_file() {
+            local tmp="$1"
+            local label="$2"
+            if [ ! -f "$tmp" ]; then
+              echo "⚠ Fichier profil $label manquant"
+              return 1
+            fi
+            local uuid
+            uuid=$(/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< "$(security cms -D -i "$tmp")" 2>/dev/null \
+              || security cms -D -i "$tmp" | plutil -extract UUID raw -o - -)
+            # Aligné avec PROVISIONING_PROFILE_SPECIFIER (Name du profil)
+            local name
+            name=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i "$tmp")" 2>/dev/null || true)
+            echo "  profil $label name=${name:-?} uuid=$uuid"
+            cp "$tmp" "$PROF_DIR/${uuid}.mobileprovision"
+            echo "✓ Profil $label → $uuid"
+          }
+
+          install_profile_b64() {
+            local b64="$1"
+            local label="$2"
+            if [ -z "${b64:-}" ]; then
+              echo "⚠ Profil $label manquant"
+              return 1
+            fi
+            local tmp="/tmp/${label}.mobileprovision"
+            echo "$b64" | tr -d '\r\n' | base64 -d > "$tmp"
+            install_profile_file "$tmp" "$label"
+          }
+
+          # Régénère les profils App Store pour inclure Sign In with Apple (capability App ID).
+          SIGH_OK=0
+          if [ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ] && [ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ] && [ -n "${APP_STORE_CONNECT_API_KEY_P8:-}" ]; then
+            echo "→ Régénération profils via fastlane sigh (Sign In with Apple)…"
+            gem install fastlane --no-document
+            mkdir -p ios/fastlane
+            KEY_ID=$(printf '%s' "$APP_STORE_CONNECT_API_KEY_ID" | tr -d '\r\n')
+            printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > "ios/fastlane/AuthKey_${KEY_ID}.p8"
+            export APP_STORE_CONNECT_API_KEY_KEY_ID="$KEY_ID"
+            export APP_STORE_CONNECT_API_KEY_ISSUER_ID=$(printf '%s' "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '\r\n')
+            export APP_STORE_CONNECT_API_KEY_KEY_FILEPATH="$PWD/ios/fastlane/AuthKey_${KEY_ID}.p8"
+            if (
+              cd ios
+              fastlane sigh --app_identifier com.reserva.client --team_id "$TEAM" --force \
+                --filename /tmp/reserva-client.mobileprovision --skip_certificate_verification
+              fastlane sigh --app_identifier com.reserva.pro --team_id "$TEAM" --force \
+                --filename /tmp/reserva-pro.mobileprovision --skip_certificate_verification
+            ); then
+              # Specifier = Name du profil (souvent « RESERVA Client App Store » si nommé ainsi)
+              CLIENT_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i /tmp/reserva-client.mobileprovision)" 2>/dev/null || echo "RESERVA Client App Store")
+              PRO_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i /tmp/reserva-pro.mobileprovision)" 2>/dev/null || echo "RESERVA Pro App Store")
+              sed -i.bak "s/PROVISIONING_PROFILE_SPECIFIER=.*/PROVISIONING_PROFILE_SPECIFIER=${CLIENT_NAME}/" ios/Flutter/Release-client.xcconfig
+              sed -i.bak "s/PROVISIONING_PROFILE_SPECIFIER=.*/PROVISIONING_PROFILE_SPECIFIER=${PRO_NAME}/" ios/Flutter/Release-pro.xcconfig
+              # ExportOptions provisioningProfiles doit matcher le Name
+              /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.reserva.client ${CLIENT_NAME}" ios/ExportOptions.client.plist 2>/dev/null \
+                || true
+              /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.reserva.pro ${PRO_NAME}" ios/ExportOptions.pro.plist 2>/dev/null \
+                || true
+              install_profile_file /tmp/reserva-client.mobileprovision "reserva-client"
+              install_profile_file /tmp/reserva-pro.mobileprovision "reserva-pro"
+              SIGH_OK=1
+              echo "✓ Profils régénérés (sigh)"
+            else
+              echo "⚠ sigh a échoué — fallback secrets base64"
+            fi
+          fi
+
+          if [ "$SIGH_OK" != "1" ]; then
+            CLIENT_B64="${IOS_PROVISION_PROFILE_CLIENT_BASE64:-$IOS_PROVISION_PROFILE_BASE64}"
+            PRO_B64="${IOS_PROVISION_PROFILE_PRO_BASE64:-}"
+            install_profile_b64 "$CLIENT_B64" "reserva-client"
+            if [ -n "${PRO_B64:-}" ]; then
+              install_profile_b64 "$PRO_B64" "reserva-pro"
+            else
+              echo "⚠ IOS_PROVISION_PROFILE_PRO_BASE64 vide — build Pro peut échouer"
+            fi
+          fi
+
+          sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.client.plist
+          sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.pro.plist
+          if [ -f ios/ExportOptions.plist ]; then
+            sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.plist
+          fi
+      - name: Build IPA Client + Pro
+        env:
+          API_URL: ${{ secrets.API_URL_PROD }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          security unlock-keychain -p "" reserva-ci.keychain-db || true
+          security default-keychain -s reserva-ci.keychain-db || true
+          FALLBACK_WEB_GID="473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com"
+          WEB_GID="${GOOGLE_SERVER_CLIENT_ID:-}"
+          case "$WEB_GID" in
+            *".apps.googleusercontent.com") ;;
+            *) WEB_GID="$FALLBACK_WEB_GID" ;;
+          esac
+          flutter build ipa --flavor client -t lib/main.dart --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
+            --export-options-plist=ios/ExportOptions.client.plist
+          flutter build ipa --flavor pro -t lib/main_pro.dart --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
+            --export-options-plist=ios/ExportOptions.pro.plist
+      - name: Setup Ruby / Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          working-directory: apps/mobile_flutter/ios
+      - name: Upload App Store (Client + Pro)
+        working-directory: apps/mobile_flutter/ios
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          mkdir -p fastlane
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > fastlane/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
+          gem install fastlane --no-document
+          fastlane deploy
+      - name: Publier seuils bannières MAJ (mobile)
+        working-directory: .
+        run: npm ci --ignore-scripts && npm run db:generate && npm run sync:app-versions -- --canaux=mobile
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SMOKE_ADMIN_PHONE: ${{ secrets.SMOKE_ADMIN_PHONE }}
+          SMOKE_ADMIN_PIN: ${{ secrets.SMOKE_ADMIN_PIN }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
