@@ -30,22 +30,29 @@ async function login(gateway, telephone, pin) {
   return { token, utilisateur: auth.utilisateur };
 }
 
-/** Désactive la 2FA sur les comptes smoke (sinon SMS OTP bloque le login). */
-async function desactiver2faSmoke(gateway, adminToken, telephones) {
-  for (const tel of telephones) {
-    const q = encodeURIComponent(tel);
-    const liste = await get(gateway, `/admin/utilisateurs?parPage=20&recherche=${q}`, adminToken);
-    const items = Array.isArray(liste) ? liste : liste?.items || [];
-    const digits = tel.replace(/\D/g, "");
-    const u = items.find((x) => String(x.telephone || "").replace(/\D/g, "") === digits) || items[0];
-    if (!u?.id) {
-      console.log(`  ⚠ utilisateur smoke ${tel} introuvable pour 2FA`);
-      continue;
-    }
-    if (!u.deuxFAActif) continue;
-    console.log(`  → Désactivation 2FA ${tel}`);
-    await patch(gateway, `/admin/utilisateurs/${u.id}`, { deuxFAActif: false }, adminToken);
+/** Prépare un compte smoke : désactive 2FA + aligne le rôle attendu. */
+async function preparerCompteSmoke(gateway, adminToken, telephone, roleAttendu) {
+  const q = encodeURIComponent(telephone);
+  const liste = await get(gateway, `/admin/utilisateurs?parPage=20&recherche=${q}`, adminToken);
+  const items = Array.isArray(liste) ? liste : liste?.items || [];
+  const digits = telephone.replace(/\D/g, "");
+  const u = items.find((x) => String(x.telephone || "").replace(/\D/g, "") === digits) || items[0];
+  if (!u?.id) {
+    console.log(`  ⚠ utilisateur smoke ${telephone} introuvable`);
+    return;
   }
+  const patchBody = {};
+  if (u.deuxFAActif) patchBody.deuxFAActif = false;
+  if (roleAttendu && u.role && u.role !== roleAttendu) {
+    // Admin API refuse CLIENT→PRESTATAIRE ; PRESTATAIRE→CLIENT est OK (compte review partagé).
+    if (!(roleAttendu === "PRESTATAIRE" && u.role !== "PRESTATAIRE")) {
+      console.log(`  → Rôle ${telephone}: ${u.role} → ${roleAttendu}`);
+      patchBody.role = roleAttendu;
+    }
+  }
+  if (Object.keys(patchBody).length === 0) return;
+  if (patchBody.deuxFAActif === false) console.log(`  → Désactivation 2FA ${telephone}`);
+  await patch(gateway, `/admin/utilisateurs/${u.id}`, patchBody, adminToken);
 }
 
 function itemsOf(data) {
@@ -65,7 +72,8 @@ export async function executerParcoursEcriture(opts) {
 
   console.log("→ Admin smoke (prépare comptes client/pro)");
   const adminPrep = await login(gateway, adminPhone, pin);
-  await desactiver2faSmoke(gateway, adminPrep.token, [clientPhone, proPhone]);
+  await preparerCompteSmoke(gateway, adminPrep.token, clientPhone, "CLIENT");
+  await preparerCompteSmoke(gateway, adminPrep.token, proPhone, "PRESTATAIRE");
 
   // --- 1. Cycle réservation ---
   console.log("→ Login client");
