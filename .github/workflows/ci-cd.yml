@@ -559,6 +559,9 @@ jobs:
           IOS_PROVISION_PROFILE_CLIENT_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_CLIENT_BASE64 }}
           IOS_PROVISION_PROFILE_PRO_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_PRO_BASE64 }}
           IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
         run: |
           set -euo pipefail
           KEYCHAIN=reserva-ci.keychain-db
@@ -600,7 +603,25 @@ jobs:
           PROF_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROF_DIR"
 
-          install_profile() {
+          install_profile_file() {
+            local tmp="$1"
+            local label="$2"
+            if [ ! -f "$tmp" ]; then
+              echo "⚠ Fichier profil $label manquant"
+              return 1
+            fi
+            local uuid
+            uuid=$(/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< "$(security cms -D -i "$tmp")" 2>/dev/null \
+              || security cms -D -i "$tmp" | plutil -extract UUID raw -o - -)
+            # Aligné avec PROVISIONING_PROFILE_SPECIFIER (Name du profil)
+            local name
+            name=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i "$tmp")" 2>/dev/null || true)
+            echo "  profil $label name=${name:-?} uuid=$uuid"
+            cp "$tmp" "$PROF_DIR/${uuid}.mobileprovision"
+            echo "✓ Profil $label → $uuid"
+          }
+
+          install_profile_b64() {
             local b64="$1"
             local label="$2"
             if [ -z "${b64:-}" ]; then
@@ -608,21 +629,56 @@ jobs:
               return 1
             fi
             local tmp="/tmp/${label}.mobileprovision"
-            echo "$b64" | base64 -d > "$tmp"
-            local uuid
-            uuid=$(/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< "$(security cms -D -i "$tmp")" 2>/dev/null \
-              || security cms -D -i "$tmp" | plutil -extract UUID raw -o - -)
-            cp "$tmp" "$PROF_DIR/${uuid}.mobileprovision"
-            echo "✓ Profil $label → $uuid"
+            echo "$b64" | tr -d '\r\n' | base64 -d > "$tmp"
+            install_profile_file "$tmp" "$label"
           }
 
-          CLIENT_B64="${IOS_PROVISION_PROFILE_CLIENT_BASE64:-$IOS_PROVISION_PROFILE_BASE64}"
-          PRO_B64="${IOS_PROVISION_PROFILE_PRO_BASE64:-}"
-          install_profile "$CLIENT_B64" "reserva-client"
-          if [ -n "${PRO_B64:-}" ]; then
-            install_profile "$PRO_B64" "reserva-pro"
-          else
-            echo "⚠ IOS_PROVISION_PROFILE_PRO_BASE64 vide — build Pro peut échouer"
+          # Régénère les profils App Store pour inclure Sign In with Apple (capability App ID).
+          SIGH_OK=0
+          if [ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ] && [ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ] && [ -n "${APP_STORE_CONNECT_API_KEY_P8:-}" ]; then
+            echo "→ Régénération profils via fastlane sigh (Sign In with Apple)…"
+            gem install fastlane --no-document
+            mkdir -p ios/fastlane
+            KEY_ID=$(printf '%s' "$APP_STORE_CONNECT_API_KEY_ID" | tr -d '\r\n')
+            printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > "ios/fastlane/AuthKey_${KEY_ID}.p8"
+            export APP_STORE_CONNECT_API_KEY_KEY_ID="$KEY_ID"
+            export APP_STORE_CONNECT_API_KEY_ISSUER_ID=$(printf '%s' "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '\r\n')
+            export APP_STORE_CONNECT_API_KEY_KEY_FILEPATH="$PWD/ios/fastlane/AuthKey_${KEY_ID}.p8"
+            if (
+              cd ios
+              fastlane sigh --app_identifier com.reserva.client --team_id "$TEAM" --force \
+                --filename /tmp/reserva-client.mobileprovision --skip_certificate_verification
+              fastlane sigh --app_identifier com.reserva.pro --team_id "$TEAM" --force \
+                --filename /tmp/reserva-pro.mobileprovision --skip_certificate_verification
+            ); then
+              # Specifier = Name du profil (souvent « RESERVA Client App Store » si nommé ainsi)
+              CLIENT_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i /tmp/reserva-client.mobileprovision)" 2>/dev/null || echo "RESERVA Client App Store")
+              PRO_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i /tmp/reserva-pro.mobileprovision)" 2>/dev/null || echo "RESERVA Pro App Store")
+              sed -i.bak "s/PROVISIONING_PROFILE_SPECIFIER=.*/PROVISIONING_PROFILE_SPECIFIER=${CLIENT_NAME}/" ios/Flutter/Release-client.xcconfig
+              sed -i.bak "s/PROVISIONING_PROFILE_SPECIFIER=.*/PROVISIONING_PROFILE_SPECIFIER=${PRO_NAME}/" ios/Flutter/Release-pro.xcconfig
+              # ExportOptions provisioningProfiles doit matcher le Name
+              /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.reserva.client ${CLIENT_NAME}" ios/ExportOptions.client.plist 2>/dev/null \
+                || true
+              /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.reserva.pro ${PRO_NAME}" ios/ExportOptions.pro.plist 2>/dev/null \
+                || true
+              install_profile_file /tmp/reserva-client.mobileprovision "reserva-client"
+              install_profile_file /tmp/reserva-pro.mobileprovision "reserva-pro"
+              SIGH_OK=1
+              echo "✓ Profils régénérés (sigh)"
+            else
+              echo "⚠ sigh a échoué — fallback secrets base64"
+            fi
+          fi
+
+          if [ "$SIGH_OK" != "1" ]; then
+            CLIENT_B64="${IOS_PROVISION_PROFILE_CLIENT_BASE64:-$IOS_PROVISION_PROFILE_BASE64}"
+            PRO_B64="${IOS_PROVISION_PROFILE_PRO_BASE64:-}"
+            install_profile_b64 "$CLIENT_B64" "reserva-client"
+            if [ -n "${PRO_B64:-}" ]; then
+              install_profile_b64 "$PRO_B64" "reserva-pro"
+            else
+              echo "⚠ IOS_PROVISION_PROFILE_PRO_BASE64 vide — build Pro peut échouer"
+            fi
           fi
 
           sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.client.plist

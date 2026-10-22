@@ -1,0 +1,39 @@
+name: Activer Apple Sign In (Render)
+
+# MODE_APPLE=production + APPLE_CLIENT_IDS sur reserva-core, puis redeploy.
+# Actions → Activer Apple Sign In (Render) → Run workflow
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: enable-apple-prod-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  enable-apple:
+    name: MODE_APPLE=production sur Render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Sync env Render + redeploy core
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
+          APPLE_CLIENT_IDS: com.reserva.client,com.reserva.pro
+        run: |
+          set -euo pipefail
+          if [ -z "${RENDER_API_KEY:-}" ] || [ -z "${RENDER_SERVICE_CORE:-}" ]; then
+            echo "RENDER_API_KEY / RENDER_SERVICE_CORE requis"
+            exit 1
+          fi
+          node scripts/render-enable-apple-prod.mjs
+      - name: Attendre core live
+        run: npm ci --ignore-scripts && npm run wait:render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
+          RENDER_WAIT_MS: "600000"

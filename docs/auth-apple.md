@@ -13,7 +13,8 @@ Requis dès que **Continuer avec Google** est proposé sur iOS.
 
 1. [Apple Developer](https://developer.apple.com/) → Identifiers → App IDs `com.reserva.client` et `com.reserva.pro` → activer **Sign In with Apple**
 2. Capability dans Xcode : `Runner/Runner.entitlements` (`com.apple.developer.applesignin`)
-3. Render / `.env` API :
+3. Profils App Store : après l’étape 1, la CI régénère les profils via `fastlane sigh --force` (sinon erreur « profile doesn't include Sign In with Apple »)
+4. Render : Actions → **Activer Apple Sign In (Render)** ou :
    ```env
    MODE_APPLE=production
    APPLE_CLIENT_IDS=com.reserva.client,com.reserva.pro
