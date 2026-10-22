@@ -69,6 +69,21 @@ export const schemaAuthGoogleAdmin = z.object({
 });
 export type AuthGoogleAdminInput = z.infer<typeof schemaAuthGoogleAdmin>;
 
+/** Connexion / inscription via Apple identity token (guideline App Store 4.8). */
+export const schemaAuthApple = z.object({
+  identityToken: z.string().trim().min(20),
+  /** Nom fourni par Apple uniquement à la 1ʳᵉ autorisation (optionnel). */
+  nom: z.string().trim().min(1).max(100).optional(),
+  role: z.enum(["CLIENT", "PRESTATAIRE"]).default("CLIENT"),
+});
+export type AuthAppleInput = z.infer<typeof schemaAuthApple>;
+
+/** Suppression définitive du compte (App Store 5.1.1). */
+export const schemaSupprimerCompte = z.object({
+  confirmation: z.literal("SUPPRIMER"),
+});
+export type SupprimerCompteInput = z.infer<typeof schemaSupprimerCompte>;
+
 export const schemaPhotoProfil = z.object({
   photoUrl: z.string().url("URL de photo invalide").or(z.string().startsWith("data:image")),
 });

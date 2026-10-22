@@ -1,7 +1,7 @@
 name: reserva
 description: "RESERVA — Réservez. Sereinement."
 publish_to: 'none'
-version: 1.0.1+1
+version: 1.0.2+47
 
 environment:
   sdk: ^3.8.1
@@ -26,6 +26,7 @@ dependencies:
   image_picker: ^1.1.2
   mobile_scanner: ^7.4.0
   google_sign_in: ^6.2.2
+  sign_in_with_apple: ^6.1.4
   livekit_client: ^2.3.1
   package_info_plus: ^8.1.2
   permission_handler: ^11.3.1

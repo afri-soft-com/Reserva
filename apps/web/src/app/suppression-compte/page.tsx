@@ -14,26 +14,27 @@ export default function PageSuppressionCompte() {
         <strong>RESERVA Pro</strong> (AfriSoft / RESERVA RDC).
       </p>
 
-      <h2 className="mt-8 text-xl font-bold text-gray-900">Comment demander la suppression</h2>
+      <h2 className="mt-8 text-xl font-bold text-gray-900">Comment supprimer votre compte</h2>
       <ol className="list-decimal space-y-2 pl-5">
         <li>
           Ouvrez l&apos;application <strong>RESERVA</strong> ou <strong>RESERVA Pro</strong> et
           connectez-vous.
         </li>
         <li>
-          Allez dans <strong>Profil</strong> → contactez le support, ou envoyez un e-mail à{" "}
+          Allez dans <strong>Profil</strong> → <strong>Supprimer mon compte</strong>, confirmez en
+          tapant <code>SUPPRIMER</code>.
+        </li>
+        <li>
+          La suppression est immédiate dans l&apos;app (profil anonymisé, connexion impossible).
+          Certaines données de transaction peuvent être conservées pour obligations légales.
+        </li>
+        <li>
+          Sans accès à l&apos;app : écrivez à{" "}
           <a href="mailto:support@reserva.cd" className="text-primaire">
             support@reserva.cd
           </a>{" "}
-          depuis l&apos;adresse ou le numéro lié à votre compte.
-        </li>
-        <li>
-          Objet suggéré : <em>« Demande de suppression de compte RESERVA »</em>. Indiquez votre
-          numéro de téléphone (ex. +243…) et le nom affiché dans l&apos;app.
-        </li>
-        <li>
-          Nous confirmerons la demande puis supprimerons le compte sous{" "}
-          <strong>30 jours</strong> (sauf obligation légale de conservation).
+          depuis l&apos;adresse ou le numéro lié au compte (objet : « Suppression de compte
+          RESERVA »).
         </li>
       </ol>
 

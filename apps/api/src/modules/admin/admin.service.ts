@@ -331,6 +331,7 @@ export async function supprimerUtilisateurAdmin(utilisateurId: string) {
       nom: `Compte supprimé`,
       email: null,
       googleId: null,
+      appleId: null,
       photoUrl: null,
       pinHash: null,
       bloqueJusquA: new Date("2099-12-31"),

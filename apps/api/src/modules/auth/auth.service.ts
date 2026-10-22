@@ -11,6 +11,7 @@ import {
   ConnexionPinInput,
   DefinirPinInput,
   AuthGoogleInput,
+  AuthAppleInput,
   DUREE_VALIDITE_OTP_MINUTES,
   TENTATIVES_MAX_OTP,
   TENTATIVES_MAX_PIN,
@@ -18,6 +19,7 @@ import {
   RoleUtilisateur,
 } from "@reserva/shared";
 import { telephoneSynthetiqueGoogle, verifierIdTokenGoogle } from "./google.service";
+import { telephoneSynthetiqueApple, verifierIdentityTokenApple } from "./apple.service";
 
 /** Étape 1 de l'inscription : crée le compte (non vérifié) et envoie un OTP par SMS */
 export async function demarrerInscription(input: InscriptionInput) {
@@ -654,6 +656,106 @@ export async function connecterAvecGoogle(input: AuthGoogleInput) {
     nouvelInscrit: pinRequis,
     utilisateur: formaterUtilisateurPublic(utilisateur),
   };
+}
+
+/**
+ * Inscription / connexion Sign in with Apple (App Store guideline 4.8).
+ * Même contrat que Google : pinRequis si pas encore de PIN.
+ */
+export async function connecterAvecApple(input: AuthAppleInput) {
+  const profil = await verifierIdentityTokenApple(input.identityToken, input.nom);
+  const role = input.role === "PRESTATAIRE" ? "PRESTATAIRE" : "CLIENT";
+
+  const orClauses: Array<{ appleId?: string; email?: string }> = [{ appleId: profil.appleId }];
+  if (profil.email) orClauses.push({ email: profil.email });
+
+  let utilisateur = await prisma.utilisateur.findFirst({
+    where: { OR: orClauses },
+  });
+
+  if (!utilisateur) {
+    const telephone = telephoneSynthetiqueApple(profil.appleId);
+    utilisateur = await prisma.utilisateur.create({
+      data: {
+        telephone,
+        email: profil.email,
+        appleId: profil.appleId,
+        nom: profil.nom,
+        role,
+        telephoneVerifie: true,
+        codeParrainage: genererCodeParrainage(profil.nom),
+      },
+    });
+
+    if (role === "PRESTATAIRE") {
+      await prisma.prestataire.create({
+        data: {
+          utilisateurId: utilisateur.id,
+          nomEntreprise: profil.nom,
+          categorie: "HOTELLERIE",
+          ville: "Kinshasa",
+          quartier: "À compléter",
+          description: "Profil prestataire Apple — à compléter après validation.",
+          statut: "EN_ATTENTE_VALIDATION",
+        },
+      });
+    }
+  } else {
+    utilisateur = await prisma.utilisateur.update({
+      where: { id: utilisateur.id },
+      data: {
+        appleId: utilisateur.appleId || profil.appleId,
+        email: utilisateur.email || profil.email,
+        telephoneVerifie: true,
+      },
+    });
+  }
+
+  const pinRequis = !utilisateur.pinHash;
+  const token = genererToken({
+    utilisateurId: utilisateur.id,
+    role: utilisateur.role as RoleUtilisateur,
+    telephone: utilisateur.telephone,
+  });
+
+  return {
+    token,
+    pinRequis,
+    nouvelInscrit: pinRequis,
+    utilisateur: formaterUtilisateurPublic(utilisateur),
+  };
+}
+
+/**
+ * Suppression de compte initiée par l'utilisateur (App Store 5.1.1).
+ * Anonymise + bloque — conserve l'historique transactions / obligations légales.
+ */
+export async function supprimerMonCompte(utilisateurId: string) {
+  const u = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });
+  if (!u) throw new ErreurNonTrouve("Compte introuvable");
+  if (u.role === "ADMIN") {
+    throw new ErreurValidation("Un compte administrateur ne peut pas être supprimé depuis l'application.");
+  }
+
+  const suffix = utilisateurId.replace(/\D/g, "0").padEnd(8, "0").slice(0, 8);
+  await prisma.utilisateur.update({
+    where: { id: utilisateurId },
+    data: {
+      nom: "Compte supprimé",
+      email: null,
+      googleId: null,
+      appleId: null,
+      photoUrl: null,
+      pinHash: null,
+      codeParrainage: null,
+      deuxFAActif: false,
+      bloqueJusquA: new Date("2099-12-31"),
+      telephone: `+243000${suffix}`,
+      telephoneVerifie: false,
+    },
+  });
+
+  return { supprime: true };
 }
 
 /** Formate l'utilisateur pour exposition publique (jamais le pinHash) */

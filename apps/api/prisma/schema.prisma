@@ -21,6 +21,7 @@ model Utilisateur {
   telephone        String   @unique
   email            String?  @unique
   googleId         String?  @unique
+  appleId          String?  @unique
   nom              String
   pinHash          String?
   role             String @default("CLIENT")

@@ -5,12 +5,13 @@ import '../../app_flavor.dart';
 import '../../models/models.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_auth.dart';
+import '../../services/apple_auth_service.dart';
 import '../../services/google_auth_service.dart';
 import '../../theme.dart';
 import '../../widgets/champ.dart';
 import '../../widgets/toast.dart';
 
-/// Accueil type SENGA : téléphone → Continuer | ou | Continuer avec Google.
+/// Accueil type SENGA : téléphone → Continuer | ou | Google / Apple (iOS).
 class BienvenueScreen extends StatefulWidget {
   const BienvenueScreen({super.key});
 
@@ -21,6 +22,7 @@ class BienvenueScreen extends StatefulWidget {
 class _BienvenueScreenState extends State<BienvenueScreen> {
   final _telephoneCtrl = TextEditingController(text: '+243');
   bool _chargementGoogle = false;
+  bool _chargementApple = false;
 
   @override
   void dispose() {
@@ -37,9 +39,35 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
     context.push('/inscription', extra: tel);
   }
 
+  Future<void> _apresOAuth(Map<String, dynamic> data) async {
+    final auth = context.read<AuthProvider>();
+    final token = data['token'] as String;
+    final utilisateur = Utilisateur.fromJson(data['utilisateur'] as Map<String, dynamic>);
+    if (!AppFlavorConfig.roleCompatible(utilisateur.role)) {
+      throw Exception(
+        AppFlavorConfig.estPrestataire
+            ? 'Compte client détecté. Utilisez l\'app RESERVA (Client).'
+            : 'Compte prestataire détecté. Utilisez l\'app RESERVA Pro.',
+      );
+    }
+    await auth.connecterStore(token, utilisateur);
+    if (!mounted) return;
+    final pinRequis = data['pinRequis'] == true;
+    if (pinRequis) {
+      ToastWidget.show(context, 'Créez votre PIN pour les prochaines connexions', type: 'succes');
+      context.go('/inscription', extra: {
+        'etape': 'PIN',
+        'telephone': utilisateur.telephone,
+        'depuisGoogle': true,
+      });
+    } else {
+      ToastWidget.show(context, 'Bienvenue ${utilisateur.nom}', type: 'succes');
+      context.go('/accueil');
+    }
+  }
+
   Future<void> _continuerAvecGoogle() async {
     setState(() => _chargementGoogle = true);
-    final auth = context.read<AuthProvider>();
     try {
       final idToken = await GoogleAuthService.obtenirIdToken();
       if (idToken == null) {
@@ -47,35 +75,36 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
         return;
       }
       final data = await ApiAuth.connexionGoogle(idToken, role: AppFlavorConfig.roleApi);
-      final token = data['token'] as String;
-      final utilisateur = Utilisateur.fromJson(data['utilisateur'] as Map<String, dynamic>);
-      if (!AppFlavorConfig.roleCompatible(utilisateur.role)) {
-        throw Exception(
-          AppFlavorConfig.estPrestataire
-              ? 'Compte client détecté. Utilisez l\'app RESERVA (Client).'
-              : 'Compte prestataire détecté. Utilisez l\'app RESERVA Pro.',
-        );
-      }
-      await auth.connecterStore(token, utilisateur);
-      if (!mounted) return;
-      final pinRequis = data['pinRequis'] == true;
-      if (pinRequis) {
-        ToastWidget.show(context, 'Créez votre PIN pour les prochaines connexions', type: 'succes');
-        context.go('/inscription', extra: {
-          'etape': 'PIN',
-          'telephone': utilisateur.telephone,
-          'depuisGoogle': true,
-        });
-      } else {
-        ToastWidget.show(context, 'Bienvenue ${utilisateur.nom}', type: 'succes');
-        context.go('/accueil');
-      }
+      await _apresOAuth(data);
     } catch (e) {
       if (mounted) {
         ToastWidget.show(context, GoogleAuthService.messageErreur(e), type: 'erreur');
       }
     } finally {
       if (mounted) setState(() => _chargementGoogle = false);
+    }
+  }
+
+  Future<void> _continuerAvecApple() async {
+    setState(() => _chargementApple = true);
+    try {
+      final cred = await AppleAuthService.obtenirCredentials();
+      if (cred == null) {
+        if (mounted) ToastWidget.show(context, 'Connexion Apple annulée');
+        return;
+      }
+      final data = await ApiAuth.connexionApple(
+        cred.identityToken,
+        nom: cred.nom,
+        role: AppFlavorConfig.roleApi,
+      );
+      await _apresOAuth(data);
+    } catch (e) {
+      if (mounted) {
+        ToastWidget.show(context, AppleAuthService.messageErreur(e), type: 'erreur');
+      }
+    } finally {
+      if (mounted) setState(() => _chargementApple = false);
     }
   }
 
@@ -184,7 +213,7 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                       width: double.infinity,
                       height: 52,
                       child: OutlinedButton(
-                        onPressed: _chargementGoogle ? null : _continuerAvecGoogle,
+                        onPressed: (_chargementGoogle || _chargementApple) ? null : _continuerAvecGoogle,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppCouleurs.primaire,
                           backgroundColor: AppCouleurs.blanc,
@@ -210,6 +239,39 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                               ),
                       ),
                     ),
+                    if (AppleAuthService.estDisponible) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: (_chargementGoogle || _chargementApple) ? null : _continuerAvecApple,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.black54,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: _chargementApple
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.apple, size: 22),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Continuer avec Apple',
+                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: () => context.go('/connexion'),

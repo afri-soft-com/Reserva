@@ -41,6 +41,7 @@ npm run dev:mobile:pro -- --dart-define=API_URL=http://192.168.x.x:4000/api
 ```
 OTP / SMS AfriSoft : [`docs/otp-afrisoft-sms.md`](docs/otp-afrisoft-sms.md)  
 Google Sign-In : [`docs/auth-google.md`](docs/auth-google.md)  
+Sign in with Apple / suppression compte : [`docs/auth-apple.md`](docs/auth-apple.md)  
 Bannières MAJ (ne pas retirer le wiring) : `npm run check:update-banners` — Admin → Versions apps
 
 ## Tests / smoke

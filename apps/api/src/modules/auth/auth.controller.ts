@@ -39,6 +39,17 @@ export const connexionGoogleAdmin = asyncHandler(async (req: Request, res: Respo
   envoyerSucces(res, resultat);
 });
 
+export const connexionApple = asyncHandler(async (req: Request, res: Response) => {
+  const resultat = await authService.connecterAvecApple(req.body);
+  envoyerSucces(res, resultat);
+});
+
+export const supprimerCompte = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await authService.supprimerMonCompte(req.utilisateur.utilisateurId);
+  envoyerSucces(res, resultat);
+});
+
 export const profil = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const resultat = await authService.obtenirProfil(req.utilisateur.utilisateurId);

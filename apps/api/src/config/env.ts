@@ -33,6 +33,13 @@ export const env = {
   GOOGLE_CLIENT_IDS: lireVariable("GOOGLE_CLIENT_IDS", ""),
   /** simulation = accepte un idToken de démo `SIM-GOOGLE:...` (dev uniquement) */
   MODE_GOOGLE: lireVariable("MODE_GOOGLE", "simulation") as "simulation" | "production",
+  /** Bundle IDs Apple (com.reserva.client,com.reserva.pro) — audience identity token */
+  APPLE_CLIENT_IDS: lireVariable(
+    "APPLE_CLIENT_IDS",
+    "com.reserva.client,com.reserva.pro"
+  ),
+  /** simulation = accepte `SIM-APPLE:email:Nom` (dev uniquement) */
+  MODE_APPLE: lireVariable("MODE_APPLE", "simulation") as "simulation" | "production",
   /** LiveKit Cloud — appels vocaux (optionnel en local) */
   LIVEKIT_URL: lireVariable("LIVEKIT_URL", ""),
   LIVEKIT_API_KEY: lireVariable("LIVEKIT_API_KEY", ""),

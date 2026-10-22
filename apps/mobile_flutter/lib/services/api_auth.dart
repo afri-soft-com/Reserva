@@ -45,6 +45,26 @@ class ApiAuth {
     })) as Map<String, dynamic>;
   }
 
+  /// Inscription / connexion Sign in with Apple (iOS — guideline 4.8).
+  static Future<Map<String, dynamic>> connexionApple(
+    String identityToken, {
+    String? nom,
+    String role = 'CLIENT',
+  }) async {
+    return (await ApiClient.post('/auth/apple', body: {
+      'identityToken': identityToken,
+      'role': role,
+      if (nom != null && nom.trim().isNotEmpty) 'nom': nom.trim(),
+    })) as Map<String, dynamic>;
+  }
+
+  /// Suppression définitive du compte (App Store 5.1.1).
+  static Future<Map<String, dynamic>> supprimerCompte() async {
+    return (await ApiClient.post('/auth/compte/supprimer', body: {
+      'confirmation': 'SUPPRIMER',
+    })) as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> verifier2FA(String telephone, String code) async {
     return (await ApiClient.post('/auth/2fa/verifier', body: {'telephone': telephone, 'code': code})) as Map<String, dynamic>;
   }

@@ -7,6 +7,7 @@ import '../../i18n.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/langue_provider.dart';
 import '../../models/models.dart';
+import '../../services/api_auth.dart';
 import '../../services/api_prestataire.dart';
 import '../../services/api_referentiel.dart';
 import '../../widgets/carte.dart';
@@ -286,6 +287,18 @@ class ProfilScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => _confirmerSuppressionCompte(context),
+                child: const Text(
+                  'Supprimer mon compte',
+                  style: TextStyle(color: AppCouleurs.alerte, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -324,6 +337,70 @@ class ProfilScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
     }
+  }
+}
+
+Future<void> _confirmerSuppressionCompte(BuildContext context) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Supprimer mon compte'),
+      content: const Text(
+        'Cette action est définitive. Votre profil sera anonymisé et vous ne pourrez plus vous connecter. '
+        'Les données de transaction peuvent être conservées pour obligations légales.',
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Supprimer', style: TextStyle(color: AppCouleurs.alerte, fontWeight: FontWeight.w700)),
+        ),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (ctx) {
+      final ctrl = TextEditingController();
+      return AlertDialog(
+        title: const Text('Confirmation'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tapez SUPPRIMER pour confirmer.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'SUPPRIMER'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim().toUpperCase() == 'SUPPRIMER'),
+            child: const Text('Confirmer', style: TextStyle(color: AppCouleurs.alerte, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      );
+    },
+  );
+  if (confirm != true || !context.mounted) return;
+
+  final auth = context.read<AuthProvider>();
+  try {
+    await ApiAuth.supprimerCompte();
+    await auth.deconnecter();
+    if (context.mounted) {
+      ToastWidget.show(context, 'Compte supprimé', type: 'succes');
+      context.go('/bienvenue');
+    }
+  } catch (e) {
+    if (context.mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
   }
 }
 
