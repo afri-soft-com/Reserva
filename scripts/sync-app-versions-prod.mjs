@@ -19,6 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { assertConfigBannieres, cmpVer } from "./lib/assert-bannieres-maj.mjs";
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const gateway = (process.env.GATEWAY_URL || "https://reserva-gateway.onrender.com/api").replace(/\/$/, "");
@@ -59,22 +60,6 @@ async function loginAdmin() {
     throw new Error(`Login admin → ${res.status} ${json?.erreur?.message || ""}`);
   }
   return json.donnees?.token || json.donnees?.accessToken || json.token;
-}
-
-function cmpVer(a, b) {
-  const parts = (v) =>
-    String(v || "0")
-      .split(/[^0-9]+/)
-      .filter(Boolean)
-      .map((n) => parseInt(n, 10));
-  const pa = parts(a);
-  const pb = parts(b);
-  for (let i = 0; i < 3; i++) {
-    const x = pa[i] ?? 0;
-    const y = pb[i] ?? 0;
-    if (x !== y) return x - y;
-  }
-  return 0;
 }
 
 async function publier(payload, { cronSecret, token }) {
@@ -215,21 +200,30 @@ async function main() {
   }
 
   console.log("✓ Seuils publiés", JSON.stringify(resultat.modifications || resultat).slice(0, 300));
-  try {
-    const getRes = await fetch(`${gateway}/app/versions`);
-    const getJson = await getRes.json();
-    const apres = getJson.donnees ?? getJson;
-    console.log(
-      "  client≥",
-      apres.client?.minSoft,
-      "pro≥",
-      apres.pro?.minSoft,
-      "web≥",
-      apres.web?.minSoft
-    );
-  } catch {
-    /* ignore */
+
+  // Garde-fou post-sync : un déploiement ne doit jamais laisser les bannières inutilisables.
+  const getRes = await fetch(`${gateway}/app/versions`);
+  if (!getRes.ok) {
+    throw new Error(`post-sync GET /app/versions → ${getRes.status}`);
   }
+  const getJson = await getRes.json();
+  const apres = getJson.donnees ?? getJson;
+  const minSoftAttendu = {};
+  if (canaux.includes("client")) minSoftAttendu.client = mobileVer;
+  if (canaux.includes("pro")) minSoftAttendu.pro = mobileVer;
+  if (canaux.includes("web")) minSoftAttendu.web = webVer;
+  assertConfigBannieres(apres, {
+    exigerStoreUrls: canaux.includes("client") || canaux.includes("pro"),
+    minSoftAttendu,
+  });
+  console.log(
+    "  vérifié OK — client≥",
+    apres.client?.minSoft,
+    "pro≥",
+    apres.pro?.minSoft,
+    "web≥",
+    apres.web?.minSoft
+  );
 }
 
 main().catch((e) => {

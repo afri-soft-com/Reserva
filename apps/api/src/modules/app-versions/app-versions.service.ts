@@ -122,16 +122,29 @@ export async function ecrireVersions(
   const admin = await prisma.utilisateur.findUnique({ where: { id: adminId } });
   if (!admin || admin.role !== "ADMIN") throw new ErreurInterdit();
 
+  const actuel = await lireVersions();
+
   for (const canal of Object.keys(payload) as CanalVersion[]) {
     const cfg = payload[canal];
     if (!cfg) continue;
+    if (comparerVersions(cfg.minForce, cfg.minSoft) > 0) {
+      throw new Error(`${canal}: minForce (${cfg.minForce}) ne peut pas dépasser minSoft (${cfg.minSoft})`);
+    }
+    // Ne jamais effacer les URLs store (bannière sans CTA = fonctionnalité cassée).
+    const android =
+      cfg.storeUrlAndroid !== undefined && String(cfg.storeUrlAndroid).trim()
+        ? cfg.storeUrlAndroid
+        : actuel[canal].storeUrlAndroid;
+    const ios =
+      cfg.storeUrlIos !== undefined && String(cfg.storeUrlIos).trim()
+        ? cfg.storeUrlIos
+        : actuel[canal].storeUrlIos;
+
     await upsertChamp(canal, "minSoft", cfg.minSoft, `Version soft ${canal}`);
     await upsertChamp(canal, "minForce", cfg.minForce, `Version force ${canal}`);
-    if (cfg.storeUrlAndroid !== undefined) {
-      await upsertChamp(canal, "storeUrlAndroid", cfg.storeUrlAndroid, `Store Android ${canal}`);
-    }
-    if (cfg.storeUrlIos !== undefined) {
-      await upsertChamp(canal, "storeUrlIos", cfg.storeUrlIos, `Store iOS ${canal}`);
+    if (canal !== "web") {
+      if (android) await upsertChamp(canal, "storeUrlAndroid", android, `Store Android ${canal}`);
+      if (ios) await upsertChamp(canal, "storeUrlIos", ios, `Store iOS ${canal}`);
     }
   }
   return lireVersions();
@@ -172,6 +185,12 @@ export async function publierSeuilsMonotones(payload: SeuilsPublies): Promise<{
     if (demande.minForce && comparerVersions(demande.minForce, force) > 0) {
       force = demande.minForce;
       modifications.push(`${canal}.minForce ${actuel.minForce} → ${force}`);
+    }
+
+    // Invariant : minForce ≤ minSoft (sinon soft/force incohérents côté apps).
+    if (comparerVersions(force, soft) > 0) {
+      soft = force;
+      modifications.push(`${canal}.minSoft aligné sur minForce → ${soft}`);
     }
 
     if (soft !== actuel.minSoft || force !== actuel.minForce) {

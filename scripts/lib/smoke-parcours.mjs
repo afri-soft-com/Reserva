@@ -162,15 +162,9 @@ export async function executerParcoursSmoke(opts) {
 
   console.log("→ Versions apps (bannières MAJ — public)");
   const versions = await get(gateway, "/app/versions");
-  for (const canal of ["client", "pro", "web"]) {
-    const cfg = versions?.[canal];
-    if (!cfg?.minSoft || !cfg?.minForce) {
-      throw new Error(`/app/versions: canal ${canal} incomplet (minSoft/minForce requis)`);
-    }
-  }
-  if (versions.client && !versions.client.storeUrlAndroid) {
-    console.log("  ⚠ client.storeUrlAndroid vide (bannière soft OK, CTA store limité)");
-  }
+  const { assertConfigBannieres } = await import("./assert-bannieres-maj.mjs");
+  // Échec dur → bloque Play / App Store (needs: smoke-prod)
+  assertConfigBannieres(versions, { exigerStoreUrls: true });
   console.log(
     "  ok",
     `client≥${versions.client.minSoft}`,

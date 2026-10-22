@@ -136,13 +136,42 @@ mustInclude(
 );
 mustInclude(
   "scripts/sync-app-versions-prod.mjs",
-  ["publier-seuils", "--canaux", "GATEWAY_URL", "minSoft", "RENDER_API_KEY", "publier-seuils-db"],
+  [
+    "publier-seuils",
+    "--canaux",
+    "GATEWAY_URL",
+    "minSoft",
+    "RENDER_API_KEY",
+    "publier-seuils-db",
+    "assertConfigBannieres",
+    "vérifié OK",
+  ],
   "sync-script"
 );
 mustInclude(
   "scripts/lib/publier-seuils-db.mjs",
-  ["APP_VERSION_", "configurationTarification", "PAYLOAD_JSON"],
+  ["APP_VERSION_", "configurationTarification", "PAYLOAD_JSON", "minSoft aligné"],
   "sync-db"
+);
+mustInclude(
+  "scripts/lib/assert-bannieres-maj.mjs",
+  ["assertConfigBannieres", "storeUrlAndroid", "minForce", "decideMode"],
+  "assert-bannieres"
+);
+mustInclude(
+  "scripts/lib/smoke-parcours.mjs",
+  ["assertConfigBannieres", "exigerStoreUrls"],
+  "smoke-bannieres"
+);
+mustInclude(
+  "apps/api/src/modules/app-versions/app-versions.service.ts",
+  [
+    "publierSeuilsMonotones",
+    "comparerVersions",
+    "ne peut pas dépasser minSoft",
+    "Ne jamais effacer les URLs store",
+  ],
+  "api-invariants"
 );
 mustInclude(
   "package.json",
@@ -154,7 +183,28 @@ mustInclude(
   ["sync:app-versions", "Publier seuils bannières MAJ", "ci:quality"],
   "ci-sync"
 );
+mustInclude(
+  ".github/workflows/deploy-app-store.yml",
+  ["Publier seuils bannières MAJ", "sync:app-versions"],
+  "asc-sync"
+);
+
+/** La sync seuils ne doit jamais être continue-on-error (sinon stores OK avec bannières cassées). */
+function assertSyncBloquante(rel) {
+  const src = read(rel);
+  const parts = src.split(/- name:\s*Publier seuils bannières[^\n]*/);
+  for (let i = 1; i < parts.length; i++) {
+    const stepHead = parts[i].slice(0, 500);
+    if (/continue-on-error:\s*true/.test(stepHead)) {
+      throw new Error(`[sync-bloquante] ${rel}: « Publier seuils » ne doit pas avoir continue-on-error`);
+    }
+  }
+  console.log(`  ✓ sync-bloquante: ${rel}`);
+}
+assertSyncBloquante(".github/workflows/ci-cd.yml");
+assertSyncBloquante(".github/workflows/deploy-app-store.yml");
+
 mustMatch("apps/mobile_flutter/pubspec.yaml", /^version:\s*\d+\.\d+\.\d+/m, "pubspec-version");
 mustMatch("apps/web/package.json", /"version":\s*"\d+\.\d+\.\d+"/, "web-package-version");
 
-console.log("✓ Bannières de mise à jour — wiring + poll + sync CI intacts");
+console.log("✓ Bannières de mise à jour — wiring + poll + sync CI + invariants intacts");

@@ -66,8 +66,13 @@ async function main() {
       mods.push(`${canal}.minForce ${force} → ${dem.minForce}`);
       force = dem.minForce;
     }
+    if (cmpVer(force, soft) > 0) {
+      mods.push(`${canal}.minSoft aligné sur minForce → ${force}`);
+      soft = force;
+    }
     await upsert(canal, "minSoft", soft, `Version soft ${canal}`);
     await upsert(canal, "minForce", force, `Version force ${canal}`);
+    // Ne jamais toucher / vider les URLs store depuis la sync CI.
   }
   console.log(JSON.stringify({ modifications: mods }));
 }

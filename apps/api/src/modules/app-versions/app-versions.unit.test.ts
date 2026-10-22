@@ -39,4 +39,21 @@ describe("seuils de mise à jour (contrat bannières)", () => {
   it("comparerVersions détecte une hausse de seuil (réaffichage bannière)", () => {
     expect(comparerVersions("1.0.2", "1.0.1")).toBeGreaterThan(0);
   });
+
+  it("invariant minForce ≤ minSoft : à jour sur soft → none", () => {
+    expect(
+      decideModeMiseAJour({
+        versionInstallee: "1.0.2",
+        minSoft: "1.0.2",
+        minForce: "1.0.1",
+      })
+    ).toBe("none");
+    expect(
+      decideModeMiseAJour({
+        versionInstallee: "1.0.1",
+        minSoft: "1.0.2",
+        minForce: "1.0.1",
+      })
+    ).toBe("soft");
+  });
 });
