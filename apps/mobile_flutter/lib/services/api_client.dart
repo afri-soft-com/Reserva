@@ -38,19 +38,30 @@ class ApiClient {
     return null;
   }
 
+  /// Erreur transitoire (HTML Render / 5xx) — le client peut réessayer.
+  static bool _estErreurRetriable(Object e) {
+    final m = e.toString().toLowerCase();
+    return e is http.ClientException ||
+        m.contains('timeout') ||
+        m.contains('momentanément indisponible') ||
+        m.contains('momentanement indisponible') ||
+        m.contains('réessayez') ||
+        m.contains('reessayez');
+  }
+
   static Future<dynamic> request(
     String method,
     String path, {
     Map<String, dynamic>? body,
     Map<String, String>? params,
-    int tentatives = 2,
+    int tentatives = 3,
   }) async {
     for (int i = 0; i < tentatives; i++) {
       try {
         return await _envoyer(method, path, body: body, params: params);
       } catch (e) {
         if (i == tentatives - 1) rethrow;
-        if (e is http.ClientException || e.toString().contains('Timeout')) {
+        if (_estErreurRetriable(e)) {
           await Future.delayed(Duration(seconds: 1 + i));
           continue;
         }
@@ -58,6 +69,35 @@ class ApiClient {
       }
     }
     throw Exception('Impossible de contacter le serveur après plusieurs tentatives.');
+  }
+
+  /// Décode JSON API ; refuse les pages HTML (502 Render, mauvaise API_URL, etc.).
+  static Map<String, dynamic> _decoderJsonApi(http.Response response) {
+    final brut = response.body;
+    final trim = brut.trimLeft();
+    final ct = (response.headers['content-type'] ?? '').toLowerCase();
+    final estHtml = trim.startsWith('<!DOCTYPE') ||
+        trim.startsWith('<!doctype') ||
+        trim.startsWith('<html') ||
+        (ct.contains('text/html') && !ct.contains('json'));
+
+    if (estHtml || trim.isEmpty) {
+      if (response.statusCode >= 500 || response.statusCode == 429) {
+        throw Exception('Le serveur est momentanément indisponible. Réessayez dans une minute.');
+      }
+      throw Exception(
+        'Réponse invalide du serveur (page HTML au lieu de JSON). '
+        'Vérifiez votre connexion ou réessayez après une mise à jour.',
+      );
+    }
+
+    try {
+      final decoded = jsonDecode(brut);
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      throw Exception('Réponse serveur inattendue.');
+    } on FormatException {
+      throw Exception('Réponse serveur illisible. Réessayez dans une minute.');
+    }
   }
 
   static Future<dynamic> _envoyer(
@@ -103,10 +143,19 @@ class ApiClient {
       rethrow;
     }
 
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    // 5xx HTML (cold start / redeploy Render) → message clair + retry via request().
+    if (response.statusCode >= 500) {
+      final trim = response.body.trimLeft();
+      if (trim.startsWith('<!') || trim.startsWith('<html')) {
+        throw Exception('Le serveur est momentanément indisponible. Réessayez dans une minute.');
+      }
+    }
+
+    final decoded = _decoderJsonApi(response);
     if (response.statusCode >= 400) {
-      final erreur = decoded['erreur'] as Map<String, dynamic>?;
-      throw Exception(erreur?['message'] as String? ?? 'Une erreur est survenue.');
+      final erreur = decoded['erreur'];
+      final message = erreur is Map ? erreur['message'] as String? : null;
+      throw Exception(message ?? 'Une erreur est survenue.');
     }
     final donnees = decoded['donnees'];
     // jsonDecode peut renvoyer Map<dynamic,dynamic> selon la plateforme — normaliser.

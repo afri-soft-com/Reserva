@@ -464,10 +464,14 @@ jobs:
           test -d "$SDKROOT/platforms/android-36"
           ls "$SDKROOT/platforms"
       - name: Build App Bundles (Client + Pro)
+        working-directory: .
         env:
           API_URL: ${{ secrets.API_URL_PROD }}
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
         run: |
+          # Refuse un API_URL qui pointe vers le front (sinon OTP → FormatException HTML)
+          node scripts/check-api-url-prod.mjs
+          cd apps/mobile_flutter
           # Secret vide ("") n'active pas ${VAR:-default} — forcer le Client ID Web RESERVA
           FALLBACK_WEB_GID="473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com"
           WEB_GID="${GOOGLE_SERVER_CLIENT_ID:-}"
@@ -682,6 +686,7 @@ jobs:
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          (cd "$GITHUB_WORKSPACE" && node scripts/check-api-url-prod.mjs)
           security unlock-keychain -p "" reserva-ci.keychain-db || true
           security default-keychain -s reserva-ci.keychain-db || true
           FALLBACK_WEB_GID="473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com"

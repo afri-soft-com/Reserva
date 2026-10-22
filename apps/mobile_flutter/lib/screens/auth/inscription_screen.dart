@@ -148,6 +148,11 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
     var s = e.toString();
     // ApiClient wrappe en Exception('…') — retirer le préfixe pour l'UI
     s = s.replaceFirst(RegExp(r'^Exception:\s*'), '');
+    s = s.replaceFirst(RegExp(r'^FormatException:\s*'), '');
+    // Ancien bug : HTML Render décodé comme JSON → message illisible
+    if (s.contains('<!DOCTYPE') || s.contains('Unexpected character')) {
+      return 'Le serveur est momentanément indisponible. Réessayez dans une minute.';
+    }
     return s;
   }
 
