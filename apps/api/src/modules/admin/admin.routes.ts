@@ -40,6 +40,7 @@ const schemaModifierUtilisateur = z.object({
   role: z.enum(["CLIENT", "ADMIN", "AGENT", "PRESTATAIRE"]).optional(),
   langue: z.enum(["fr", "ln", "sw"]).optional(),
   pin: z.string().regex(/^\d{4}$/).optional(),
+  deuxFAActif: z.boolean().optional(),
 });
 routesAdmin.post(
   "/utilisateurs",

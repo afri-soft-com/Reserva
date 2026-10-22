@@ -266,6 +266,7 @@ export async function modifierUtilisateurAdmin(
     role?: "CLIENT" | "ADMIN" | "AGENT" | "PRESTATAIRE";
     langue?: string;
     pin?: string;
+    deuxFAActif?: boolean;
   }
 ) {
   const u = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });
@@ -293,6 +294,7 @@ export async function modifierUtilisateurAdmin(
   if (input.email !== undefined) data.email = input.email?.trim() || null;
   if (input.role !== undefined) data.role = input.role;
   if (input.langue !== undefined) data.langue = input.langue;
+  if (input.deuxFAActif !== undefined) data.deuxFAActif = input.deuxFAActif;
   if (input.pin) {
     if (!/^\d{4}$/.test(input.pin)) throw new Error("Le PIN doit contenir 4 chiffres");
     data.pinHash = await bcrypt.hash(input.pin, 10);

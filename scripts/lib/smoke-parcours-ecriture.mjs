@@ -7,7 +7,7 @@
  *
  * Activé si opts.ecriture === true ou SMOKE_WRITE=1 (défaut local = true).
  */
-import { get, post } from "./smoke-parcours.mjs";
+import { get, post, patch } from "./smoke-parcours.mjs";
 
 function datePlus(jours) {
   const d = new Date();
@@ -19,8 +19,33 @@ function datePlus(jours) {
 async function login(gateway, telephone, pin) {
   const auth = await post(gateway, "/auth/connexion", { telephone, pin });
   const token = auth.token || auth.accessToken;
-  if (!token) throw new Error(`Pas de token pour ${telephone}`);
+  if (!token) {
+    if (auth.deuxfaRequis) {
+      throw new Error(
+        `Compte ${telephone} a la 2FA active — le smoke la désactive via admin avant login`
+      );
+    }
+    throw new Error(`Pas de token pour ${telephone}`);
+  }
   return { token, utilisateur: auth.utilisateur };
+}
+
+/** Désactive la 2FA sur les comptes smoke (sinon SMS OTP bloque le login). */
+async function desactiver2faSmoke(gateway, adminToken, telephones) {
+  for (const tel of telephones) {
+    const q = encodeURIComponent(tel);
+    const liste = await get(gateway, `/admin/utilisateurs?parPage=20&recherche=${q}`, adminToken);
+    const items = Array.isArray(liste) ? liste : liste?.items || [];
+    const digits = tel.replace(/\D/g, "");
+    const u = items.find((x) => String(x.telephone || "").replace(/\D/g, "") === digits) || items[0];
+    if (!u?.id) {
+      console.log(`  ⚠ utilisateur smoke ${tel} introuvable pour 2FA`);
+      continue;
+    }
+    if (!u.deuxFAActif) continue;
+    console.log(`  → Désactivation 2FA ${tel}`);
+    await patch(gateway, `/admin/utilisateurs/${u.id}`, { deuxFAActif: false }, adminToken);
+  }
 }
 
 function itemsOf(data) {
@@ -37,6 +62,10 @@ export async function executerParcoursEcriture(opts) {
   const uid = `smoke-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   console.log("\n══ Écriture métier (anti-régression) ══");
+
+  console.log("→ Admin smoke (prépare comptes client/pro)");
+  const admin = await login(gateway, adminPhone, pin);
+  await desactiver2faSmoke(gateway, admin.token, [clientPhone, proPhone]);
 
   // --- 1. Cycle réservation ---
   console.log("→ Login client");

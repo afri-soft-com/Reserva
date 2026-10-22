@@ -29,6 +29,22 @@ export async function post(gateway, path, body, token) {
   return json.donnees ?? json;
 }
 
+export async function patch(gateway, path, body, token) {
+  const res = await fetch(`${gateway}${path}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.succes === false) {
+    throw new Error(`${path} → ${res.status} ${json?.erreur?.message || res.statusText}`);
+  }
+  return json.donnees ?? json;
+}
+
 export async function attendreSante(gateway, { maxAttempts = 36, delayMs = 10000 } = {}) {
   for (let i = 1; i <= maxAttempts; i++) {
     try {
