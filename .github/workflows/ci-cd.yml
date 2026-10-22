@@ -634,52 +634,68 @@ jobs:
           }
 
           # Régénère les profils App Store pour inclure Sign In with Apple (capability App ID).
-          SIGH_OK=0
-          if [ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ] && [ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ] && [ -n "${APP_STORE_CONNECT_API_KEY_P8:-}" ]; then
-            echo "→ Régénération profils via fastlane sigh (Sign In with Apple)…"
-            gem install fastlane --no-document
-            mkdir -p ios/fastlane
-            KEY_ID=$(printf '%s' "$APP_STORE_CONNECT_API_KEY_ID" | tr -d '\r\n')
-            printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > "ios/fastlane/AuthKey_${KEY_ID}.p8"
-            export APP_STORE_CONNECT_API_KEY_KEY_ID="$KEY_ID"
-            export APP_STORE_CONNECT_API_KEY_ISSUER_ID=$(printf '%s' "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '\r\n')
-            export APP_STORE_CONNECT_API_KEY_KEY_FILEPATH="$PWD/ios/fastlane/AuthKey_${KEY_ID}.p8"
-            if (
-              cd ios
-              fastlane sigh --app_identifier com.reserva.client --team_id "$TEAM" --force \
-                --filename /tmp/reserva-client.mobileprovision --skip_certificate_verification
-              fastlane sigh --app_identifier com.reserva.pro --team_id "$TEAM" --force \
-                --filename /tmp/reserva-pro.mobileprovision --skip_certificate_verification
-            ); then
-              # Specifier = Name du profil (souvent « RESERVA Client App Store » si nommé ainsi)
-              CLIENT_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i /tmp/reserva-client.mobileprovision)" 2>/dev/null || echo "RESERVA Client App Store")
-              PRO_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i /tmp/reserva-pro.mobileprovision)" 2>/dev/null || echo "RESERVA Pro App Store")
-              sed -i.bak "s/PROVISIONING_PROFILE_SPECIFIER=.*/PROVISIONING_PROFILE_SPECIFIER=${CLIENT_NAME}/" ios/Flutter/Release-client.xcconfig
-              sed -i.bak "s/PROVISIONING_PROFILE_SPECIFIER=.*/PROVISIONING_PROFILE_SPECIFIER=${PRO_NAME}/" ios/Flutter/Release-pro.xcconfig
-              # ExportOptions provisioningProfiles doit matcher le Name
-              /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.reserva.client ${CLIENT_NAME}" ios/ExportOptions.client.plist 2>/dev/null \
-                || true
-              /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.reserva.pro ${PRO_NAME}" ios/ExportOptions.pro.plist 2>/dev/null \
-                || true
-              install_profile_file /tmp/reserva-client.mobileprovision "reserva-client"
-              install_profile_file /tmp/reserva-pro.mobileprovision "reserva-pro"
-              SIGH_OK=1
-              echo "✓ Profils régénérés (sigh)"
-            else
-              echo "⚠ sigh a échoué — fallback secrets base64"
-            fi
+          # Échec = stop (pas de fallback vers d'anciens .mobileprovision sans applesignin).
+          if [ -z "${APP_STORE_CONNECT_API_KEY_ID:-}" ] || [ -z "${APP_STORE_CONNECT_ISSUER_ID:-}" ] || [ -z "${APP_STORE_CONNECT_API_KEY_P8:-}" ]; then
+            echo "✗ Secrets App Store Connect API manquants (KEY_ID / ISSUER_ID / P8)"
+            exit 1
           fi
+          echo "→ Régénération profils via fastlane sigh (Sign In with Apple)…"
+          gem install fastlane --no-document
+          KEY_ID=$(printf '%s' "$APP_STORE_CONNECT_API_KEY_ID" | tr -d '\r\n')
+          ISSUER=$(printf '%s' "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '\r\n')
+          mkdir -p ios/fastlane
+          KEY_PATH="$PWD/ios/fastlane/AuthKey_${KEY_ID}.p8"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > "$KEY_PATH"
+          cat > ios/fastlane/Fastfile <<'FASTEOF'
+default_platform(:ios)
+platform :ios do
+  lane :regen_profiles do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_FILEPATH"],
+      duration: 1200,
+      in_house: false
+    )
+    sigh(
+      api_key: api_key,
+      app_identifier: "com.reserva.client",
+      force: true,
+      output_path: "/tmp",
+      filename: "reserva-client.mobileprovision"
+    )
+    sigh(
+      api_key: api_key,
+      app_identifier: "com.reserva.pro",
+      force: true,
+      output_path: "/tmp",
+      filename: "reserva-pro.mobileprovision"
+    )
+  end
+end
+FASTEOF
+          (
+            cd ios
+            ASC_KEY_ID="$KEY_ID" ASC_ISSUER_ID="$ISSUER" ASC_KEY_FILEPATH="$KEY_PATH" \
+              fastlane regen_profiles
+          )
+          test -f /tmp/reserva-client.mobileprovision
+          test -f /tmp/reserva-pro.mobileprovision
+          CLIENT_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i /tmp/reserva-client.mobileprovision)" 2>/dev/null || echo "RESERVA Client App Store")
+          PRO_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$(security cms -D -i /tmp/reserva-pro.mobileprovision)" 2>/dev/null || echo "RESERVA Pro App Store")
+          ENT=$(security cms -D -i /tmp/reserva-client.mobileprovision | plutil -convert xml1 -o - - 2>/dev/null || true)
+          echo "$ENT" | grep -q 'com.apple.developer.applesignin' || {
+            echo "✗ Profil client régénéré SANS Sign In with Apple — vérifiez la capability sur l'App ID com.reserva.client"
+            exit 1
+          }
+          sed -i.bak "s/PROVISIONING_PROFILE_SPECIFIER=.*/PROVISIONING_PROFILE_SPECIFIER=${CLIENT_NAME}/" ios/Flutter/Release-client.xcconfig
+          sed -i.bak "s/PROVISIONING_PROFILE_SPECIFIER=.*/PROVISIONING_PROFILE_SPECIFIER=${PRO_NAME}/" ios/Flutter/Release-pro.xcconfig
+          /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.reserva.client ${CLIENT_NAME}" ios/ExportOptions.client.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.reserva.pro ${PRO_NAME}" ios/ExportOptions.pro.plist 2>/dev/null || true
+          install_profile_file /tmp/reserva-client.mobileprovision "reserva-client"
+          install_profile_file /tmp/reserva-pro.mobileprovision "reserva-pro"
+          echo "✓ Profils régénérés avec Sign In with Apple"
 
-          if [ "$SIGH_OK" != "1" ]; then
-            CLIENT_B64="${IOS_PROVISION_PROFILE_CLIENT_BASE64:-$IOS_PROVISION_PROFILE_BASE64}"
-            PRO_B64="${IOS_PROVISION_PROFILE_PRO_BASE64:-}"
-            install_profile_b64 "$CLIENT_B64" "reserva-client"
-            if [ -n "${PRO_B64:-}" ]; then
-              install_profile_b64 "$PRO_B64" "reserva-pro"
-            else
-              echo "⚠ IOS_PROVISION_PROFILE_PRO_BASE64 vide — build Pro peut échouer"
-            fi
-          fi
 
           sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.client.plist
           sed -i.bak "s#\$(APPLE_TEAM_ID)#${APPLE_TEAM_ID}#g" ios/ExportOptions.pro.plist
