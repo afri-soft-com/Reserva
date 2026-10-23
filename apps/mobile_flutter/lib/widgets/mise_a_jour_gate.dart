@@ -50,6 +50,10 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // Réaffiche la soft si l'utilisateur est encore en retard (après « Plus tard »).
+      if (_dismissSoft && _mode == 'soft') {
+        setState(() => _dismissSoft = false);
+      }
       _charger(silencieux: true);
     }
   }
@@ -215,23 +219,20 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
-    if (_charge) return widget.child;
-
-    final corps = _soft
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _banniereSoft(),
-              Expanded(child: widget.child),
-            ],
-          )
-        : widget.child;
-
+    // Overlay : ne pas restructurer l'arbre go_router (Column+Expanded cassait
+    // parfois la bannière soft selon le Scaffold enfant).
     return Stack(
       fit: StackFit.expand,
       children: [
-        corps,
-        if (_force) Positioned.fill(child: _ecranForce()),
+        widget.child,
+        if (!_charge && _soft)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _banniereSoft(),
+          ),
+        if (!_charge && _force) Positioned.fill(child: _ecranForce()),
       ],
     );
   }
