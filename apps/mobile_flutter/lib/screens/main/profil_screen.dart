@@ -138,6 +138,12 @@ class ProfilScreen extends StatelessWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/cgu'),
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.privacy_tip_outlined, color: AppCouleurs.texteSecondaire),
+                    title: const Text('Politique de confidentialité', style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/confidentialite'),
+                  ),
                   const Divider(height: 1, indent: 56),
                   ListTile(
                     leading: const BadgeNotification(child: Icon(Icons.notifications_outlined, color: AppCouleurs.primaire)),

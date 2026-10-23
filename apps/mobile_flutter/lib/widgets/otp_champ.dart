@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smart_auth/smart_auth.dart';
+import '../services/otp_sms_autofill.dart';
 import '../theme.dart';
 
 bool get _estAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -82,22 +83,16 @@ class _OtpChampState extends State<OtpChamp> with WidgetsBindingObserver {
     if (_lireCode().length >= 6) return;
     _ecouteAndroid = true;
     try {
-      // User Consent : pas besoin du hash dans le SMS (SerdiPay refuse le format Retriever).
-      // Affiche un dialogue système « Autoriser RESERVA à lire ce SMS ? » → 1 tap.
-      final result = await SmartAuth.instance.getSmsWithUserConsentApi(
-        matcher: r'\d{6}',
-      );
-      if (!mounted) return;
-      if (result.hasData) {
-        final code = result.data?.code ?? _extraireCode(result.data?.sms ?? '');
-        if (code != null && code.length >= 4) {
+      // User Consent (aligné Mova) : dialogue système 1 tap, sans hash dans le SMS.
+      await demarrerEcouteOtpSms(
+        onCode: (code) {
+          if (!mounted) return;
           _appliquerCode(code);
           _publier();
           TextInput.finishAutofillContext(shouldSave: false);
-          return;
-        }
-      }
-      if (!result.isCanceled && mounted && _lireCode().length < 6 && _retriesConsent < 3) {
+        },
+      );
+      if (mounted && _lireCode().length < 6 && _retriesConsent < 3) {
         _retriesConsent++;
         Future<void>.delayed(const Duration(milliseconds: 800), () {
           if (mounted && _lireCode().length < 6) _demarrerAutofillSms();
@@ -187,9 +182,7 @@ class _OtpChampState extends State<OtpChamp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.controller.removeListener(_syncDepuisParent);
-    if (_estAndroid) {
-      SmartAuth.instance.removeUserConsentApiListener();
-    }
+    arreterEcouteOtpSms();
     for (final c in _cases) {
       c.dispose();
     }

@@ -70,11 +70,28 @@ const NAV_GROUPES = [
       { href: "/admin/notifications", label: "Notifications", icon: BellRing },
       { href: "/admin/messages", label: "Messages", icon: MessageCircle },
       { href: "/admin/versions", label: "Versions apps", icon: Download },
+      { href: "/admin/confidentialite", label: "Confidentialité", icon: ScrollText, superAdminOnly: true },
       { href: "/admin/exports", label: "Exports", icon: Download },
       { href: "/admin/audits", label: "Audit", icon: ScrollText },
     ],
   },
 ];
+
+const SUPERADMIN_PHONES = (process.env.NEXT_PUBLIC_SUPERADMIN_PHONES || "+243900000001")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const SUPERADMIN_EMAILS = (process.env.NEXT_PUBLIC_SUPERADMIN_EMAILS || "celestinkas@gmail.com")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+function estSuperAdminNav(u: { telephone?: string | null; email?: string | null } | null | undefined) {
+  if (!u) return false;
+  if (u.telephone && SUPERADMIN_PHONES.includes(u.telephone)) return true;
+  const email = (u.email || "").trim().toLowerCase();
+  return Boolean(email && SUPERADMIN_EMAILS.includes(email));
+}
 
 export default function LayoutAdmin({ children }: { children: ReactNode }) {
   const { utilisateur } = useAuthStore();
@@ -98,7 +115,9 @@ export default function LayoutAdmin({ children }: { children: ReactNode }) {
                 {groupe.titre}
               </p>
               <div className="space-y-0.5">
-                {groupe.items.map((item) => {
+                {groupe.items
+                  .filter((item) => !("superAdminOnly" in item && item.superAdminOnly) || estSuperAdminNav(utilisateur))
+                  .map((item) => {
                   const actif = chemin === item.href || chemin.startsWith(item.href + "/");
                   return (
                     <Link

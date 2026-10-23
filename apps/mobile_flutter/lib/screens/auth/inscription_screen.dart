@@ -67,16 +67,21 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
       return;
     }
     if (!_accepteCgu) {
-      ToastWidget.show(context, 'Veuillez accepter les CGU pour continuer', type: 'erreur');
+      ToastWidget.show(
+        context,
+        'Veuillez accepter les CGU et la Politique de confidentialité pour continuer',
+        type: 'erreur',
+      );
       return;
     }
     setState(() => _chargement = true);
     try {
-      // Hash + écran OTP d'abord → SMS Retriever écoute avant l'arrivée du SMS (sans permission).
+      // Écran OTP d'abord → User Consent / oneTimeCode écoute avant l'arrivée du SMS.
       final smsHash = await obtenirSmsAppHash();
       if (!mounted) return;
       setState(() => _etape = 'OTP');
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      // Laisse OtpChamp démarrer SmartAuth avant l'envoi du SMS.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
       final data = await ApiAuth.inscrire(
         _telephoneCtrl.text.trim(),
         _nomCtrl.text.trim(),
@@ -365,6 +370,11 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
                     GestureDetector(
                       onTap: () => context.push('/cgu'),
                       child: const Text('CGU', style: TextStyle(fontSize: 13, color: AppCouleurs.primaire, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
+                    ),
+                    const Text(', la ', style: TextStyle(fontSize: 13)),
+                    GestureDetector(
+                      onTap: () => context.push('/confidentialite'),
+                      child: const Text('Politique de confidentialité', style: TextStyle(fontSize: 13, color: AppCouleurs.primaire, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
                     ),
                     const Text(' et le ', style: TextStyle(fontSize: 13)),
                     GestureDetector(

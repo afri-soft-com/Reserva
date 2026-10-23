@@ -6,6 +6,7 @@ import 'screens/auth/connexion_screen.dart';
 import 'screens/auth/inscription_screen.dart';
 import 'screens/auth/reinitialiser_pin_screen.dart';
 import 'screens/legal/cgu_screen.dart';
+import 'screens/legal/confidentialite_screen.dart';
 import 'screens/legal/manuel_utilisateur_screen.dart';
 import 'screens/main/main_shell.dart';
 import 'app_flavor.dart';
@@ -63,6 +64,7 @@ GoRouter createRouter(AuthProvider auth) {
         '/inscription',
         '/reinitialiser-pin',
         '/cgu',
+        '/confidentialite',
         '/manuel',
       ];
       final estRoutePublique = routesPubliques.any((r) => path == r || path.startsWith('$r?'));
@@ -97,6 +99,7 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(path: '/inscription', builder: (ctx, state) => const InscriptionScreen()),
       GoRoute(path: '/reinitialiser-pin', builder: (ctx, state) => const ReinitialiserPinScreen()),
       GoRoute(path: '/cgu', builder: (ctx, state) => const CguScreen()),
+      GoRoute(path: '/confidentialite', builder: (ctx, state) => const ConfidentialiteScreen()),
       GoRoute(path: '/manuel', builder: (ctx, state) => const ManuelUtilisateurScreen()),
       GoRoute(path: '/accueil', builder: (ctx, state) => const MainShell()),
       GoRoute(

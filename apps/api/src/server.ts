@@ -35,6 +35,10 @@ async function demarrer() {
     await assurerClesVersionsApp().catch((e) =>
       console.warn("⚠ Clés versions apps :", e instanceof Error ? e.message : e)
     );
+    const { assurerPrivacyParDefaut } = await import("./modules/legal/legal.service");
+    await assurerPrivacyParDefaut().catch((e) =>
+      console.warn("⚠ Politique confidentialité :", e instanceof Error ? e.message : e)
+    );
 
     const serveur = createServer(app);
     initialiserSocket(serveur);

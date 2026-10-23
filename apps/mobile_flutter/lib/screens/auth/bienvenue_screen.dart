@@ -23,6 +23,7 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
   final _telephoneCtrl = TextEditingController(text: '+243');
   bool _chargementGoogle = false;
   bool _chargementApple = false;
+  bool _accepteLegal = false;
 
   @override
   void dispose() {
@@ -30,7 +31,18 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
     super.dispose();
   }
 
+  bool _assurerLegal() {
+    if (_accepteLegal) return true;
+    ToastWidget.show(
+      context,
+      'Acceptez les CGU et la Politique de confidentialité pour continuer',
+      type: 'erreur',
+    );
+    return false;
+  }
+
   void _continuer() {
+    if (!_assurerLegal()) return;
     final tel = _telephoneCtrl.text.trim();
     if (tel.replaceAll(RegExp(r'\D'), '').length < 11) {
       ToastWidget.show(context, 'Numéro de téléphone invalide', type: 'erreur');
@@ -67,6 +79,7 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
   }
 
   Future<void> _continuerAvecGoogle() async {
+    if (!_assurerLegal()) return;
     setState(() => _chargementGoogle = true);
     try {
       final idToken = await GoogleAuthService.obtenirIdToken();
@@ -86,6 +99,7 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
   }
 
   Future<void> _continuerAvecApple() async {
+    if (!_assurerLegal()) return;
     setState(() => _chargementApple = true);
     try {
       final cred = await AppleAuthService.obtenirCredentials();
@@ -170,6 +184,57 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                       keyboardType: TextInputType.phone,
                       prefixIcon: Icons.phone_outlined,
                     ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Checkbox(
+                            value: _accepteLegal,
+                            activeColor: AppCouleurs.primaire,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            onChanged: (v) => setState(() => _accepteLegal = v ?? false),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              const Text("J'ai lu et j'accepte les ", style: TextStyle(fontSize: 13)),
+                              GestureDetector(
+                                onTap: () => context.push('/cgu'),
+                                child: const Text(
+                                  'CGU',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppCouleurs.primaire,
+                                    fontWeight: FontWeight.w700,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                              const Text(' et la ', style: TextStyle(fontSize: 13)),
+                              GestureDetector(
+                                onTap: () => context.push('/confidentialite'),
+                                child: const Text(
+                                  'Politique de confidentialité',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppCouleurs.primaire,
+                                    fontWeight: FontWeight.w700,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                              const Text('.', style: TextStyle(fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -180,7 +245,7 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                           gradient: const LinearGradient(colors: [AppCouleurs.primaire, Color(0xFF3B82F6)]),
                         ),
                         child: ElevatedButton(
-                          onPressed: _continuer,
+                          onPressed: _accepteLegal ? _continuer : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -213,7 +278,9 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                       width: double.infinity,
                       height: 52,
                       child: OutlinedButton(
-                        onPressed: (_chargementGoogle || _chargementApple) ? null : _continuerAvecGoogle,
+                        onPressed: (!_accepteLegal || _chargementGoogle || _chargementApple)
+                            ? null
+                            : _continuerAvecGoogle,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppCouleurs.primaire,
                           backgroundColor: AppCouleurs.blanc,
@@ -245,7 +312,9 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: (_chargementGoogle || _chargementApple) ? null : _continuerAvecApple,
+                          onPressed: (!_accepteLegal || _chargementGoogle || _chargementApple)
+                              ? null
+                              : _continuerAvecApple,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black,
                             foregroundColor: Colors.white,
@@ -287,6 +356,11 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                         TextButton(
                           onPressed: () => context.push('/cgu'),
                           child: const Text('CGU', style: TextStyle(fontWeight: FontWeight.w700)),
+                        ),
+                        const Text(' · ', style: TextStyle(color: AppCouleurs.texteSecondaire)),
+                        TextButton(
+                          onPressed: () => context.push('/confidentialite'),
+                          child: const Text('Confidentialité', style: TextStyle(fontWeight: FontWeight.w700)),
                         ),
                         const Text(' · ', style: TextStyle(color: AppCouleurs.texteSecondaire)),
                         TextButton(

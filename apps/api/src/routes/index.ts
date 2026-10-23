@@ -26,6 +26,7 @@ import { routesInnovations } from "../modules/innovations/innovations.routes";
 import { routesVoix } from "../modules/voix/voix.routes";
 import { routesAppVersions } from "../modules/app-versions/app-versions.routes";
 import { routesReferentiel } from "../modules/referentiel/referentiel.routes";
+import { routesLegal } from "../modules/legal/legal.routes";
 
 export const routesApi = Router();
 
@@ -56,3 +57,4 @@ routesApi.use("/innovations", routesInnovations);
 routesApi.use("/voix", routesVoix);
 routesApi.use("/app", routesAppVersions);
 routesApi.use("/referentiel", routesReferentiel);
+routesApi.use("/legal", routesLegal);
