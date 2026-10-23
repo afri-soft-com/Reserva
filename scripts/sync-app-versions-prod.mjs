@@ -1,19 +1,18 @@
 #!/usr/bin/env node
 /**
- * Publie les seuils minSoft en prod après un déploiement (web et/ou mobile).
- * Les clients qui pollent /app/versions voient alors la bannière automatiquement.
+ * Seuils bannières MAJ (prod).
  *
- * Usage:
- *   node scripts/sync-app-versions-prod.mjs --canaux=web
- *   node scripts/sync-app-versions-prod.mjs --canaux=mobile
- *   node scripts/sync-app-versions-prod.mjs --canaux=all
+ * Par défaut (CI post-deploy) : --verify-only
+ *   → vérifie que /app/versions est sain (URLs, invariants)
+ *   → NE MONTE PAS minSoft (un deploy ne doit plus « éteindre » les bannières
+ *     en alignant le seuil sur la version tout juste installée par les testeurs)
  *
- * Auth (dans l'ordre) :
- *   1. X-Cron-Secret si CRON_SECRET est défini
- *   2. Login admin SMOKE_ADMIN_PHONE + SMOKE_ADMIN_PIN
- *   3. RENDER_API_KEY → écriture directe Postgres (fallback CI)
+ * Promotion volontaire des seuils :
+ *   node scripts/sync-app-versions-prod.mjs --canaux=mobile --bump-min-soft
+ *   node scripts/sync-app-versions-prod.mjs --canaux=web --bump-min-soft
  *
- * Env: GATEWAY_URL, CRON_SECRET? | SMOKE_ADMIN_* | RENDER_API_KEY
+ * Auth (bump) : CRON_SECRET | SMOKE_ADMIN_* | RENDER_API_KEY
+ * Env: GATEWAY_URL
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -24,6 +23,9 @@ import { assertConfigBannieres, cmpVer } from "./lib/assert-bannieres-maj.mjs";
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const gateway = (process.env.GATEWAY_URL || "https://reserva-gateway.onrender.com/api").replace(/\/$/, "");
 const RENDER_API = "https://api.render.com/v1";
+
+const bumpMinSoft = process.argv.includes("--bump-min-soft");
+const verifyOnly = process.argv.includes("--verify-only") || !bumpMinSoft;
 
 function argCanaux() {
   const raw = process.argv.find((a) => a.startsWith("--canaux="))?.split("=")[1] || "all";
@@ -81,7 +83,6 @@ async function publier(payload, { cronSecret, token }) {
 
   if (!token) throw new Error("Ni CRON_SECRET ni credentials admin disponibles");
 
-  // Admin PUT monotone : ne baisse jamais les seuils ; conserve URLs store.
   const getRes = await fetch(`${gateway}/app/versions`);
   const getJson = await getRes.json().catch(() => ({}));
   const actuel = getJson.donnees ?? getJson;
@@ -113,7 +114,7 @@ async function publier(payload, { cronSecret, token }) {
     }
   }
   if (modifications.length === 0) {
-    console.log("  rien à monter (seuils déjà ≥ versions publiées)");
+    console.log("  rien à monter (seuils déjà ≥ versions demandées)");
     return { apres: actuel, modifications: [] };
   }
   const res = await fetch(`${gateway}/app/versions`, {
@@ -167,16 +168,64 @@ async function publierViaRenderDb(payload) {
   return { modifications };
 }
 
+async function lireVersionsProd() {
+  const getRes = await fetch(`${gateway}/app/versions`);
+  if (!getRes.ok) throw new Error(`GET /app/versions → ${getRes.status}`);
+  const getJson = await getRes.json();
+  return getJson.donnees ?? getJson;
+}
+
+async function verifierSante(canaux, mobileVer, webVer) {
+  const apres = await lireVersionsProd();
+  assertConfigBannieres(apres, {
+    exigerStoreUrls: canaux.includes("client") || canaux.includes("pro"),
+    // Ne PAS exiger minSoft ≥ version pubspec : le deploy ne force plus la hausse.
+  });
+
+  for (const canal of canaux) {
+    const publiee = canal === "web" ? webVer : mobileVer;
+    const soft = apres[canal]?.minSoft;
+    if (soft && cmpVer(publiee, soft) > 0) {
+      console.log(
+        `  ℹ ${canal}: build ${publiee} > minSoft ${soft} — bannières soft actives pour les builds < ${soft}.`,
+        `Pour pousser la MAJ vers ${publiee}: sync avec --bump-min-soft (ou Admin → Versions).`
+      );
+    } else if (soft && cmpVer(publiee, soft) === 0) {
+      console.log(
+        `  ℹ ${canal}: minSoft=${soft} = version build — pas de bannière soft sur ce build (normal).`
+      );
+    }
+  }
+
+  console.log(
+    "  vérifié OK — client≥",
+    apres.client?.minSoft,
+    "pro≥",
+    apres.pro?.minSoft,
+    "web≥",
+    apres.web?.minSoft
+  );
+  return apres;
+}
+
 async function main() {
   const canaux = argCanaux();
   const mobileVer = lireVersionPubspec();
   const webVer = lireVersionWeb();
+
+  if (verifyOnly && !bumpMinSoft) {
+    console.log("→ Vérif bannières MAJ (sans monter les seuils)", gateway, { canaux, mobileVer, webVer });
+    await verifierSante(canaux, mobileVer, webVer);
+    console.log("✓ Bannières intactes — aucun seuil modifié par ce déploiement");
+    return;
+  }
+
   const payload = {};
   if (canaux.includes("client")) payload.client = { minSoft: mobileVer };
   if (canaux.includes("pro")) payload.pro = { minSoft: mobileVer };
   if (canaux.includes("web")) payload.web = { minSoft: webVer };
 
-  console.log("→ Sync seuils bannières", gateway, payload);
+  console.log("→ Bump minSoft bannières", gateway, payload);
 
   const cronSecret = (process.env.CRON_SECRET || "").trim();
   let resultat;
@@ -201,13 +250,7 @@ async function main() {
 
   console.log("✓ Seuils publiés", JSON.stringify(resultat.modifications || resultat).slice(0, 300));
 
-  // Garde-fou post-sync : un déploiement ne doit jamais laisser les bannières inutilisables.
-  const getRes = await fetch(`${gateway}/app/versions`);
-  if (!getRes.ok) {
-    throw new Error(`post-sync GET /app/versions → ${getRes.status}`);
-  }
-  const getJson = await getRes.json();
-  const apres = getJson.donnees ?? getJson;
+  const apres = await lireVersionsProd();
   const minSoftAttendu = {};
   if (canaux.includes("client")) minSoftAttendu.client = mobileVer;
   if (canaux.includes("pro")) minSoftAttendu.pro = mobileVer;

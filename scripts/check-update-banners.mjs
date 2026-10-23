@@ -139,12 +139,15 @@ mustInclude(
   [
     "publier-seuils",
     "--canaux",
+    "--verify-only",
+    "--bump-min-soft",
     "GATEWAY_URL",
     "minSoft",
     "RENDER_API_KEY",
     "publier-seuils-db",
     "assertConfigBannieres",
     "vérifié OK",
+    "aucun seuil modifié",
   ],
   "sync-script"
 );
@@ -180,24 +183,38 @@ mustInclude(
 );
 mustInclude(
   ".github/workflows/ci-cd.yml",
-  ["sync:app-versions", "Publier seuils bannières MAJ", "ci:quality"],
+  ["sync:app-versions", "--verify-only", "Vérifier bannières MAJ", "ci:quality"],
   "ci-sync"
 );
 mustInclude(
   ".github/workflows/deploy-app-store.yml",
-  ["Publier seuils bannières MAJ", "sync:app-versions"],
+  ["Vérifier bannières MAJ", "sync:app-versions", "--verify-only"],
   "asc-sync"
 );
+mustInclude(
+  ".github/workflows/bump-app-versions.yml",
+  ["--bump-min-soft", "Promouvoir seuils", "workflow_dispatch"],
+  "bump-workflow"
+);
 
-/** La sync seuils ne doit jamais être continue-on-error (sinon stores OK avec bannières cassées). */
+/** Post-deploy verify ne doit jamais être continue-on-error. */
 function assertSyncBloquante(rel) {
   const src = read(rel);
-  const parts = src.split(/- name:\s*Publier seuils bannières[^\n]*/);
+  const parts = src.split(/- name:\s*Vérifier bannières MAJ[^\n]*/);
   for (let i = 1; i < parts.length; i++) {
     const stepHead = parts[i].slice(0, 500);
     if (/continue-on-error:\s*true/.test(stepHead)) {
-      throw new Error(`[sync-bloquante] ${rel}: « Publier seuils » ne doit pas avoir continue-on-error`);
+      throw new Error(`[sync-bloquante] ${rel}: vérif bannières ne doit pas avoir continue-on-error`);
     }
+    if (!/--verify-only/.test(stepHead) && !/sync:app-versions/.test(stepHead)) {
+      /* step body may be on following lines */
+    }
+  }
+  if (!src.includes("--verify-only")) {
+    throw new Error(`[sync-bloquante] ${rel}: post-deploy doit utiliser --verify-only (pas de bump auto)`);
+  }
+  if (/sync:app-versions[^\n]*--bump-min-soft/.test(src) && !rel.includes("bump-app-versions")) {
+    throw new Error(`[sync-bloquante] ${rel}: ne pas bumper minSoft dans le deploy store`);
   }
   console.log(`  ✓ sync-bloquante: ${rel}`);
 }

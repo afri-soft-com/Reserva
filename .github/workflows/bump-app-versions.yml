@@ -1,0 +1,36 @@
+name: Promouvoir seuils bannières MAJ
+
+# Action volontaire : monte minSoft vers la version pubspec / web.
+# Les deploys stores ne le font plus automatiquement (évite d'éteindre les bannières).
+
+on:
+  workflow_dispatch:
+    inputs:
+      canaux:
+        description: "mobile | web | all"
+        required: true
+        default: "mobile"
+        type: choice
+        options:
+          - mobile
+          - web
+          - all
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts && npm run db:generate
+      - name: Bump minSoft
+        run: npm run sync:app-versions -- --canaux=${{ github.event.inputs.canaux }} --bump-min-soft
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SMOKE_ADMIN_PHONE: ${{ secrets.SMOKE_ADMIN_PHONE }}
+          SMOKE_ADMIN_PIN: ${{ secrets.SMOKE_ADMIN_PIN }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
