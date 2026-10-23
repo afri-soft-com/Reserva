@@ -61,7 +61,7 @@ export async function definir2FA(actif: boolean) {
 
 export async function demanderReinitialisationPin(telephone: string) {
   const { data } = await clientApi.post("/auth/pin/reinitialiser/demander", { telephone });
-  return data.donnees as { telephone: string };
+  return data.donnees as { telephone: string; smsEnvoye?: boolean; codeOtp?: string };
 }
 
 export async function reinitialiserPin(input: { telephone: string; code: string; nouveauPin: string }) {

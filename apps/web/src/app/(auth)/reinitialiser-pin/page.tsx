@@ -28,8 +28,25 @@ export default function PageReinitialiserPin() {
     e.preventDefault();
     setChargement(true);
     try {
-      await demanderReinitialisationPin(telephone);
-      toastSucces("Un code de réinitialisation a été envoyé par SMS.");
+      const res = await demanderReinitialisationPin(telephone) as {
+        smsEnvoye?: boolean;
+        codeOtp?: string;
+      };
+      const codeEcran = res?.codeOtp;
+      if (codeEcran && codeEcran.length === 6) {
+        setCode(codeEcran);
+        toastSucces(
+          res.smsEnvoye === false
+            ? `SMS indisponible — votre code : ${codeEcran}`
+            : "Un code de réinitialisation a été envoyé par SMS."
+        );
+      } else {
+        toastSucces(
+          res?.smsEnvoye === false
+            ? "Service SMS momentanément indisponible. Réessayez dans une minute."
+            : "Un code de réinitialisation a été envoyé par SMS."
+        );
+      }
       setEtape("OTP");
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
