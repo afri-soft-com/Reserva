@@ -96,12 +96,18 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
         return;
       }
       final smsOk = data['smsEnvoye'] != false;
+      final codeEcran = data['codeOtp']?.toString();
+      if (codeEcran != null && codeEcran.length == 6) {
+        _codeOtpCtrl.text = codeEcran;
+      }
       ToastWidget.show(
         context,
         smsOk
             ? 'Code SMS envoyé (une seule fois). Ensuite, connexion par PIN uniquement.'
-            : 'Service SMS momentanément indisponible. Saisissez le code dès réception, ou réessayez dans une minute.',
-        type: smsOk ? 'succes' : 'erreur',
+            : codeEcran != null
+                ? 'SMS indisponible — votre code : $codeEcran'
+                : 'Service SMS momentanément indisponible. Saisissez le code dès réception, ou réessayez dans une minute.',
+        type: smsOk || codeEcran != null ? 'succes' : 'erreur',
       );
     } catch (e) {
       final msg = _msgErreur(e);
@@ -121,12 +127,18 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
           final data = await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim(), smsAppHash: smsHash);
           if (mounted) {
             final smsOk = data['smsEnvoye'] != false;
+            final codeEcran = data['codeOtp']?.toString();
+            if (codeEcran != null && codeEcran.length == 6) {
+              _codeOtpCtrl.text = codeEcran;
+            }
             ToastWidget.show(
               context,
               smsOk
                   ? 'Nouveau code SMS envoyé.'
-                  : 'Service SMS momentanément indisponible. Saisissez le code dès réception.',
-              type: smsOk ? 'succes' : 'erreur',
+                  : codeEcran != null
+                      ? 'SMS indisponible — votre code : $codeEcran'
+                      : 'Service SMS momentanément indisponible. Saisissez le code dès réception.',
+              type: smsOk || codeEcran != null ? 'succes' : 'erreur',
             );
           }
           return;
@@ -413,12 +425,18 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
               final data = await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim(), smsAppHash: hash);
               if (mounted) {
                 final smsOk = data['smsEnvoye'] != false;
+                final codeEcran = data['codeOtp']?.toString();
+                if (codeEcran != null && codeEcran.length == 6) {
+                  _codeOtpCtrl.text = codeEcran;
+                }
                 ToastWidget.show(
                   context,
                   smsOk
                       ? 'Nouveau code envoyé.'
-                      : 'Service SMS momentanément indisponible. Réessayez plus tard.',
-                  type: smsOk ? 'succes' : 'erreur',
+                      : codeEcran != null
+                          ? 'SMS indisponible — votre code : $codeEcran'
+                          : 'Service SMS momentanément indisponible. Réessayez plus tard.',
+                  type: smsOk || codeEcran != null ? 'succes' : 'erreur',
                 );
               }
             } catch (e) {

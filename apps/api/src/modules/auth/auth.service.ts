@@ -49,7 +49,13 @@ export async function demarrerInscription(input: InscriptionInput) {
       });
     }
     const envoi = await genererEtEnvoyerOtp(utilisateurExistant.id, telephone, input.smsAppHash);
-    return { utilisateurId: utilisateurExistant.id, telephone, reprise: true, smsEnvoye: envoi.smsEnvoye };
+    return {
+      utilisateurId: utilisateurExistant.id,
+      telephone,
+      reprise: true,
+      smsEnvoye: envoi.smsEnvoye,
+      ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
+    };
   }
 
   // Parrainage : rattache le nouveau compte au parrain si le code est valide
@@ -95,7 +101,12 @@ export async function demarrerInscription(input: InscriptionInput) {
 
   const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephone, input.smsAppHash);
 
-  return { utilisateurId: utilisateur.id, telephone, smsEnvoye: envoi.smsEnvoye };
+  return {
+    utilisateurId: utilisateur.id,
+    telephone,
+    smsEnvoye: envoi.smsEnvoye,
+    ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
+  };
 }
 
 /** Génère un code de parrainage unique à partir du nom, ex: RESV-AGUY-4821 */
@@ -156,7 +167,7 @@ async function genererEtEnvoyerOtp(
   utilisateurId: string,
   telephone: string,
   smsAppHash?: string | null
-): Promise<{ smsEnvoye: boolean }> {
+): Promise<{ smsEnvoye: boolean; codeOtp?: string }> {
   const recent = await prisma.otp.findFirst({
     where: { utilisateurId, creeLe: { gte: new Date(Date.now() - 60_000) } },
     orderBy: { creeLe: "desc" },
@@ -185,12 +196,12 @@ async function genererEtEnvoyerOtp(
     // Évite le 500 « erreur interne » côté app : le compte peut déjà exister.
     const detail = e instanceof Error ? e.message : String(e);
     console.error("[OTP SMS] échec envoi", telephone, detail);
-    const providerDown = /MOVA_|SerdiPay|Hub SMS\s*5\d\d/i.test(detail);
+    const providerDown =
+      /MOVA_|SerdiPay|Hub SMS\s*[45]\d\d|DreamDigital|error occor/i.test(detail);
     if (providerDown) {
-      // Mode dégradé : OTP conservé, inscription continue (écran OTP).
-      // Code uniquement en logs Render pour support — jamais dans la réponse API.
+      // Mode dégradé : OTP conservé + code affiché à l'écran (hub SerdiPay instable).
       console.error(`[OTP CODE] telephone=${telephone} code=${code} otpId=${otp.id}`);
-      return { smsEnvoye: false };
+      return { smsEnvoye: false, codeOtp: code };
     }
     await prisma.otp.delete({ where: { id: otp.id } }).catch(() => undefined);
     throw new ErreurValidation(
@@ -212,7 +223,11 @@ export async function renvoyerOtp(telephone: string, smsAppHash?: string | null)
   }
 
   const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
-  return { telephone: telephoneNormalise, smsEnvoye: envoi.smsEnvoye };
+  return {
+    telephone: telephoneNormalise,
+    smsEnvoye: envoi.smsEnvoye,
+    ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
+  };
 }
 
 /** Étape 2 de l'inscription : vérifie le code OTP reçu par SMS */
@@ -331,9 +346,12 @@ export async function connecterParPin(input: ConnexionPinInput) {
       deuxfaRequis: true,
       telephone,
       smsEnvoye: envoi.smsEnvoye,
+      ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
       message: envoi.smsEnvoye
         ? "Code de vérification 2FA envoyé par SMS"
-        : "Service SMS indisponible — saisissez le code si le support vous l'a communiqué.",
+        : envoi.codeOtp
+          ? `SMS indisponible — votre code : ${envoi.codeOtp}`
+          : "Service SMS indisponible — saisissez le code si le support vous l'a communiqué.",
     };
   }
 
@@ -355,7 +373,11 @@ export async function demanderReinitialisationPin(telephone: string, smsAppHash?
   }
 
   const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
-  return { telephone: telephoneNormalise, smsEnvoye: envoi.smsEnvoye };
+  return {
+    telephone: telephoneNormalise,
+    smsEnvoye: envoi.smsEnvoye,
+    ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
+  };
 }
 
 /** Réinitialise le code PIN après vérification OTP */

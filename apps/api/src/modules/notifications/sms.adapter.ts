@@ -1,5 +1,6 @@
 import { env } from "../../config/env";
 import { envoyerSmsViaHubAfriSoft } from "./afrisoft-sms.hub";
+import { sanitizeSmsPourSerdiPay } from "./sms-sanitize";
 
 /**
  * Adaptateur SMS — simulation locale ou hub AfriSoft (sms.afri-soft.com) en production.
@@ -37,7 +38,8 @@ export async function envoyerSms(
   }
 
   try {
-    return await envoyerSmsViaHubAfriSoft({ telephone, text: message, purpose });
+    const text = sanitizeSmsPourSerdiPay(message);
+    return await envoyerSmsViaHubAfriSoft({ telephone, text, purpose });
   } catch (e) {
     if (critique) throw e;
     console.error(`[SMS] échec non bloquant (${purpose}) → ${telephone}:`, e);
@@ -50,12 +52,11 @@ export async function envoyerOtpSms(
   code: string,
   _smsAppHash?: string | null
 ): Promise<ResultatEnvoiSms> {
-  // Plain text uniquement : SerdiPay (via hub AfriSoft) rejette souvent `<#>`,
-  // `@domaine #code` et le hash SMS Retriever (MOVA_INT_001).
-  // Android autofill = SMS User Consent (dialogue 1 tap), pas Retriever.
-  // iOS = suggestion clavier oneTimeCode (Messages).
+  // Plain text GSM-friendly : SerdiPay (via hub) rejette `<#>`, `@domaine #code`
+  // et la ponctuation de phrase (. : ; ! ?). Autofill Android = User Consent ;
+  // iOS = suggestion clavier oneTimeCode.
   void _smsAppHash;
-  const message = `RESERVA: votre code de verification est ${code}. Valide 5 minutes.`;
+  const message = `RESERVA ${code} est votre code Valide 5 min`;
   return envoyerSms(telephone, message, "otp");
 }
 
