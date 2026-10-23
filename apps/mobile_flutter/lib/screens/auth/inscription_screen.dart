@@ -111,45 +111,30 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
       );
     } catch (e) {
       final msg = _msgErreur(e);
-      // Compte créé mais OTP non reçu / inscription inachevée → renvoyer le SMS
-      final deja = msg.toLowerCase().contains('déjà inscrit') ||
-          msg.toLowerCase().contains('deja inscrit') ||
-          msg.toLowerCase().contains('déjà associé');
-      final smsDown = msg.toLowerCase().contains('sms') &&
-          (msg.toLowerCase().contains('indisponible') ||
-              msg.toLowerCase().contains('impossible d\'envoyer'));
-      if (deja) {
-        try {
-          final smsHash = await obtenirSmsAppHash();
-          if (!mounted) return;
-          setState(() => _etape = 'OTP');
-          await Future<void>.delayed(const Duration(milliseconds: 300));
-          final data = await ApiAuth.renvoyerOtp(_telephoneCtrl.text.trim(), smsAppHash: smsHash);
-          if (mounted) {
-            final smsOk = data['smsEnvoye'] != false;
-            final codeEcran = data['codeOtp']?.toString();
-            if (codeEcran != null && codeEcran.length == 6) {
-              _codeOtpCtrl.text = codeEcran;
-            }
-            ToastWidget.show(
-              context,
-              smsOk
-                  ? 'Nouveau code SMS envoyé.'
-                  : codeEcran != null
-                      ? 'SMS indisponible — votre code : $codeEcran'
-                      : 'Service SMS momentanément indisponible. Saisissez le code dès réception.',
-              type: smsOk || codeEcran != null ? 'succes' : 'erreur',
-            );
-          }
-          return;
-        } catch (e2) {
-          if (mounted) {
-            // Garde l'écran OTP si le compte existe : l'utilisateur peut encore saisir un code.
-            setState(() => _etape = 'OTP');
-            ToastWidget.show(context, _msgErreur(e2), type: 'erreur');
-          }
-          return;
+      final msgLow = msg.toLowerCase();
+      // Compte déjà vérifié / inscrit → PAS de renvoi OTP (aucun SMS ne partirait).
+      // Avant : on appelait renvoyerOtp → « déjà vérifié » et l'utilisateur restait
+      // bloqué sur l'écran OTP sans jamais recevoir de SMS (alors que PIN oublié marche).
+      final dejaInscrit = msgLow.contains('déjà inscrit') ||
+          msgLow.contains('deja inscrit') ||
+          msgLow.contains('déjà associé') ||
+          msgLow.contains('deja associe') ||
+          msgLow.contains('connectez-vous avec votre pin') ||
+          msgLow.contains('pin oublié') ||
+          msgLow.contains('pin oublie');
+      final smsDown = msgLow.contains('sms') &&
+          (msgLow.contains('indisponible') || msgLow.contains('impossible d\'envoyer'));
+      if (dejaInscrit) {
+        if (mounted) {
+          setState(() => _etape = 'FORMULAIRE');
+          ToastWidget.show(
+            context,
+            'Ce numéro a déjà un compte. Connectez-vous avec votre PIN, ou utilisez « PIN oublié ».',
+            type: 'erreur',
+          );
+          context.go('/connexion');
         }
+        return;
       }
       if (mounted) {
         // Panne SMS : rester sur OTP pour saisir un code reçu / communiqué par support.
@@ -440,7 +425,18 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
                 );
               }
             } catch (e) {
-              if (mounted) ToastWidget.show(context, _msgErreur(e), type: 'erreur');
+              if (!mounted) return;
+              final err = _msgErreur(e).toLowerCase();
+              if (err.contains('déjà vérifié') || err.contains('deja verifie')) {
+                ToastWidget.show(
+                  context,
+                  'Numéro déjà vérifié. Connectez-vous ou utilisez « PIN oublié ».',
+                  type: 'erreur',
+                );
+                context.go('/connexion');
+                return;
+              }
+              ToastWidget.show(context, _msgErreur(e), type: 'erreur');
             }
           },
           child: const Text('Renvoyer le code', style: TextStyle(fontWeight: FontWeight.w600)),

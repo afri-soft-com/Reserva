@@ -47,14 +47,30 @@ class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
       if (!mounted) return;
       setState(() => _etape = 'OTP');
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      await ApiAuth.demanderReinitialisationPin(_telephoneCtrl.text.trim(), smsAppHash: hash);
-      if (mounted) {
-        ToastWidget.show(context, 'Code de réinitialisation envoyé par SMS.', type: 'succes');
+      final data = await ApiAuth.demanderReinitialisationPin(
+        _telephoneCtrl.text.trim(),
+        smsAppHash: hash,
+      );
+      if (!mounted) return;
+      final smsOk = data['smsEnvoye'] != false;
+      final codeEcran = data['codeOtp']?.toString();
+      if (codeEcran != null && codeEcran.length == 6) {
+        _codeCtrl.text = codeEcran;
       }
+      ToastWidget.show(
+        context,
+        smsOk
+            ? 'Code de réinitialisation envoyé par SMS.'
+            : codeEcran != null
+                ? 'SMS indisponible — votre code : $codeEcran'
+                : 'Service SMS momentanément indisponible. Réessayez dans une minute.',
+        type: smsOk || codeEcran != null ? 'succes' : 'erreur',
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _etape = 'TELEPHONE');
-        ToastWidget.show(context, e.toString(), type: 'erreur');
+        var msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+        ToastWidget.show(context, msg, type: 'erreur');
       }
     } finally {
       if (mounted) setState(() => _chargement = false);
