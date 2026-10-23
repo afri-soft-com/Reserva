@@ -349,26 +349,6 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w700, color: AppCouleurs.primaire),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      children: [
-                        TextButton(
-                          onPressed: () => context.push('/cgu'),
-                          child: const Text('CGU', style: TextStyle(fontWeight: FontWeight.w700)),
-                        ),
-                        const Text(' · ', style: TextStyle(color: AppCouleurs.texteSecondaire)),
-                        TextButton(
-                          onPressed: () => context.push('/confidentialite'),
-                          child: const Text('Confidentialité', style: TextStyle(fontWeight: FontWeight.w700)),
-                        ),
-                        const Text(' · ', style: TextStyle(color: AppCouleurs.texteSecondaire)),
-                        TextButton(
-                          onPressed: () => context.push('/manuel'),
-                          child: Text(pro ? 'Guide Pro' : 'Guide Client', style: const TextStyle(fontWeight: FontWeight.w700)),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),

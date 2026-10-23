@@ -229,12 +229,6 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
             ),
           ),
         ),
-        Center(
-          child: TextButton(
-            onPressed: () => context.push('/manuel'),
-            child: const Text('Manuel utilisateur', style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ),
       ],
     );
   }
