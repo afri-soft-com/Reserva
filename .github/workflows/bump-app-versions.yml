@@ -9,12 +9,16 @@ on:
       canaux:
         description: "mobile | web | all"
         required: true
-        default: "mobile"
+        default: "all"
         type: choice
         options:
           - mobile
           - web
           - all
+      min_soft:
+        description: "Version minSoft (ex 1.0.4). Vide = version pubspec/web du repo"
+        required: false
+        default: ""
 
 jobs:
   bump:
@@ -27,7 +31,12 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts && npm run db:generate
       - name: Bump minSoft
-        run: npm run sync:app-versions -- --canaux=${{ github.event.inputs.canaux }} --bump-min-soft
+        run: |
+          EXTRA=""
+          if [ -n "${{ github.event.inputs.min_soft }}" ]; then
+            EXTRA="--set-min-soft=${{ github.event.inputs.min_soft }}"
+          fi
+          npm run sync:app-versions -- --canaux=${{ github.event.inputs.canaux }} --bump-min-soft $EXTRA
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

@@ -25,7 +25,8 @@ const gateway = (process.env.GATEWAY_URL || "https://reserva-gateway.onrender.co
 const RENDER_API = "https://api.render.com/v1";
 
 const bumpMinSoft = process.argv.includes("--bump-min-soft");
-const verifyOnly = process.argv.includes("--verify-only") || !bumpMinSoft;
+const setMinSoftArg = process.argv.find((a) => a.startsWith("--set-min-soft="))?.split("=")[1];
+const verifyOnly = process.argv.includes("--verify-only") || (!bumpMinSoft && !setMinSoftArg);
 
 function argCanaux() {
   const raw = process.argv.find((a) => a.startsWith("--canaux="))?.split("=")[1] || "all";
@@ -221,9 +222,15 @@ async function main() {
   }
 
   const payload = {};
-  if (canaux.includes("client")) payload.client = { minSoft: mobileVer };
-  if (canaux.includes("pro")) payload.pro = { minSoft: mobileVer };
-  if (canaux.includes("web")) payload.web = { minSoft: webVer };
+  if (canaux.includes("client")) {
+    payload.client = { minSoft: setMinSoftArg || mobileVer };
+  }
+  if (canaux.includes("pro")) {
+    payload.pro = { minSoft: setMinSoftArg || mobileVer };
+  }
+  if (canaux.includes("web")) {
+    payload.web = { minSoft: setMinSoftArg || webVer };
+  }
 
   console.log("→ Bump minSoft bannières", gateway, payload);
 
@@ -252,9 +259,9 @@ async function main() {
 
   const apres = await lireVersionsProd();
   const minSoftAttendu = {};
-  if (canaux.includes("client")) minSoftAttendu.client = mobileVer;
-  if (canaux.includes("pro")) minSoftAttendu.pro = mobileVer;
-  if (canaux.includes("web")) minSoftAttendu.web = webVer;
+  if (canaux.includes("client")) minSoftAttendu.client = setMinSoftArg || mobileVer;
+  if (canaux.includes("pro")) minSoftAttendu.pro = setMinSoftArg || mobileVer;
+  if (canaux.includes("web")) minSoftAttendu.web = setMinSoftArg || webVer;
   assertConfigBannieres(apres, {
     exigerStoreUrls: canaux.includes("client") || canaux.includes("pro"),
     minSoftAttendu,
