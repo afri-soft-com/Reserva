@@ -105,11 +105,6 @@ class _OtpChampState extends State<OtpChamp> with WidgetsBindingObserver {
     }
   }
 
-  String? _extraireCode(String sms) {
-    final m = RegExp(r'\d{6}').firstMatch(sms);
-    return m?.group(0);
-  }
-
   void _syncDepuisParent() {
     final t = widget.controller.text.replaceAll(RegExp(r'\D'), '');
     if (t.length <= 6 && t != _lireCode()) {
