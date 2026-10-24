@@ -114,16 +114,16 @@ class _MainShellState extends State<MainShell> {
       NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: AppTraductions.t('accueil')),
       NavigationDestination(icon: const Icon(Icons.search_outlined), selectedIcon: const Icon(Icons.search), label: AppTraductions.t('recherche')),
       if (MainShellTabs.montreReservations(auth))
-        NavigationDestination(icon: const Icon(Icons.calendar_month_outlined), selectedIcon: const Icon(Icons.calendar_month), label: AppTraductions.t('reservations')),
+        NavigationDestination(icon: const Icon(Icons.calendar_month_outlined), selectedIcon: const Icon(Icons.calendar_month), label: AppTraductions.t('navReservations')),
       NavigationDestination(
         icon: BadgeNotification(child: const Icon(Icons.person_outline)),
         selectedIcon: BadgeNotification(child: const Icon(Icons.person)),
         label: AppTraductions.t('profil'),
       ),
       if (MainShellTabs.montreMessages(auth))
-        NavigationDestination(icon: const Icon(Icons.chat_outlined), selectedIcon: const Icon(Icons.chat), label: AppTraductions.t('messages')),
+        NavigationDestination(icon: const Icon(Icons.chat_outlined), selectedIcon: const Icon(Icons.chat), label: AppTraductions.t('navMessages')),
       if (MainShellTabs.montrePrestataire(auth))
-        NavigationDestination(icon: const Icon(Icons.dashboard_outlined), selectedIcon: const Icon(Icons.dashboard), label: AppTraductions.t('prestataire')),
+        NavigationDestination(icon: const Icon(Icons.dashboard_outlined), selectedIcon: const Icon(Icons.dashboard), label: AppTraductions.t('navPrestataire')),
       if (MainShellTabs.montreAdmin(auth))
         const NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), selectedIcon: Icon(Icons.admin_panel_settings), label: 'Admin'),
     ];
@@ -139,23 +139,37 @@ class _MainShellState extends State<MainShell> {
     ];
 
     final safeIndex = _index.clamp(0, pages.length - 1);
+    final navBg = Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? AppCouleurs.blanc;
 
     return Scaffold(
       body: ConnectivityBanner(
         // IndexedStack : pas de swipe accidentel, état des onglets conservé
         child: IndexedStack(index: safeIndex, children: pages),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: safeIndex,
-        onDestinationSelected: (i) {
-          if (i == safeIndex) return;
-          setState(() => _index = i);
-        },
-        destinations: destinations,
-        height: 68,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        backgroundColor: Theme.of(context).bottomNavigationBarTheme.backgroundColor ?? AppCouleurs.blanc,
-        indicatorColor: AppCouleurs.primaireClair,
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          backgroundColor: navBg,
+          indicatorColor: AppCouleurs.primaireClair,
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return TextStyle(
+              fontSize: 11,
+              height: 1.0,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? AppCouleurs.primaire : AppCouleurs.texteSecondaire,
+            );
+          }),
+        ),
+        child: NavigationBar(
+          selectedIndex: safeIndex,
+          onDestinationSelected: (i) {
+            if (i == safeIndex) return;
+            setState(() => _index = i);
+          },
+          destinations: destinations,
+          height: 64,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        ),
       ),
     );
   }

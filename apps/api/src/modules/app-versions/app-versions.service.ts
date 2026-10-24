@@ -15,17 +15,17 @@ export type ConfigVersionCanal = {
 
 export type ConfigVersions = Record<CanalVersion, ConfigVersionCanal>;
 
-/** Seuils par défaut : minSoft = dernière version store connue (pousse les builds plus anciens). */
+/** Seuils par défaut (seed uniquement si clé absente — n'écrase jamais l'admin). */
 const DEFAUTS: ConfigVersions = {
   client: {
-    minSoft: "1.0.1",
-    minForce: "1.0.0",
+    minSoft: "1.0.3",
+    minForce: "1.0.2",
     storeUrlAndroid: "https://play.google.com/store/apps/details?id=com.reserva.client",
     storeUrlIos: "https://apps.apple.com/app/id6820885784",
   },
   pro: {
-    minSoft: "1.0.1",
-    minForce: "1.0.0",
+    minSoft: "1.0.3",
+    minForce: "1.0.2",
     storeUrlAndroid: "https://play.google.com/store/apps/details?id=com.reserva.pro",
     storeUrlIos: "https://apps.apple.com/app/id6820887223",
   },

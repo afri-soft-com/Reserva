@@ -248,8 +248,34 @@ jobs:
     concurrency:
       group: deploy-prod
       cancel-in-progress: false
+    outputs:
+      skip_render: ${{ steps.detect.outputs.skip_render }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Détecter si Render est nécessaire
+        id: detect
+        run: |
+          set -euo pipefail
+          BEFORE="${{ github.event.before }}"
+          if [ -z "${BEFORE:-}" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "skip_render=false" >> "$GITHUB_OUTPUT"
+            echo "→ Premier push / before inconnu — Render requis"
+            exit 0
+          fi
+          # Changement mobile/docs/CI stores seuls → ne pas redéployer l'API
+          # (évite blip gateway qui fait « casser » les bannières MAJ côté apps).
+          if git diff --name-only "$BEFORE" "${{ github.sha }}" \
+            | grep -qE '^(apps/api/|apps/web/|packages/|scripts/(migrate|sync-app|set-app|lib/publier|ensure-prod)|package\.json|package-lock\.json)'; then
+            echo "skip_render=false" >> "$GITHUB_OUTPUT"
+            echo "→ Changements backend/web — Render requis"
+          else
+            echo "skip_render=true" >> "$GITHUB_OUTPUT"
+            echo "→ Uniquement mobile/CI hors API — skip Render (seuils bannières inchangés)"
+          fi
       - name: Trigger Render deploys (API)
+        if: steps.detect.outputs.skip_render != 'true'
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           SRV_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
@@ -291,6 +317,9 @@ jobs:
           deploy gateway "$SRV_GATEWAY"
           deploy web "$SRV_WEB"
           echo "✓ Déploiements Render déclenchés via API"
+      - name: Skip Render
+        if: steps.detect.outputs.skip_render == 'true'
+        run: echo "✓ Pas de redeploy Render — gateway et /app/versions stables"
 
   wait-render:
     name: Attendre Render Ready
@@ -301,13 +330,20 @@ jobs:
       group: deploy-prod
       cancel-in-progress: false
     steps:
+      - name: Skip wait (pas de redeploy)
+        if: needs.deploy-render.outputs.skip_render == 'true'
+        run: echo "✓ Skip wait Render"
       - uses: actions/checkout@v4
+        if: needs.deploy-render.outputs.skip_render != 'true'
       - uses: actions/setup-node@v4
+        if: needs.deploy-render.outputs.skip_render != 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm ci --ignore-scripts
+      - if: needs.deploy-render.outputs.skip_render != 'true'
+        run: npm ci --ignore-scripts
       - name: Wait services live + ping gateway
+        if: needs.deploy-render.outputs.skip_render != 'true'
         run: npm run wait:render
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
