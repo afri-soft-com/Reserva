@@ -412,9 +412,9 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
   Widget _ligne(String label, String value, {TextStyle? valeurStyle}) {
     return Row(
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+        Text(label, style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
         const Spacer(),
-        Flexible(child: Text(value, textAlign: TextAlign.right, style: valeurStyle ?? const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.texte))),
+        Flexible(child: Text(value, textAlign: TextAlign.right, style: valeurStyle ?? TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.texte))),
       ],
     );
   }

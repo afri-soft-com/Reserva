@@ -59,7 +59,7 @@ class _TransportBilletScreenState extends State<TransportBilletScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Text('${b['numero']}', style: const TextStyle(fontWeight: FontWeight.w700, color: AppCouleurs.texteSecondaire)),
+            Text('${b['numero']}', style: TextStyle(fontWeight: FontWeight.w700, color: AppCouleurs.texteSecondaire)),
             Text('${b['origine']} → ${b['destination']}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
             Text('${b['dateDepart']} ${b['heureDepart']} · ${b['operateurNom']}'),
             Text('Statut : ${b['statut']} · ${b['places']} place(s)'),

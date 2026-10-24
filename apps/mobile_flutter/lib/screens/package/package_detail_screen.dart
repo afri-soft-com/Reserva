@@ -202,14 +202,14 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_data?['nom'] as String? ?? 'Package',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
                 if (prestataire.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Row(children: [
-                    const Icon(Icons.business, size: 16, color: AppCouleurs.texteSecondaire),
+                    Icon(Icons.business, size: 16, color: AppCouleurs.texteSecondaire),
                     const SizedBox(width: 4),
                     Expanded(child: Text(prestataire['nomEntreprise'] as String? ?? '',
-                      style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire))),
+                      style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire))),
                   ]),
                 ],
                 const SizedBox(height: 10),
@@ -218,7 +218,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
                 if (_data?['description'] != null && (_data?['description'] as String).isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Text(_data?['description'] as String,
-                    style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+                    style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
                 ],
               ],
             ),
@@ -227,7 +227,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
           const Text('Composez votre réservation', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           if (services.isEmpty)
-            const Carte(child: Padding(
+            Carte(child: Padding(
               padding: EdgeInsets.all(16),
               child: Text('Ce package ne contient aucun service', style: TextStyle(color: AppCouleurs.texteSecondaire)),
             ))
@@ -239,7 +239,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
               Text(
                 'Total à régler : ${_formaterMontant(_totalReservation, _data?['devise'] as String? ?? 'CDF')}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.texte),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.texte),
               ),
               const SizedBox(height: 8),
             ],
@@ -291,7 +291,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
               ],
             ),
             if (!inclus)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 44, bottom: 8),
                 child: Text('Service exclu de la réservation', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
               )

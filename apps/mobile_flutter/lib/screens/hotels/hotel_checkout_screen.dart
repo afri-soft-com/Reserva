@@ -87,7 +87,7 @@ class _HotelCheckoutScreenState extends State<HotelCheckoutScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text('${s['hotelNom']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-          Text('${s['chambreNom']} · ${s['tarifNom']}', style: const TextStyle(color: AppCouleurs.texteSecondaire)),
+          Text('${s['chambreNom']} · ${s['tarifNom']}', style: TextStyle(color: AppCouleurs.texteSecondaire)),
           const SizedBox(height: 8),
           Text('${s['arrivee']} → ${s['depart']} · ${s['nuits']} nuit(s)'),
           const SizedBox(height: 8),

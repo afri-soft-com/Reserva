@@ -144,7 +144,7 @@ class _DetailCarteCadeauScreenState extends State<DetailCarteCadeauScreen> {
             Text(_formater((c['solde'] as num?)?.toDouble() ?? 0, c['devise'] as String? ?? 'CDF'),
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
             const SizedBox(height: 4),
-            Text('solde restant', style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+            Text('solde restant', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -227,7 +227,7 @@ class _DetailCarteCadeauScreenState extends State<DetailCarteCadeauScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+        Text(label, style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
         Text(valeur, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       ],
     );
@@ -248,7 +248,7 @@ class _DetailCarteCadeauScreenState extends State<DetailCarteCadeauScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Code ${c['code']} — ${_formater((c['solde'] as num?)?.toDouble() ?? 0, c['devise'] as String? ?? 'CDF')}',
-                style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
               const SizedBox(height: 12),
               TextField(
                 controller: ctrl,

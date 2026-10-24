@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../theme.dart';
 
 class ThemeProvider extends ChangeNotifier {
   static const String _cleTheme = 'reserva_theme_mode';
@@ -12,6 +13,10 @@ class ThemeProvider extends ChangeNotifier {
   bool get estSombre => _mode == ThemeMode.dark;
   bool get initialise => _initialise;
 
+  void _syncPalette() {
+    AppCouleurs.definirModeSombre(_mode == ThemeMode.dark);
+  }
+
   Future<void> initialiser() async {
     final valeur = await _storage.read(key: _cleTheme);
     if (valeur == 'dark') {
@@ -19,12 +24,14 @@ class ThemeProvider extends ChangeNotifier {
     } else {
       _mode = ThemeMode.light;
     }
+    _syncPalette();
     _initialise = true;
     notifyListeners();
   }
 
   Future<void> basculer() async {
     _mode = _mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _syncPalette();
     notifyListeners();
     try {
       await _storage.write(key: _cleTheme, value: _mode == ThemeMode.dark ? 'dark' : 'light');
@@ -33,7 +40,10 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> definir(ThemeMode mode) async {
     _mode = mode;
-    await _storage.write(key: _cleTheme, value: mode == ThemeMode.dark ? 'dark' : 'light');
+    _syncPalette();
     notifyListeners();
+    try {
+      await _storage.write(key: _cleTheme, value: mode == ThemeMode.dark ? 'dark' : 'light');
+    } catch (_) {}
   }
 }

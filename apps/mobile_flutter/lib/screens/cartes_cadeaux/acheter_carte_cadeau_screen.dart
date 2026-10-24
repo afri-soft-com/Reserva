@@ -58,7 +58,7 @@ class _AcheterCarteCadeauScreenState extends State<AcheterCarteCadeauScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Offrez une carte cadeau utilisable pour toute réservation RESERVA.',
+            Text('Offrez une carte cadeau utilisable pour toute réservation RESERVA.',
               style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 24),
             TextField(
@@ -91,7 +91,7 @@ class _AcheterCarteCadeauScreenState extends State<AcheterCarteCadeauScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text('Si renseigné, la carte sera associée au compte du bénéficiaire.',
+            Text('Si renseigné, la carte sera associée au compte du bénéficiaire.',
               style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 24),
             SizedBox(

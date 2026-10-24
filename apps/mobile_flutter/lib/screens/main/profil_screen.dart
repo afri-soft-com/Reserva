@@ -33,7 +33,7 @@ class ProfilScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 40,
               backgroundColor: AppCouleurs.primaireClair,
               child: Icon(Icons.person, size: 40, color: AppCouleurs.primaire),
@@ -51,7 +51,7 @@ class ProfilScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            Text(user?.telephone ?? '', style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+            Text(user?.telephone ?? '', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 24),
             Carte(
               child: Column(
@@ -135,13 +135,13 @@ class ProfilScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1, indent: 56),
                   ListTile(
-                    leading: const Icon(Icons.gavel_outlined, color: AppCouleurs.texteSecondaire),
+                    leading: Icon(Icons.gavel_outlined, color: AppCouleurs.texteSecondaire),
                     title: const Text('Conditions générales (CGU)', style: TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/cgu'),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.privacy_tip_outlined, color: AppCouleurs.texteSecondaire),
+                    leading: Icon(Icons.privacy_tip_outlined, color: AppCouleurs.texteSecondaire),
                     title: const Text('Politique de confidentialité', style: TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/confidentialite'),
@@ -270,8 +270,8 @@ class ProfilScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () => _showDevenirPrestataireDialog(context),
-                  icon: const Icon(Icons.business_center, color: AppCouleurs.blanc),
-                  label: const Text('Devenir prestataire', style: TextStyle(color: AppCouleurs.blanc)),
+                  icon: Icon(Icons.business_center, color: AppCouleurs.blanc),
+                  label: Text('Devenir prestataire', style: TextStyle(color: AppCouleurs.blanc)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppCouleurs.primaire,
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -321,8 +321,8 @@ class ProfilScreen extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
-            Text(value, style: const TextStyle(fontSize: 15, color: AppCouleurs.texte)),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
+            Text(value, style: TextStyle(fontSize: 15, color: AppCouleurs.texte)),
           ],
         ),
       ],
@@ -675,7 +675,7 @@ void _showMesAvis(BuildContext context, List<Avis> avis) {
             Text('Mes avis (${avis.length})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             if (avis.isEmpty)
-              const Expanded(child: Center(child: Text('Aucun avis pour le moment.',
+              Expanded(child: Center(child: Text('Aucun avis pour le moment.',
                 style: TextStyle(color: AppCouleurs.texteSecondaire))))
             else
               Expanded(
@@ -697,7 +697,7 @@ void _showMesAvis(BuildContext context, List<Avis> avis) {
                       title: Text(a.commentaire ?? 'Sans commentaire',
                         style: const TextStyle(fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
                       subtitle: Text(a.creeLe.substring(0, 10),
-                        style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                        style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                     );
                   },
                 ),

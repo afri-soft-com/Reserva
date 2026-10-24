@@ -168,13 +168,13 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                     Text(
                       pro ? 'Bienvenue sur RESERVA Pro' : 'Bienvenue sur RESERVA',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppCouleurs.texte, height: 1.2),
+                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppCouleurs.texte, height: 1.2),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       AppFlavorConfig.sloganAuth,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire, height: 1.4),
+                      style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire, height: 1.4),
                     ),
                     const SizedBox(height: 28),
                     Champ(
@@ -284,7 +284,7 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppCouleurs.primaire,
                           backgroundColor: AppCouleurs.blanc,
-                          side: const BorderSide(color: AppCouleurs.bordure),
+                          side: BorderSide(color: AppCouleurs.bordure),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                         child: _chargementGoogle

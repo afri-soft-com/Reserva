@@ -40,7 +40,7 @@ class _TarificationsScreenState extends State<TarificationsScreen> {
     if (_chargement) return const Center(child: CircularProgressIndicator());
 
     return _configs.isEmpty
-        ? const Center(child: Text('Aucune configuration.', style: TextStyle(color: AppCouleurs.texteSecondaire)))
+        ? Center(child: Text('Aucune configuration.', style: TextStyle(color: AppCouleurs.texteSecondaire)))
         : ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: _configs.length,
@@ -55,11 +55,11 @@ class _TarificationsScreenState extends State<TarificationsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(c['cle'] as String, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'monospace', color: AppCouleurs.texte)),
+                            Text(c['cle'] as String, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'monospace', color: AppCouleurs.texte)),
                             const SizedBox(height: 2),
                             Text(c['valeur'] as String, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppCouleurs.primaire)),
                             if (c['description'] != null && (c['description'] as String).isNotEmpty)
-                              Text(c['description'] as String, style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                              Text(c['description'] as String, style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                           ],
                         ),
                       ),

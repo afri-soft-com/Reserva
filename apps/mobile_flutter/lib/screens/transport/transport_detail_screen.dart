@@ -66,7 +66,7 @@ class _TransportDetailScreenState extends State<TransportDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('${t['heureDepart']} · ${t['dateDepart']}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-            Text('${op['nom']} · ${t['confort']}', style: const TextStyle(color: AppCouleurs.texteSecondaire)),
+            Text('${op['nom']} · ${t['confort']}', style: TextStyle(color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 12),
             Text('${widget.places} place(s) · ${total.toStringAsFixed(0)} FC', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppCouleurs.primaire)),
             const SizedBox(height: 8),

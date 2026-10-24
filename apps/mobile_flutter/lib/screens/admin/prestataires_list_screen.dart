@@ -88,7 +88,7 @@ class _PrestatairesListScreenState extends State<PrestatairesListScreen> {
               children: [
                 Icon(Icons.business, size: 48, color: AppCouleurs.texteSecondaire),
                 const SizedBox(height: 12),
-                const Text('Aucun prestataire', style: TextStyle(color: AppCouleurs.texteSecondaire)),
+                Text('Aucun prestataire', style: TextStyle(color: AppCouleurs.texteSecondaire)),
               ],
             ),
           ))
@@ -127,9 +127,9 @@ class _PrestatairesListScreenState extends State<PrestatairesListScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text('${user['nom'] ?? ''} • ${user['telephone'] ?? ''}',
-                        style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                        style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                       Text('${p['ville'] ?? ''}, ${p['quartier'] ?? ''}',
-                        style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                        style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                       const SizedBox(height: 4),
                       Text(_libelleKyc(kyc),
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _couleurKyc(kyc))),
@@ -336,7 +336,7 @@ Widget _ligneInfo(String label, String valeur) {
     padding: const EdgeInsets.only(bottom: 4),
     child: RichText(
       text: TextSpan(
-        style: const TextStyle(fontSize: 13, color: AppCouleurs.texte),
+        style: TextStyle(fontSize: 13, color: AppCouleurs.texte),
         children: [
           TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
           TextSpan(text: valeur),

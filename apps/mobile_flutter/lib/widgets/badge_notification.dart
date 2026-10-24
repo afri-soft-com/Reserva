@@ -40,7 +40,7 @@ class _BadgeNotificationState extends State<BadgeNotification> {
   Widget build(BuildContext context) {
     return Badge(
       isLabelVisible: _compteur > 0,
-      label: Text('$_compteur', style: const TextStyle(fontSize: 10, color: AppCouleurs.blanc)),
+      label: Text('$_compteur', style: TextStyle(fontSize: 10, color: AppCouleurs.blanc)),
       backgroundColor: widget.couleur ?? AppCouleurs.alerte,
       child: widget.child,
     );

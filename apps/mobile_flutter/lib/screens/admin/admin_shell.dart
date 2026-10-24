@@ -20,7 +20,7 @@ class AdminShell extends StatelessWidget {
         backgroundColor: AppCouleurs.fond,
         appBar: AppBar(
           title: const Text('Administration'),
-          bottom: const TabBar(
+          bottom: TabBar(
             isScrollable: true,
             labelColor: AppCouleurs.primaire,
             unselectedLabelColor: AppCouleurs.texteSecondaire,

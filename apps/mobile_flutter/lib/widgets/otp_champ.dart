@@ -203,7 +203,7 @@ class _OtpChampState extends State<OtpChamp> with WidgetsBindingObserver {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               widget.libelle!,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppCouleurs.texte),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppCouleurs.texte),
             ),
           ),
         AutofillGroup(
@@ -262,7 +262,7 @@ class _OtpChampState extends State<OtpChamp> with WidgetsBindingObserver {
         const SizedBox(height: 6),
         Text(
           aide,
-          style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
+          style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
         ),
       ],
     );

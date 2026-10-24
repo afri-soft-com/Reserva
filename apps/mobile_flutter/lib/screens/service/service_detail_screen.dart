@@ -304,21 +304,21 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(service.nom, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
+          Text(service.nom, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.business, size: 16, color: AppCouleurs.texteSecondaire),
+              Icon(Icons.business, size: 16, color: AppCouleurs.texteSecondaire),
               const SizedBox(width: 4),
-              Expanded(child: Text(prestataire.nomEntreprise, style: const TextStyle(fontSize: 15, color: AppCouleurs.texteSecondaire))),
+              Expanded(child: Text(prestataire.nomEntreprise, style: TextStyle(fontSize: 15, color: AppCouleurs.texteSecondaire))),
             ],
           ),
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.location_on, size: 16, color: AppCouleurs.texteSecondaire),
+              Icon(Icons.location_on, size: 16, color: AppCouleurs.texteSecondaire),
               const SizedBox(width: 4),
-              Expanded(child: Text('${prestataire.ville}, ${prestataire.quartier}', style: const TextStyle(fontSize: 15, color: AppCouleurs.texteSecondaire))),
+              Expanded(child: Text('${prestataire.ville}, ${prestataire.quartier}', style: TextStyle(fontSize: 15, color: AppCouleurs.texteSecondaire))),
             ],
           ),
           const SizedBox(height: 12),
@@ -338,7 +338,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
           if (service.description != null && service.description!.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(service.description!, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+            Text(service.description!, style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
           ],
           const SizedBox(height: 16),
           const Divider(height: 1),
@@ -369,14 +369,14 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.check_circle_outline, size: 16, color: AppCouleurs.texteSecondaire),
+        Icon(Icons.check_circle_outline, size: 16, color: AppCouleurs.texteSecondaire),
         const SizedBox(width: 8),
         Expanded(
           child: Text.rich(
             TextSpan(
               children: [
                 TextSpan(text: '$titre : ', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                TextSpan(text: valeur, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                TextSpan(text: valeur, style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
               ],
             ),
           ),
@@ -430,11 +430,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                           if (description != null && description.isNotEmpty) ...[
                             const SizedBox(height: 2),
                             Text(description, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                              style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                           ],
                           const SizedBox(height: 2),
           Text(AppTraductions.t('servicesInclus').replaceAll('%s', '${services.length}'),
-            style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+            style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                         ],
                       ),
                     ),
@@ -477,7 +477,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(AppTraductions.t('aucunCreneauDisponible'),
-                      style: const TextStyle(color: AppCouleurs.texteSecondaire)),
+                      style: TextStyle(color: AppCouleurs.texteSecondaire)),
                     const SizedBox(height: 12),
                     Bouton(
                       titre: AppTraductions.t('prevenirCreneau'),
@@ -493,7 +493,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           Carte(child: Padding(
             padding: const EdgeInsets.all(16),
             child: Text(AppTraductions.t('aucunCreneauDisponible'),
-              style: const TextStyle(color: AppCouleurs.texteSecondaire)),
+              style: TextStyle(color: AppCouleurs.texteSecondaire)),
           ))
         else
           ...disponibles.map((c) => Padding(
@@ -520,7 +520,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                                 Text('${c.debut.substring(11, 16)} - ${c.fin.substring(11, 16)}',
                                   style: const TextStyle(fontWeight: FontWeight.w600)),
                                 Text(c.debut.substring(0, 10),
-                                  style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                  style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                               ],
                             ),
                           ),
@@ -566,7 +566,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                       ),
                     )
                   else
-                    const Icon(Icons.block, color: AppCouleurs.texteSecondaire),
+                    Icon(Icons.block, color: AppCouleurs.texteSecondaire),
                 ],
               ),
             ),
@@ -581,7 +581,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             child: Carte(
               child: Row(
                 children: [
-                  const Icon(Icons.event_busy, color: AppCouleurs.texteSecondaire, size: 20),
+                  Icon(Icons.event_busy, color: AppCouleurs.texteSecondaire, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -590,7 +590,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                         Text('${c.debut.substring(11, 16)} - ${c.fin.substring(11, 16)}',
                           style: const TextStyle(fontWeight: FontWeight.w600)),
                         Text('${c.debut.substring(0, 10)} • ${AppTraductions.t('bloqueParPrestataire')}',
-                          style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                          style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                       ],
                     ),
                   ),
@@ -628,7 +628,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     )),
                   ),
                   Text('${prestataire.nombreAvis} ${AppTraductions.t('avis')}',
-                    style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                    style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                 ],
               ),
               const SizedBox(width: 20),
@@ -643,7 +643,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                       child: Row(
                         children: [
                           SizedBox(width: 24, child: Text('$note', textAlign: TextAlign.right,
-                            style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire))),
+                            style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire))),
                           const SizedBox(width: 6),
                           const Icon(Icons.star, size: 12, color: AppCouleurs.accent),
                           const SizedBox(width: 6),
@@ -660,7 +660,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                           ),
                           const SizedBox(width: 6),
                           SizedBox(width: 20, child: Text('$count',
-                            style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire))),
+                            style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire))),
                         ],
                       ),
                     );
@@ -723,7 +723,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                   ),
                   if (avis.commentaire != null && avis.commentaire!.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text(avis.commentaire!, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                    Text(avis.commentaire!, style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                   ],
                 ],
               ),
@@ -760,14 +760,14 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(sim.nom, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                          Text(sim.nomEntreprise, style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                          Text(sim.nomEntreprise, style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                         ],
                       ),
                     ),
                     Text(_formaterMontant(sim.prix, sim.devise),
                       style: const TextStyle(fontWeight: FontWeight.w700, color: AppCouleurs.primaire)),
                     const SizedBox(width: 4),
-                    const Icon(Icons.chevron_right, size: 18, color: AppCouleurs.texteSecondaire),
+                    Icon(Icons.chevron_right, size: 18, color: AppCouleurs.texteSecondaire),
                   ],
                 ),
               ),
@@ -816,7 +816,7 @@ void _showDetailPackage(BuildContext context, Map<String, dynamic> pack) {
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
             if (description != null && description.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(description, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+              Text(description, style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
             ],
             const SizedBox(height: 16),
             Text(AppTraductions.t('servicesInclusTitre').replaceAll('%s', '${services.length}'),
@@ -845,7 +845,7 @@ void _showDetailPackage(BuildContext context, Map<String, dynamic> pack) {
             ),
             const SizedBox(height: 12),
             Text(AppTraductions.t('forfaitInfo'),
-              style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+              style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 16),
             Bouton(
               titre: AppTraductions.t('reserverPackage'),
@@ -921,7 +921,7 @@ void _showAllAvis(BuildContext context, List<dynamic> avisList) {
                         if (a.commentaire != null && a.commentaire!.isNotEmpty)
                           Text(a.commentaire!, style: const TextStyle(fontSize: 13), maxLines: 3, overflow: TextOverflow.ellipsis),
                         Text(a.creeLe.substring(0, 10),
-                          style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                          style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                       ],
                     ),
                   );

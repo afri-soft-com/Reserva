@@ -275,7 +275,7 @@ class _KycScreenState extends State<KycScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Statut du dossier', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                      Text('Statut du dossier', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                       Text(_libelleStatut(statut),
                           style: TextStyle(fontWeight: FontWeight.w700, color: _couleurStatut(statut))),
                     ],
@@ -419,7 +419,7 @@ class _KycScreenState extends State<KycScreen> {
               ),
             ),
           ] else if (statut == StatutKyc.enRevue) ...[
-            const Text(
+            Text(
               'Votre dossier est en cours de vérification par l\'équipe RESERVA.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppCouleurs.texteSecondaire),

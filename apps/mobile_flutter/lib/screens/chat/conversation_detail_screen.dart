@@ -246,7 +246,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
             child: _chargement
                 ? const Center(child: CircularProgressIndicator())
                 : _messages.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -298,7 +298,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                                   Padding(
                                     padding: const EdgeInsets.only(left: 4, bottom: 2),
                                     child: Text(nom,
-                                        style: const TextStyle(fontSize: 11,
+                                        style: TextStyle(fontSize: 11,
                                             color: AppCouleurs.texteSecondaire,
                                             fontWeight: FontWeight.w600)),
                                   ),
@@ -377,7 +377,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                                               (m['lu'] as bool? ?? false) ? Icons.done_all : Icons.done,
                                               size: 13,
                                               color: estMoi
-                                                  ? ((m['lu'] as bool? ?? false) ? const Color(0xFFB7E3FA) : AppCouleurs.blanc.withValues(alpha: 0.6))
+                                                  ? ((m['lu'] as bool? ?? false) ? Color(0xFFB7E3FA) : AppCouleurs.blanc.withValues(alpha: 0.6))
                                                   : AppCouleurs.texteSecondaire,
                                             ),
                                           ],
@@ -397,12 +397,12 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
               alignment: Alignment.centerLeft,
               padding: const EdgeInsets.only(left: 16, bottom: 4),
               child: Text('tape...',
-                  style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire, fontStyle: FontStyle.italic)),
+                  style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire, fontStyle: FontStyle.italic)),
             ),
           if (_uploadImage)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -436,7 +436,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                       color: AppCouleurs.fond,
                       borderRadius: BorderRadius.circular(22),
                     ),
-                    child: const Icon(Icons.image_outlined, color: AppCouleurs.texteSecondaire, size: 22),
+                    child: Icon(Icons.image_outlined, color: AppCouleurs.texteSecondaire, size: 22),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -468,11 +468,11 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: _envoi
-                        ? const Padding(
+                        ? Padding(
                             padding: EdgeInsets.all(12),
                             child: CircularProgressIndicator(strokeWidth: 2, color: AppCouleurs.blanc),
                           )
-                        : const Icon(Icons.send, color: AppCouleurs.blanc, size: 20),
+                        : Icon(Icons.send, color: AppCouleurs.blanc, size: 20),
                   ),
                 ),
               ],

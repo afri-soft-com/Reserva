@@ -240,9 +240,9 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_titreEtape, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppCouleurs.texte)),
+                    Text(_titreEtape, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppCouleurs.texte)),
                     const SizedBox(height: 8),
-                    Text(_sousTitreEtape, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire, height: 1.4)),
+                    Text(_sousTitreEtape, style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire, height: 1.4)),
                     const SizedBox(height: 24),
                     if (_etape == 'FORMULAIRE') _etapeFormulaire(),
                     if (_etape == 'OTP') _etapeOtp(),
@@ -350,7 +350,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Code envoyé au ${_telephoneCtrl.text}', style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+        Text('Code envoyé au ${_telephoneCtrl.text}', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
         const SizedBox(height: 12),
         OtpChamp(
           libelle: 'Code de vérification',
@@ -412,7 +412,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
             color: AppCouleurs.succesClair,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Text(
+          child: Text(
             'Mémorisez ce PIN : il remplace les SMS pour chaque connexion future.',
             style: TextStyle(fontSize: 13, color: AppCouleurs.texte, height: 1.35),
           ),

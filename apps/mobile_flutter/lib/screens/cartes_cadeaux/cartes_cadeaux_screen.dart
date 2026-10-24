@@ -75,7 +75,7 @@ class _CartesCadeauxScreenState extends State<CartesCadeauxScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Solde disponible', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                              Text('Solde disponible', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                               const SizedBox(height: 2),
                               Text(_formater(_soldeTotal, 'CDF'),
                                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
@@ -152,7 +152,7 @@ class _CartesCadeauxScreenState extends State<CartesCadeauxScreen> {
                             if (c['dateExpiration'] != null) ...[
                               const SizedBox(height: 4),
                               Text('Expire le ${(c['dateExpiration'] as String).substring(0, 10)}',
-                                style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                             ],
                             const SizedBox(height: 6),
                             GestureDetector(

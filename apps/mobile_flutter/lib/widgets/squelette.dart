@@ -89,7 +89,7 @@ class EcranVide extends StatelessWidget {
           children: [
             Icon(icone, size: 56, color: AppCouleurs.texteSecondaire.withValues(alpha: 0.4)),
             const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
+            Text(message, textAlign: TextAlign.center, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
             if (sousTitre != null) ...[
               const SizedBox(height: 8),
               Text(sousTitre!, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire.withValues(alpha: 0.7))),

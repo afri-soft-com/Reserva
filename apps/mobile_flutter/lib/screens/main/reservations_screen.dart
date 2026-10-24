@@ -186,7 +186,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                                         Text('${b['numero']} · BUS', style: const TextStyle(fontWeight: FontWeight.w700)),
                                         Text('${b['origine']} → ${b['destination']}', style: const TextStyle(fontSize: 15)),
                                         Text('${b['dateDepart']} ${b['heureDepart']} · ${b['statut']}',
-                                          style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                          style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                                       ],
                                     ),
                                   ),
@@ -207,7 +207,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                                         Text('${s['numero']} · HÔTEL', style: const TextStyle(fontWeight: FontWeight.w700)),
                                         Text('${s['hotelNom']}', style: const TextStyle(fontSize: 15)),
                                         Text('${s['arrivee']} → ${s['depart']} · ${s['statut']}',
-                                          style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                          style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                                       ],
                                     ),
                                   ),
@@ -232,7 +232,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                                             child: Row(
                                               children: [
                                                 Flexible(
-                                                  child: Text(r.reservation.numero, style: const TextStyle(fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
+                                                  child: Text(r.reservation.numero, style: TextStyle(fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
                                                 ),
                                                 if (r.reservation.recurrenceGroupeId != null) ...[
                                                   const SizedBox(width: 6),
@@ -246,9 +246,9 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                                         ],
                                       ),
                                       const SizedBox(height: 8),
-                                      Text(r.service.nom, style: const TextStyle(fontSize: 15, color: AppCouleurs.texte)),
+                                      Text(r.service.nom, style: TextStyle(fontSize: 15, color: AppCouleurs.texte)),
                                       const SizedBox(height: 4),
-                                      Text(r.prestataire.nomEntreprise, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                      Text(r.prestataire.nomEntreprise, style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                                       const SizedBox(height: 4),
                                       Text(
                                         '${_formaterMontant(r.reservation.montantTotal, r.reservation.devise)} · ${r.reservation.montantPaye > 0 ? "${AppTraductions.t('paye')}: ${_formaterMontant(r.reservation.montantPaye, r.reservation.devise)}" : AppTraductions.t('nonPaye')}',

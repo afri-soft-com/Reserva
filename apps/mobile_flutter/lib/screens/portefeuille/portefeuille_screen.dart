@@ -138,7 +138,7 @@ class _PortefeuilleScreenState extends State<PortefeuilleScreen> {
             const SizedBox(height: 6),
             Text(valeur, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppCouleurs.texte)),
             const SizedBox(height: 2),
-            Text(titre, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+            Text(titre, style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
           ],
         ),
       ),
@@ -204,7 +204,7 @@ class _PortefeuilleScreenState extends State<PortefeuilleScreen> {
                 children: [
                   Text(l.libelle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
-                  Text(dateTexte, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                  Text(dateTexte, style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                 ],
               ),
             ),

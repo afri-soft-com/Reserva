@@ -110,7 +110,7 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
               ),
             ),
           const SizedBox(height: 12),
-          Text('${h['ville']}, ${h['quartier']}', style: const TextStyle(color: AppCouleurs.texteSecondaire)),
+          Text('${h['ville']}, ${h['quartier']}', style: TextStyle(color: AppCouleurs.texteSecondaire)),
           Text('${h['description'] ?? ''}', style: const TextStyle(fontSize: 14)),
           const SizedBox(height: 8),
           Text('Note ${(h['noteMoyenne'] as num?)?.toStringAsFixed(1)} · Propreté ${(h['noteProprete'] as num?)?.toStringAsFixed(1)} · Emplacement ${(h['noteEmplacement'] as num?)?.toStringAsFixed(1)}',
@@ -137,7 +137,7 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('${c['nom']}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                  Text('${c['lits']} · reste ${c['chambresRestantes'] ?? '-'}', style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                  Text('${c['lits']} · reste ${c['chambresRestantes'] ?? '-'}', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                   if (!dispo) const Padding(padding: EdgeInsets.only(top: 8), child: Text('Complet', style: TextStyle(color: AppCouleurs.alerte))),
                   ...tarifs.map((tRaw) {
                     final t = tRaw as Map<String, dynamic>;
@@ -159,7 +159,7 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
                                       style: const TextStyle(fontSize: 13, color: AppCouleurs.primaire, fontWeight: FontWeight.w700),
                                     ),
                                     if (pol != null)
-                                      Text('${pol['message']}', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                                      Text('${pol['message']}', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                                   ],
                                 ),
                               ),

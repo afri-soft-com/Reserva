@@ -128,10 +128,10 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
                     children: [
                       Text(
                         AppFlavorConfig.estPrestataire ? 'Connexion Pro' : 'Connexion',
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppCouleurs.texte),
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppCouleurs.texte),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
+                      Text(
                         'Connectez-vous avec votre téléphone et votre PIN — sans SMS.',
                         style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire, height: 1.4),
                       ),
@@ -212,7 +212,7 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        const Row(
+        Row(
           children: [
             Expanded(child: Divider()),
             Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Text('ou', style: TextStyle(color: AppCouleurs.texteSecondaire))),
@@ -237,7 +237,7 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(AppTraductions.t('codeEnvoyeSMS'), style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+        Text(AppTraductions.t('codeEnvoyeSMS'), style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
         const SizedBox(height: 12),
         OtpChamp(
           libelle: AppTraductions.t('code2FA'),

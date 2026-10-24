@@ -140,7 +140,7 @@ class _CalendrierPrestataireScreenState extends State<CalendrierPrestataireScree
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(_libelleJour(jour),
-                                      style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                      style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                                     Text(creneauxJour.isEmpty
                                         ? 'Aucun créneau'
                                         : '${creneauxJour.length} créneau(x)',
@@ -175,7 +175,7 @@ class _CalendrierPrestataireScreenState extends State<CalendrierPrestataireScree
                                             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                                           const Spacer(),
                                           Text('${creneau['capaciteReservee']}/${creneau['capaciteTotale']} places',
-                                            style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                                            style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                                         ],
                                       ),
                                       const SizedBox(height: 4),
@@ -201,7 +201,7 @@ class _CalendrierPrestataireScreenState extends State<CalendrierPrestataireScree
                                                 Expanded(
                                                   child: Text('${resa['numero']} — ${client['nom'] ?? ''}',
                                                     maxLines: 1, overflow: TextOverflow.ellipsis,
-                                                    style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                                                    style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                                                 ),
                                               ],
                                             ),
@@ -248,7 +248,7 @@ class _CalendrierPrestataireScreenState extends State<CalendrierPrestataireScree
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
-              Text(label, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+              Text(label, style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
             ],
           ),
         ],

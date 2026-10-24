@@ -124,12 +124,12 @@ class _AttentesScreenState extends State<AttentesScreen> {
                                   if (nomPrestataire.isNotEmpty) ...[
                                     const SizedBox(height: 2),
                                     Text(nomPrestataire,
-                                      style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                      style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                                   ],
                                   if (debut.isNotEmpty) ...[
                                     const SizedBox(height: 2),
                                     Text('${debut.substring(0, 10)} • ${debut.substring(11, 16)}',
-                                      style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                      style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                                   ],
                                   const SizedBox(height: 4),
                                   Text(_libelleStatut(statut),

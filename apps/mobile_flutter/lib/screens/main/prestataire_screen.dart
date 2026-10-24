@@ -179,7 +179,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Votre dossier est approuvé. Saisissez le code à 6 chiffres reçu par SMS (ou e-mail) pour ouvrir votre espace de travail.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppCouleurs.texteSecondaire),
@@ -254,7 +254,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                       ? (_kycMotif ?? 'Contactez l\'équipe RESERVA pour plus d\'informations.')
                       : 'Votre demande est en cours de vérification. Les documents KYC pourront être exigés plus tard.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppCouleurs.texteSecondaire),
+                  style: TextStyle(color: AppCouleurs.texteSecondaire),
                 ),
                 const SizedBox(height: 24),
                 OutlinedButton.icon(
@@ -473,7 +473,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 if (fin.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text('Expire le ${fin.substring(0, 10)}', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                  Text('Expire le ${fin.substring(0, 10)}', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                 ],
                 if (fonctionnalites.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -532,13 +532,13 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                     ),
                     if (manquants.isNotEmpty)
                       Text(manquants.join(', '),
-                          style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                          style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                     const Text('Toucher pour compléter le KYC',
                         style: TextStyle(fontSize: 11, color: AppCouleurs.primaire)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppCouleurs.texteSecondaire),
+              Icon(Icons.chevron_right, color: AppCouleurs.texteSecondaire),
             ],
           ),
         ),
@@ -559,7 +559,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
               Icon(icon, color: color, size: 22),
               const SizedBox(height: 6),
               Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
-              Text(label, style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
+              Text(label, style: TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
             ],
           ),
         ),
@@ -691,13 +691,13 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(r.prestataire.nomEntreprise,
-                        style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                        style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                     ),
                     const SizedBox(width: 8),
                     Icon(Icons.access_time, size: 14, color: AppCouleurs.texteSecondaire),
                     const SizedBox(width: 4),
                     Text('${r.creneau.debut.substring(11, 16)} - ${r.creneau.fin.substring(11, 16)}',
-                      style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                      style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                   ],
                 ),
                 if (r.reservation.statut == StatutReservation.enAttente) ...[
@@ -831,13 +831,13 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(r.prestataire.nomEntreprise,
-                        style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                        style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                     ),
                     const SizedBox(width: 8),
                     Icon(Icons.access_time, size: 14, color: AppCouleurs.texteSecondaire),
                     const SizedBox(width: 4),
                     Text('${_formaterJour(r.creneau.debut)} ${r.creneau.debut.substring(11, 16)} - ${r.creneau.fin.substring(11, 16)}',
-                      style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                      style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                   ],
                 ),
               ],
@@ -960,7 +960,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                       ),
                       const SizedBox(height: 4),
                       Text(e.mois, style: TextStyle(fontSize: 9, fontWeight: selectionne ? FontWeight.w700 : FontWeight.w400, color: AppCouleurs.texteSecondaire)),
-                      Text('${e.revenus.toStringAsFixed(0)} FC', style: const TextStyle(fontSize: 8, color: AppCouleurs.texteSecondaire)),
+                      Text('${e.revenus.toStringAsFixed(0)} FC', style: TextStyle(fontSize: 8, color: AppCouleurs.texteSecondaire)),
                     ],
                   ),
                 ),
@@ -997,11 +997,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 Expanded(
                   flex: 1,
-                  child: Text('${s.reservations} rés.', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                  child: Text('${s.reservations} rés.', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('${s.revenus.toStringAsFixed(0)} FC', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire), textAlign: TextAlign.right),
+                  child: Text('${s.revenus.toStringAsFixed(0)} FC', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire), textAlign: TextAlign.right),
                 ),
               ],
             ),
@@ -1030,7 +1030,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(_libelleStatut(s.statut), style: const TextStyle(fontSize: 12)),
-                      Text('${s.count} (${(ratio * 100).toStringAsFixed(0)}%)', style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                      Text('${s.count} (${(ratio * 100).toStringAsFixed(0)}%)', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -1084,7 +1084,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
       children: [
         Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
+        Text(label, style: TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
       ],
     );
   }
@@ -1135,11 +1135,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                   ),
                   const SizedBox(height: 4),
                   Text('${s['prix']?.toString() ?? "0"} ${s['devise'] ?? "CDF"} • ${_formaterDuree(s['dureeMinutes'] as int? ?? 0)}',
-                    style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                    style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                   if (s['description'] != null && (s['description'] as String).isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(s['description'] as String,
-                      style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
+                      style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
                   ],
                 ],
@@ -1170,7 +1170,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                       size: 16, color: AppCouleurs.accent,
                     )),
                   ),
-                  Text('${data.nombreAvis} avis', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                  Text('${data.nombreAvis} avis', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                 ],
               ),
               const SizedBox(width: 24),
@@ -1183,7 +1183,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Row(
                         children: [
-                          Text('$n', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                          Text('$n', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                           const SizedBox(width: 4),
                           Icon(Icons.star, size: 12, color: AppCouleurs.accent),
                           const SizedBox(width: 4),
@@ -1199,7 +1199,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Text('$count', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                          Text('$count', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                         ],
                       ),
                     );
@@ -1243,7 +1243,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                         ),
                       ),
                       Text(a.creeLe.substring(0, 10),
-                        style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                        style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                     ],
                   ),
                   if (a.commentaire != null && a.commentaire!.isNotEmpty) ...[
@@ -1268,7 +1268,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(a.reponsePrestataire!,
-                                  style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                  style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [

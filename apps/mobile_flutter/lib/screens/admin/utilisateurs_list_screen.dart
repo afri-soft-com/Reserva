@@ -61,7 +61,7 @@ class _UtilisateursListScreenState extends State<UtilisateursListScreen> {
               children: [
                 Icon(Icons.people, size: 48, color: AppCouleurs.texteSecondaire),
                 const SizedBox(height: 12),
-                const Text('Aucun utilisateur', style: TextStyle(color: AppCouleurs.texteSecondaire)),
+                Text('Aucun utilisateur', style: TextStyle(color: AppCouleurs.texteSecondaire)),
               ],
             ),
           ))
@@ -105,7 +105,7 @@ class _UtilisateursListScreenState extends State<UtilisateursListScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text('$telephone${email != null ? " • $email" : ""}',
-                            style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                            style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                           Row(
                             children: [
                               Icon(Icons.verified, size: 12, color: verifie ? AppCouleurs.succes : AppCouleurs.texteSecondaire),

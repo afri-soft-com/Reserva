@@ -85,7 +85,7 @@ class _DocumentsKycScreenState extends State<DocumentsKycScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
+        Text(
           'Cochez les documents obligatoires. Après le délai (depuis la sauvegarde), les prestataires non conformes ne sont plus visibles.',
           style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
         ),
@@ -113,7 +113,7 @@ class _DocumentsKycScreenState extends State<DocumentsKycScreen> {
         ),
         if (_activeLe != null) ...[
           const SizedBox(height: 6),
-          Text('Dernière activation : $_activeLe', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+          Text('Dernière activation : $_activeLe', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
         ],
         const SizedBox(height: 16),
         SizedBox(

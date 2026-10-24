@@ -79,13 +79,13 @@ class _ModifierReservationScreenState extends State<ModifierReservationScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(r.service.nom, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
+                        Text(r.service.nom, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
                         const SizedBox(height: 4),
-                        Text('${r.prestataire.nomEntreprise} · ${r.prestataire.ville}', style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+                        Text('${r.prestataire.nomEntreprise} · ${r.prestataire.ville}', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.schedule, size: 16, color: AppCouleurs.texteSecondaire),
+                            Icon(Icons.schedule, size: 16, color: AppCouleurs.texteSecondaire),
                             const SizedBox(width: 4),
                             Expanded(child: Text('Actuel : ${r.creneau.debut.substring(11, 16)} - ${r.creneau.fin.substring(11, 16)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.alerte))),
                           ],
@@ -97,7 +97,7 @@ class _ModifierReservationScreenState extends State<ModifierReservationScreen> {
                   const Text('Nouveau créneau', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   if (_creneaux.isEmpty && !_chargement)
-                    const Carte(child: Padding(
+                    Carte(child: Padding(
                       padding: EdgeInsets.all(16),
                       child: Text('Aucun autre créneau disponible pour ce service.', style: TextStyle(color: AppCouleurs.texteSecondaire)),
                     ))
@@ -120,7 +120,7 @@ class _ModifierReservationScreenState extends State<ModifierReservationScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('${_creneaux[i].debut.substring(11, 16)} - ${_creneaux[i].fin.substring(11, 16)}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                                  Text('Places: ${_creneaux[i].capaciteTotale - _creneaux[i].capaciteReservee}/${_creneaux[i].capaciteTotale}', style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                  Text('Places: ${_creneaux[i].capaciteTotale - _creneaux[i].capaciteReservee}/${_creneaux[i].capaciteTotale}', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                                 ],
                               ),
                             ],

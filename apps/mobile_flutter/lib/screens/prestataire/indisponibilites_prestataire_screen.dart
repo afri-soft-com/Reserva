@@ -202,7 +202,7 @@ class _IndisponibilitesPrestataireScreenState extends State<IndisponibilitesPres
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  const Text(
+                  Text(
                     'Bloquez des dates où vous ne pouvez pas recevoir de réservations.',
                     style: TextStyle(color: AppCouleurs.texteSecondaire, fontSize: 13),
                   ),
@@ -218,7 +218,7 @@ class _IndisponibilitesPrestataireScreenState extends State<IndisponibilitesPres
                             const Text('Impossible de charger les périodes',
                               style: TextStyle(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
-                            const Text('Vérifiez votre connexion puis réessayez.',
+                            Text('Vérifiez votre connexion puis réessayez.',
                               style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                             const SizedBox(height: 12),
                             ElevatedButton.icon(
@@ -242,7 +242,7 @@ class _IndisponibilitesPrestataireScreenState extends State<IndisponibilitesPres
                             const Text('Aucune période bloquée',
                               style: TextStyle(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
-                            const Text('Appuyez sur + pour bloquer une période.',
+                            Text('Appuyez sur + pour bloquer une période.',
                               style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                           ],
                         ),
@@ -273,12 +273,12 @@ class _IndisponibilitesPrestataireScreenState extends State<IndisponibilitesPres
                                   const SizedBox(height: 2),
                                   Text(
                                     (p['service'] as Map<String, dynamic>?)?['nom'] as String? ?? 'Tous les services',
-                                    style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
+                                    style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
                                   ),
                                   if ((p['motif'] as String?)?.isNotEmpty ?? false) ...[
                                     const SizedBox(height: 2),
                                     Text('Motif : ${p['motif']}',
-                                      style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                      style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                                   ],
                                 ],
                               ),

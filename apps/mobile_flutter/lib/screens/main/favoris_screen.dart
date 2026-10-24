@@ -164,13 +164,13 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
                                         children: [
                                           Text(s.nom, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                                           const SizedBox(height: 2),
-                                          Text(s.nomEntreprise, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                          Text(s.nomEntreprise, style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                                           const SizedBox(height: 2),
                                           Row(
                                             children: [
-                                              const Icon(Icons.location_on, size: 12, color: AppCouleurs.texteSecondaire),
+                                              Icon(Icons.location_on, size: 12, color: AppCouleurs.texteSecondaire),
                                               const SizedBox(width: 2),
-                                              Text(s.ville, style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                              Text(s.ville, style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                                             ],
                                           ),
                                         ],
@@ -193,7 +193,7 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
                                         const Icon(Icons.star, size: 14, color: AppCouleurs.accent),
                                         const SizedBox(width: 2),
                                         Text('${s.noteMoyenne.toStringAsFixed(1)} (${s.nombreAvis})',
-                                          style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                          style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                                       ],
                                     ),
                                   ],

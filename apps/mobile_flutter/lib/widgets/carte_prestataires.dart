@@ -177,7 +177,7 @@ class _CartePrestatairesState extends State<CartePrestataires> {
                 maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
             Text('${p['categorie'] ?? ''} • ${p['ville'] ?? ''}',
-                style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 2),
             Row(children: [
               const Icon(Icons.star, size: 12, color: Colors.amber),
@@ -185,7 +185,7 @@ class _CartePrestatairesState extends State<CartePrestataires> {
               Text((p['noteMoyenne'] as num?)?.toStringAsFixed(1) ?? "-",
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
               const SizedBox(width: 4),
-              Text('(${(p['nombreAvis'] as int?) ?? 0})', style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
+              Text('(${(p['nombreAvis'] as int?) ?? 0})', style: TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
             ]),
           ],
         ),
@@ -208,17 +208,17 @@ class _CartePrestatairesState extends State<CartePrestataires> {
             Text(p['nomEntreprise'] as String? ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Row(children: [
-              const Icon(Icons.category, size: 14, color: AppCouleurs.texteSecondaire),
+              Icon(Icons.category, size: 14, color: AppCouleurs.texteSecondaire),
               const SizedBox(width: 4),
-              Text(p['categorie'] as String? ?? '', style: const TextStyle(color: AppCouleurs.texteSecondaire)),
+              Text(p['categorie'] as String? ?? '', style: TextStyle(color: AppCouleurs.texteSecondaire)),
               const SizedBox(width: 16),
-              const Icon(Icons.location_on, size: 14, color: AppCouleurs.texteSecondaire),
+              Icon(Icons.location_on, size: 14, color: AppCouleurs.texteSecondaire),
               const SizedBox(width: 4),
-              Text('${p['ville'] ?? ''}, ${p['quartier'] ?? ''}', style: const TextStyle(color: AppCouleurs.texteSecondaire)),
+              Text('${p['ville'] ?? ''}, ${p['quartier'] ?? ''}', style: TextStyle(color: AppCouleurs.texteSecondaire)),
             ]),
             if (p['adresse'] != null) ...[
               const SizedBox(height: 4),
-              Text(p['adresse'] as String, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+              Text(p['adresse'] as String, style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
             ],
             const SizedBox(height: 8),
             Row(children: [
@@ -230,7 +230,7 @@ class _CartePrestatairesState extends State<CartePrestataires> {
             const SizedBox(height: 4),
             if (p['description'] != null)
               Text(p['description'] as String, maxLines: 3, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                  style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,

@@ -153,7 +153,7 @@ class _FideliteScreenState extends State<FideliteScreen> {
           const SizedBox(height: 12),
           Text('$solde', style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: AppCouleurs.accent)),
           const SizedBox(height: 4),
-          const Text('Points RESERVA', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+          Text('Points RESERVA', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
           const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -199,7 +199,7 @@ class _FideliteScreenState extends State<FideliteScreen> {
                     const SizedBox(height: 2),
                     Text(_formaterMontant(soldeActif, devise),
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
-                    const Text('Crédits obtenus lors d\'annulations', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                    Text('Crédits obtenus lors d\'annulations', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                   ],
                 ),
               ),
@@ -230,11 +230,11 @@ class _FideliteScreenState extends State<FideliteScreen> {
                       Text(a['statut'] == 'ACTIF'
                           ? 'Restant: ${_formaterMontant((a['montantRestant'] as num?)?.toDouble() ?? 0, devise)}'
                           : 'Crédit utilisé',
-                        style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                        style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                       if (a['dateExpiration'] != null) ...[
                         const SizedBox(height: 2),
                         Text('Expire le: ${(a['dateExpiration'] as String).substring(0, 10)}',
-                          style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                          style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                       ],
                     ],
                   ),
@@ -278,7 +278,7 @@ class _FideliteScreenState extends State<FideliteScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 const SizedBox(height: 2),
                 Text(t.creeLe.substring(0, 10),
-                  style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                  style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
               ],
             ),
           ),
@@ -289,7 +289,7 @@ class _FideliteScreenState extends State<FideliteScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.w700, fontSize: 14,
                   color: isGain ? AppCouleurs.succes : AppCouleurs.alerte)),
-              Text('Solde: ${t.soldeApres}', style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
+              Text('Solde: ${t.soldeApres}', style: TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
             ],
           ),
         ],

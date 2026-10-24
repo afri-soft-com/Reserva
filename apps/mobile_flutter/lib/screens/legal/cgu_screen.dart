@@ -63,9 +63,9 @@ class CguScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(titre, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppCouleurs.texte)),
+          Text(titre, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppCouleurs.texte)),
           const SizedBox(height: 6),
-          Text(corps, style: const TextStyle(fontSize: 14, height: 1.45, color: AppCouleurs.texteSecondaire)),
+          Text(corps, style: TextStyle(fontSize: 14, height: 1.45, color: AppCouleurs.texteSecondaire)),
         ],
       ),
     );

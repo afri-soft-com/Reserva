@@ -217,9 +217,9 @@ class AdminButtonTab extends StatelessWidget {
           children: [
             const Icon(Icons.admin_panel_settings, size: 64, color: AppCouleurs.primaire),
             const SizedBox(height: 16),
-            const Text('Panneau d\'administration', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
+            Text('Panneau d\'administration', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
             const SizedBox(height: 8),
-            const Text('Gérez les abonnements et les tarifications.', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+            Text('Gérez les abonnements et les tarifications.', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () => context.go('/admin'),

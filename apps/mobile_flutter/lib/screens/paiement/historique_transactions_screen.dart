@@ -119,7 +119,7 @@ class _HistoriqueTransactionsScreenState extends State<HistoriqueTransactionsScr
                                 const SizedBox(height: 2),
                                 Text(
                                   '${t.creeLe.substring(0, 10)} • ${t.referenceExterne ?? ""}',
-                                  style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
+                                  style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
                                 ),
                               ],
                             ),
@@ -156,7 +156,7 @@ class _HistoriqueTransactionsScreenState extends State<HistoriqueTransactionsScr
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+          Text(label, style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
           const Spacer(),
           Flexible(child: Text(valeur, textAlign: TextAlign.right, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
         ],

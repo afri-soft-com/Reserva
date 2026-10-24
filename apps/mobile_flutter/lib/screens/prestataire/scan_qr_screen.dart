@@ -295,7 +295,7 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text('La réservation passera à l\'état "En cours".', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+          Text('La réservation passera à l\'état "En cours".', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
         ],
         if (statut == StatutReservation.enCours) ...[
           SizedBox(
@@ -325,11 +325,11 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
           ),
         ],
         if (statut == StatutReservation.terminee || statut == StatutReservation.absence)
-          const Text('Cette réservation est déjà clôturée.', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+          Text('Cette réservation est déjà clôturée.', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
         if (statut == StatutReservation.enAttente)
-          const Text('Cette réservation est en attente de confirmation.', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+          Text('Cette réservation est en attente de confirmation.', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
         if (statut == StatutReservation.annulee || statut == StatutReservation.refusee)
-          const Text('Cette réservation est annulée ou refusée.', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+          Text('Cette réservation est annulée ou refusée.', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
       ],
     );
   }
@@ -339,7 +339,7 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
       children: [
         Icon(icone, size: 16, color: AppCouleurs.texteSecondaire),
         const SizedBox(width: 8),
-        Text('$label : ', style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+        Text('$label : ', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
         Expanded(child: Text(valeur, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
       ],
     );

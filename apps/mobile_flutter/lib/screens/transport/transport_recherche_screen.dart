@@ -181,13 +181,13 @@ class _TransportRechercheScreenState extends State<TransportRechercheScreen> {
                                     children: [
                                       Text('${t['heureDepart']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                                       const SizedBox(width: 8),
-                                      Text(_duree((t['dureeMinutes'] as num).toInt()), style: const TextStyle(color: AppCouleurs.texteSecondaire)),
+                                      Text(_duree((t['dureeMinutes'] as num).toInt()), style: TextStyle(color: AppCouleurs.texteSecondaire)),
                                       const Spacer(),
                                       Text('${(t['prix'] as num).toStringAsFixed(0)} FC', style: const TextStyle(fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
                                     ],
                                   ),
                                   Text('${op['nom']} · ${t['confort']} · ${t['placesRestantes']} places',
-                                    style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                    style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                                   if (t['remboursable'] == true)
                                     const Text('Annulation flexible', style: TextStyle(fontSize: 12, color: AppCouleurs.succes, fontWeight: FontWeight.w600)),
                                 ],

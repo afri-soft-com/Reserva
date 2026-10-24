@@ -40,7 +40,7 @@ class Champ extends StatelessWidget {
         if (libelle != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Text(libelle!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppCouleurs.texte)),
+            child: Text(libelle!, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppCouleurs.texte)),
           ),
         TextFormField(
           controller: controller,
@@ -72,7 +72,7 @@ class Champ extends StatelessWidget {
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
-          style: const TextStyle(fontSize: 16, color: AppCouleurs.texte),
+          style: TextStyle(fontSize: 16, color: AppCouleurs.texte),
         ),
       ],
     );

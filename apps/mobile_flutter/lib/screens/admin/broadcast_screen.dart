@@ -55,7 +55,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
         const Text('Diffuser une annonce',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        const Text('Envoie une notification SYSTEME à tous les utilisateurs ou à un rôle ciblé.',
+        Text('Envoie une notification SYSTEME à tous les utilisateurs ou à un rôle ciblé.',
           style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
         const SizedBox(height: 16),
         Carte(

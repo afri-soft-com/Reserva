@@ -87,7 +87,7 @@ class _ChangerPinScreenState extends State<ChangerPinScreen> {
             const SizedBox(height: 16),
             const Text('Modification du code PIN', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
-            const Text('Un code de vérification sera envoyé par SMS.', style: TextStyle(color: AppCouleurs.texteSecondaire)),
+            Text('Un code de vérification sera envoyé par SMS.', style: TextStyle(color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 24),
             if (_etape == 'OTP') ...[
               SizedBox(
@@ -128,7 +128,7 @@ class _ChangerPinScreenState extends State<ChangerPinScreen> {
               ),
             ],
             if (_etape == 'NOUVEAU_PIN') ...[
-              const Text('Nouveau code PIN à 4 chiffres', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+              Text('Nouveau code PIN à 4 chiffres', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
               const SizedBox(height: 12),
               TextField(
                 controller: _nouveauPinCtrl,

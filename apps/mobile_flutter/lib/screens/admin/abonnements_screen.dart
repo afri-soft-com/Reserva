@@ -63,7 +63,7 @@ class _AbonnementsScreenState extends State<AbonnementsScreen> {
               children: [
                 Icon(Icons.card_membership, size: 48, color: AppCouleurs.texteSecondaire),
                 const SizedBox(height: 12),
-                const Text('Aucun abonnement', style: TextStyle(color: AppCouleurs.texteSecondaire)),
+                Text('Aucun abonnement', style: TextStyle(color: AppCouleurs.texteSecondaire)),
               ],
             ),
           ))
@@ -105,13 +105,13 @@ class _AbonnementsScreenState extends State<AbonnementsScreen> {
                         style: const TextStyle(fontSize: 13, color: AppCouleurs.primaire, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 4),
                       Text('${prestataire['ville'] ?? ''}',
-                        style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                        style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                       const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('Du ${_formaterDate(a['dateDebut'] as String?)} au ${_formaterDate(a['dateFin'] as String?)}',
-                            style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                            style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                           Text('${prix.toStringAsFixed(devise == 'USD' ? 2 : 0)} ${devise == 'USD' ? 'USD' : 'FC'}',
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppCouleurs.succes)),
                         ],

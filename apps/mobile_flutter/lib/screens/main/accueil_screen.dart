@@ -93,7 +93,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
             const SizedBox(height: 8),
             Text(titre, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
             const SizedBox(height: 2),
-            Text(sous, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire, height: 1.25)),
+            Text(sous, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire, height: 1.25)),
           ],
         ),
       );
@@ -216,7 +216,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
                     children: [
                       const Text('Espace prestataire', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Gérez agenda, QR, soldes et avis depuis l’onglet Prestataire.',
                         style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire),
                       ),
@@ -260,7 +260,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
           const SizedBox(height: 8),
           Text(
             estPro ? AppFlavorConfig.sousTitreBienvenue : AppTraductions.t('sousTitreAccueil'),
-            style: const TextStyle(fontSize: 14, color: AppCouleurs.primaireClair),
+            style: TextStyle(fontSize: 14, color: AppCouleurs.primaireClair),
           ),
           if (!estPro) ...[
             const SizedBox(height: 16),
@@ -323,7 +323,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
                     children: [
                       Expanded(
                         child: Text(AppTraductions.t('prochaineReservation'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
                       ),
                       const SizedBox(width: 8),
                       BadgeStatut(statut: r.reservation.statut),
@@ -333,7 +333,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
                   Text(r.service.nom, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   const SizedBox(height: 2),
                   Text('$dateStr • $heureStr',
-                    style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                    style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                 ],
               ),
             ),
@@ -368,7 +368,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 6),
           Text(valeur, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: color)),
-          Text(label, style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
+          Text(label, style: TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
         ],
       ),
     );
@@ -465,7 +465,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
                   Text(s.nom, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text(s.nomEntreprise, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire),
+                  Text(s.nomEntreprise, style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                   const Spacer(),
                   Row(
@@ -479,7 +479,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
                           Icon(Icons.star, size: 12, color: AppCouleurs.accent),
                           const SizedBox(width: 2),
                           Text(s.noteMoyenne.toStringAsFixed(1),
-                            style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                            style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                         ],
                       ),
                     ],

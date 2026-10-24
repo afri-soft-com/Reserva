@@ -22,6 +22,7 @@ Future<void> demarrerApp({required AppFlavor roleForce}) async {
 
   final theme = ThemeProvider();
   await theme.initialiser();
+  AppCouleurs.definirModeSombre(theme.estSombre);
 
   runApp(
     MultiProvider(

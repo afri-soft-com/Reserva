@@ -234,7 +234,7 @@ class _HotelsRechercheScreenState extends State<HotelsRechercheScreen> {
                 children: [
                   Text('${h['nom']}', style: const TextStyle(fontWeight: FontWeight.w800)),
                   Text('${h['ville']}, ${h['quartier']} · ${'★' * ((h['etoiles'] as num?)?.toInt() ?? 0)}',
-                    style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                    style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -257,7 +257,7 @@ class _HotelsRechercheScreenState extends State<HotelsRechercheScreen> {
     );
   }
 
-  Widget _placeholder() => Container(width: 72, height: 72, color: AppCouleurs.primaireClair, child: const Icon(Icons.hotel, color: AppCouleurs.primaire));
+  Widget _placeholder() => Container(width: 72, height: 72, color: AppCouleurs.primaireClair, child: Icon(Icons.hotel, color: AppCouleurs.primaire));
 
   void _ouvrirDetail(Map<String, dynamic> h) {
     context.push('/hotels/${h['id']}', extra: {

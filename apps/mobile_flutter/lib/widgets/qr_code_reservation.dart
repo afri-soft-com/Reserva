@@ -122,7 +122,7 @@ class _QrCodeReservationState extends State<QrCodeReservation> {
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Text(widget.prestataire,
-                    style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+                    style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
               ],
             ),
           ),

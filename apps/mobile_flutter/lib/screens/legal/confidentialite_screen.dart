@@ -93,7 +93,7 @@ Vous pouvez consulter, corriger ou demander la suppression de vos données depui
                 const SizedBox(height: 20),
                 Text(
                   _corps ?? '',
-                  style: const TextStyle(fontSize: 14, height: 1.45, color: AppCouleurs.texteSecondaire),
+                  style: TextStyle(fontSize: 14, height: 1.45, color: AppCouleurs.texteSecondaire),
                 ),
                 if (_format == 'html')
                   const SizedBox.shrink(),

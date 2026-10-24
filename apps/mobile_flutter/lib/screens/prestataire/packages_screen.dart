@@ -142,11 +142,11 @@ class _PackagesScreenState extends State<PackagesScreen> {
                             const SizedBox(height: 4),
                             if (_nomsServicesDunPackage(p).isNotEmpty)
                               Text(_nomsServicesDunPackage(p),
-                                style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                                style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                             if (p['description'] != null && (p['description'] as String).isNotEmpty) ...[
                               const SizedBox(height: 4),
                               Text(p['description'] as String,
-                                style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
+                                style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire),
                                 maxLines: 2, overflow: TextOverflow.ellipsis),
                             ],
                             const SizedBox(height: 6),

@@ -51,7 +51,7 @@ class VoyagesHubScreen extends StatelessWidget {
             Container(
               width: 52,
               height: 52,
-              decoration: const BoxDecoration(color: AppCouleurs.primaireClair, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppCouleurs.primaireClair, shape: BoxShape.circle),
               child: Icon(icon, color: AppCouleurs.primaire),
             ),
             const SizedBox(width: 14),
@@ -60,7 +60,7 @@ class VoyagesHubScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(titre, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                  Text(sous, style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                  Text(sous, style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                 ],
               ),
             ),

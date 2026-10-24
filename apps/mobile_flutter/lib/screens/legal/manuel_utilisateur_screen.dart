@@ -34,7 +34,7 @@ class ManuelUtilisateurScreen extends StatelessWidget {
                   pro
                       ? 'Ce guide vous aide à gérer votre activité (agenda, QR, soldes).'
                       : 'Ce guide vous aide à réserver hôtels, bus et services en quelques étapes.',
-                  style: const TextStyle(color: AppCouleurs.texteSecondaire, height: 1.4),
+                  style: TextStyle(color: AppCouleurs.texteSecondaire, height: 1.4),
                 ),
               ],
             ),
@@ -94,7 +94,7 @@ class ManuelUtilisateurScreen extends StatelessWidget {
                   children: [
                     Text(titre, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                     const SizedBox(height: 4),
-                    Text(corps, style: const TextStyle(fontSize: 13.5, height: 1.4, color: AppCouleurs.texteSecondaire)),
+                    Text(corps, style: TextStyle(fontSize: 13.5, height: 1.4, color: AppCouleurs.texteSecondaire)),
                   ],
                 ),
               ),

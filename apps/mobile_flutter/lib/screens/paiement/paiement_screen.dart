@@ -360,7 +360,7 @@ class _PaiementScreenState extends State<PaiementScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text('Solde: $_pointsSolde points (1 point = 50 FC de réduction)',
-                      style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                      style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                     if (_pointsAppliques == 0) ...[
                       const SizedBox(height: 8),
                       Row(
@@ -412,7 +412,7 @@ class _PaiementScreenState extends State<PaiementScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text('Solde: ${_formaterMontant(_soldeAvoirs, r.reservation.devise)} — obtenus lors d\'annulations.',
-                      style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                      style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                     const SizedBox(height: 8),
                     Bouton(
                       titre: 'Utiliser mes crédits',
@@ -490,7 +490,7 @@ class _PaiementScreenState extends State<PaiementScreen> {
                   ),
                   Expanded(
                     child: Text('Payer un acompte (${r.reservation.acomptePourcent}%) — ${_formaterMontant(montantAcompte, r.reservation.devise)} · solde plus tard',
-                      style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                      style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                   ),
                 ],
               ),
@@ -512,9 +512,9 @@ class _PaiementScreenState extends State<PaiementScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
+          Text(label, style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
           const Spacer(),
-          Flexible(child: Text(valeur, textAlign: TextAlign.right, style: valeurStyle ?? const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.texte))),
+          Flexible(child: Text(valeur, textAlign: TextAlign.right, style: valeurStyle ?? TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppCouleurs.texte))),
         ],
       ),
     );

@@ -105,7 +105,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   child: Text(
                     _libellePeriode(_periode),
-                    style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -172,7 +172,7 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   List<Widget> _buildRepartitionStatuts(Map<String, dynamic> parStatut) {
-    if (parStatut.isEmpty) return [const Text('Aucune donnée', style: TextStyle(color: AppCouleurs.texteSecondaire))];
+    if (parStatut.isEmpty) return [Text('Aucune donnée', style: TextStyle(color: AppCouleurs.texteSecondaire))];
     final total = parStatut.values.fold<int>(0, (a, b) => a + (b as int? ?? 0));
     return parStatut.entries.map((e) {
       final count = e.value as int? ?? 0;
@@ -220,9 +220,9 @@ class _StatsScreenState extends State<StatsScreen> {
               Icon(icon, color: color, size: 24),
               const SizedBox(height: 6),
               Text(valeur, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
-              Text(label, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+              Text(label, style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
               if (sousTitre.isNotEmpty)
-                Text(sousTitre, style: const TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
+                Text(sousTitre, style: TextStyle(fontSize: 10, color: AppCouleurs.texteSecondaire)),
             ],
           ),
         ),
@@ -234,7 +234,7 @@ class _StatsScreenState extends State<StatsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
         const SizedBox(height: 4),
         Container(
           decoration: BoxDecoration(

@@ -148,7 +148,7 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 6),
           Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
-          Text(label, style: const TextStyle(fontSize: 9, color: AppCouleurs.texteSecondaire)),
+          Text(label, style: TextStyle(fontSize: 9, color: AppCouleurs.texteSecondaire)),
         ],
       ),
     );
@@ -188,7 +188,7 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(jour, style: const TextStyle(fontSize: 8, color: AppCouleurs.texteSecondaire)),
+                      Text(jour, style: TextStyle(fontSize: 8, color: AppCouleurs.texteSecondaire)),
                     ],
                   ),
                 );
@@ -223,7 +223,7 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(_libelleStatut(statut), style: const TextStyle(fontSize: 12)),
-                      Text('$count (${(ratio * 100).toStringAsFixed(0)}%)', style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                      Text('$count (${(ratio * 100).toStringAsFixed(0)}%)', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -271,7 +271,7 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
                         child: Text(s['nom'] as String? ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                       const SizedBox(width: 8),
-                      Text('${_formater(revenus)} • $count rés.', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                      Text('${_formater(revenus)} • $count rés.', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -310,7 +310,7 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(
                 children: [
-                  Text('$note', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                  Text('$note', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                   const SizedBox(width: 4),
                   const Icon(Icons.star, size: 12, color: AppCouleurs.accent),
                   const SizedBox(width: 4),
@@ -326,7 +326,7 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
                     ),
                   ),
                   const SizedBox(width: 4),
-                  Text('$nombre', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                  Text('$nombre', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                 ],
               ),
             );
@@ -368,7 +368,7 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(c['nom'] as String? ?? 'Client', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                        Text(c['telephone'] as String? ?? '', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                        Text(c['telephone'] as String? ?? '', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                       ],
                     ),
                   ),
@@ -376,7 +376,7 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('${c['reservations'] ?? 0} rés.', style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                      Text('${c['reservations'] ?? 0} rés.', style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                       Text(_formater((c['totalDepense'] as num?)?.toDouble() ?? 0.0),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppCouleurs.primaire)),
                     ],

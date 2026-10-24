@@ -52,13 +52,13 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
     'Kinshasa', 'Lubumbashi', 'Goma', 'Bukavu', 'Kisangani', 'Mbuji-Mayi', 'Kananga',
   ];
   static const _optionsTri = {
-    'Recommandés': null,
-    'Prix ↑': 'prix_asc',
-    'Prix ↓': 'prix_desc',
+    'RecommandÃ©s': null,
+    'Prix â': 'prix_asc',
+    'Prix â': 'prix_desc',
     'Note': 'note_desc',
     'Nom': 'nom_asc',
-    'Proximité': 'distance_asc',
-    'Disponible le plus tôt': 'disponible_asc',
+    'ProximitÃ©': 'distance_asc',
+    'Disponible le plus tÃ´t': 'disponible_asc',
   };
   static const _optionsDisponibilite = {
     'Toutes': null,
@@ -192,7 +192,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
     try {
       final permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        if (mounted) ToastWidget.show(context, 'Autorisation de localisation refusée.', type: 'erreur');
+        if (mounted) ToastWidget.show(context, 'Autorisation de localisation refusÃ©e.', type: 'erreur');
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
@@ -221,7 +221,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
 
   Widget _buildCarte() {
     if (_lat == null || _lng == null) {
-      return const Center(child: Text('Localisation indisponible', style: TextStyle(color: AppCouleurs.texteSecondaire)));
+      return Center(child: Text('Localisation indisponible', style: TextStyle(color: AppCouleurs.texteSecondaire)));
     }
     final marqueurs = _services.where((s) => s.latitude != null && s.longitude != null).map((s) {
       return Marker(
@@ -305,12 +305,12 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
         await ApiFavoris.supprimerFavori(serviceId);
         if (!mounted) return;
         setState(() => _favorisIds.remove(serviceId));
-        ToastWidget.show(context, 'Retiré des favoris');
+        ToastWidget.show(context, 'RetirÃ© des favoris');
       } else {
         await ApiFavoris.ajouterFavori(serviceId);
         if (!mounted) return;
         setState(() => _favorisIds.add(serviceId));
-        ToastWidget.show(context, 'Ajouté aux favoris', type: 'succes');
+        ToastWidget.show(context, 'AjoutÃ© aux favoris', type: 'succes');
       }
     } catch (e) {
       if (!mounted) return;
@@ -351,7 +351,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              'Prochain créneau : $date à $horaire',
+              'Prochain crÃ©neau : $date Ã  $horaire',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.primaire),
             ),
           ),
@@ -372,7 +372,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   Widget build(BuildContext context) {
     super.build(context);
     context.watch<LangueProvider>();
-    final triActif = _optionsTri.entries.firstWhere((e) => e.value == _tri, orElse: () => const MapEntry('Recommandés', null));
+    final triActif = _optionsTri.entries.firstWhere((e) => e.value == _tri, orElse: () => const MapEntry('RecommandÃ©s', null));
 
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
@@ -415,7 +415,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                               controller: ctrl,
                               autofocus: true,
                               decoration: const InputDecoration(
-                                hintText: 'Ex. clinique Gombe demain, hôtel Lubumbashi…',
+                                hintText: 'Ex. clinique Gombe demain, hÃ´tel Lubumbashiâ¦',
                                 helperText: 'Dictez via le clavier vocal, puis OK',
                               ),
                             ),
@@ -489,8 +489,8 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(_prixMin != null ? _formaterMontant(_prixMin!, 'CDF') : 'Min', style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
-                        Text(_prixMax != null ? _formaterMontant(_prixMax!, 'CDF') : 'Max', style: const TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                        Text(_prixMin != null ? _formaterMontant(_prixMin!, 'CDF') : 'Min', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+                        Text(_prixMax != null ? _formaterMontant(_prixMax!, 'CDF') : 'Max', style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
                       ],
                     ),
                     const Divider(height: 20),
@@ -509,7 +509,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                             onChangeEnd: (_) { _page = 1; _charger(); },
                           ),
                         ),
-                        Text(_noteMin != null ? '${_noteMin!.toStringAsFixed(1)} ★' : 'Toutes', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text(_noteMin != null ? '${_noteMin!.toStringAsFixed(1)} â' : 'Toutes', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         const SizedBox(width: 8),
                       ],
                     ),
@@ -535,7 +535,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                       ],
                     ),
                     const Divider(height: 20),
-                    const Text('Disponibilité', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text('DisponibilitÃ©', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -563,7 +563,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                const Icon(Icons.sort, size: 16, color: AppCouleurs.texteSecondaire),
+                Icon(Icons.sort, size: 16, color: AppCouleurs.texteSecondaire),
                 const SizedBox(width: 6),
                 DropdownButton<String>(
                   value: triActif.value,
@@ -646,13 +646,13 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                                         ],
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(s.nom, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
+                                      Text(s.nom, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppCouleurs.texte)),
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          const Icon(Icons.location_on, size: 14, color: AppCouleurs.texteSecondaire),
+                                          Icon(Icons.location_on, size: 14, color: AppCouleurs.texteSecondaire),
                                           const SizedBox(width: 4),
-                                          Expanded(child: Text('${s.ville}, ${s.quartier}', style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire))),
+                                          Expanded(child: Text('${s.ville}, ${s.quartier}', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire))),
                                         ],
                                       ),
                                       const SizedBox(height: 8),
@@ -664,7 +664,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                                             children: [
                                               const Icon(Icons.star, size: 16, color: AppCouleurs.accent),
                                               const SizedBox(width: 4),
-                                              Text('${s.noteMoyenne.toStringAsFixed(1)} (${s.nombreAvis})', style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
+                                              Text('${s.noteMoyenne.toStringAsFixed(1)} (${s.nombreAvis})', style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                                             ],
                                           ),
                                         ],

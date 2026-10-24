@@ -92,7 +92,7 @@ class _FinancesPrestataireScreenState extends State<FinancesPrestataireScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  const Text(
+                  Text(
                     'Le paiement client est d\'abord séquestré. Il devient disponible après la fin de la prestation.',
                     style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
                   ),
@@ -144,7 +144,7 @@ class _FinancesPrestataireScreenState extends State<FinancesPrestataireScreen> {
                   const Text('Historique des versements', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   if (versements.isEmpty)
-                    const Text('Aucun versement', style: TextStyle(color: AppCouleurs.texteSecondaire))
+                    Text('Aucun versement', style: TextStyle(color: AppCouleurs.texteSecondaire))
                   else
                     ...versements.map((v) {
                       final m = v as Map<String, dynamic>;
@@ -180,7 +180,7 @@ class _FinancesPrestataireScreenState extends State<FinancesPrestataireScreen> {
           Text('En séquestre : ${seq.toStringAsFixed(devise == 'USD' ? 2 : 0)} $devise',
               style: const TextStyle(color: AppCouleurs.avertissement, fontSize: 13)),
           if (seq > 0)
-            const Text(
+            Text(
               'Libération automatique 48 h après la fin de prestation (délai anti-litige).',
               style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire),
             ),

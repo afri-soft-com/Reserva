@@ -63,7 +63,7 @@ class _HotelSejourScreenState extends State<HotelSejourScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(numero, style: const TextStyle(color: AppCouleurs.texteSecondaire, fontWeight: FontWeight.w700)),
+            Text(numero, style: TextStyle(color: AppCouleurs.texteSecondaire, fontWeight: FontWeight.w700)),
             Text('${s['hotelNom']}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Text('${s['chambreNom']} · ${s['ville']}'),

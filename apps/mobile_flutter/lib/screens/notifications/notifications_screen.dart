@@ -165,7 +165,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         color: AppCouleurs.alerte,
                         borderRadius: BorderRadius.circular(AppRayons.carte),
                       ),
-                      child: const Icon(Icons.delete_outline, color: AppCouleurs.blanc),
+                      child: Icon(Icons.delete_outline, color: AppCouleurs.blanc),
                     ),
                     onDismissed: (_) {
                       setState(() => _notifications.removeWhere((x) => x.id == n.id));
@@ -213,12 +213,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                             )),
                                         ),
                                         Text(_tempsDepuis(n.creeLe),
-                                          style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
+                                          style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
                                       ],
                                     ),
                                     const SizedBox(height: 4),
                                     Text(n.message,
-                                      style: const TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
+                                      style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
                                       maxLines: 2, overflow: TextOverflow.ellipsis),
                                   ],
                                 ),
