@@ -69,6 +69,12 @@ function run(cmd, args, env) {
 
 async function main() {
   console.log("→ Contrôle catalogue prod");
+  // Ne plus re-seed automatiquement : les mocks polluent les tests réels.
+  // Pour forcer un seed démo : FORCE_CATALOGUE_SEED=1
+  if (process.env.FORCE_CATALOGUE_SEED !== "1") {
+    console.log("✓ Seed catalogue désactivé (FORCE_CATALOGUE_SEED≠1) — catalogue réel uniquement");
+    return;
+  }
   const vide = await catalogueVide();
   if (!vide) {
     console.log("✓ Catalogue hotels déjà peuplé — skip seed");
