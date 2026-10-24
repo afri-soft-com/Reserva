@@ -25,8 +25,10 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> basculer() async {
     _mode = _mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    await _storage.write(key: _cleTheme, value: _mode == ThemeMode.dark ? 'dark' : 'light');
     notifyListeners();
+    try {
+      await _storage.write(key: _cleTheme, value: _mode == ThemeMode.dark ? 'dark' : 'light');
+    } catch (_) {}
   }
 
   Future<void> definir(ThemeMode mode) async {

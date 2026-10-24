@@ -1,5 +1,6 @@
 package com.reserva.reserva
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+/** FlutterFragmentActivity requis par local_auth (empreinte / Face unlock). */
+class MainActivity : FlutterFragmentActivity()

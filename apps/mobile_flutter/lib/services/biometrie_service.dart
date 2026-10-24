@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 
 class ServiceBiometrie {
@@ -5,7 +6,12 @@ class ServiceBiometrie {
 
   static Future<bool> estDisponible() async {
     try {
-      return await _auth.canCheckBiometrics || await _auth.isDeviceSupported();
+      final support = await _auth.isDeviceSupported();
+      if (!support) return false;
+      final can = await _auth.canCheckBiometrics;
+      if (can) return true;
+      // PIN / schéma appareil comme repli (biometricOnly: false à l'auth).
+      return support;
     } catch (_) {
       return false;
     }
@@ -26,8 +32,11 @@ class ServiceBiometrie {
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: false,
+          useErrorDialogs: true,
         ),
       );
+    } on PlatformException {
+      return false;
     } catch (_) {
       return false;
     }

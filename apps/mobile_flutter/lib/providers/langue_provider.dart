@@ -23,9 +23,14 @@ class LangueProvider extends ChangeNotifier {
   }
   Future<void> definir(String langue) async {
     if (langue != 'fr' && langue != 'ln' && langue != 'sw') return;
+    if (_langue == langue) return;
     _langue = langue;
     AppTraductions.definirLangue(langue);
-    await _storage.write(key: _cleLangue, value: langue);
     notifyListeners();
+    try {
+      await _storage.write(key: _cleLangue, value: langue);
+    } catch (_) {
+      /* UI déjà à jour — la préférence sera retentée au prochain démarrage */
+    }
   }
 }

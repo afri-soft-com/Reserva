@@ -1,7 +1,7 @@
 name: reserva
-description: "RESERVA â€” RÃ©servez. Sereinement."
+description: "RESERVA — Réservez. Sereinement."
 publish_to: 'none'
-version: 1.0.4+50
+version: 1.0.5+51
 
 environment:
   sdk: ^3.8.1
@@ -38,7 +38,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.3
 
-# IcÃ´nes par flavor : flutter_launcher_icons-client.yaml / -pro.yaml
+# Icônes par flavor : flutter_launcher_icons-client.yaml / -pro.yaml
 flutter_launcher_icons:
   android: true
   ios: true

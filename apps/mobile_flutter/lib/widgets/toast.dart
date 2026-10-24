@@ -8,7 +8,7 @@ class ToastWidget extends StatefulWidget {
   const ToastWidget({super.key, required this.message, this.type = 'info', this.onReadyToRemove});
 
   static void show(BuildContext context, String message, {String type = 'info'}) {
-    final overlay = Overlay.of(context);
+    final overlay = Overlay.of(context, rootOverlay: true);
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (_) => ToastWidget(

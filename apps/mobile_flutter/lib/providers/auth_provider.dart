@@ -77,19 +77,25 @@ class AuthProvider extends ChangeNotifier {
     return ok;
   }
 
-  Future<void> basculerBiometrie() async {
-    if (!_biometrieDisponible) return;
+  /// Retourne un message d'erreur utilisateur, ou null si OK.
+  Future<String?> basculerBiometrie() async {
+    if (!_biometrieDisponible) {
+      return 'Biométrie non disponible sur cet appareil';
+    }
     if (_biometrieActivee) {
       _biometrieActivee = false;
       await ApiClient.saveBiometriePref('non');
-    } else {
-      final ok = await ServiceBiometrie.authentifier();
-      if (ok) {
-        _biometrieActivee = true;
-        await ApiClient.saveBiometriePref('oui');
-      }
+      notifyListeners();
+      return null;
     }
+    final ok = await ServiceBiometrie.authentifier();
+    if (!ok) {
+      return 'Authentification biométrique annulée ou échouée';
+    }
+    _biometrieActivee = true;
+    await ApiClient.saveBiometriePref('oui');
     notifyListeners();
+    return null;
   }
 
   Future<void> connecterStore(String token, Utilisateur utilisateur, {Prestataire? prestataire}) async {
@@ -113,8 +119,31 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> definir2FA(bool actif) async {
+    if (actif && _utilisateur != null && !_utilisateur!.telephoneVerifie) {
+      throw Exception('Vérifiez votre numéro de téléphone avant d\'activer la 2FA.');
+    }
     final data = await ApiAuth.definir2FA(actif);
-    _utilisateur = Utilisateur.fromJson(data['utilisateur'] as Map<String, dynamic>);
+    final raw = data['utilisateur'];
+    if (raw is Map<String, dynamic>) {
+      _utilisateur = Utilisateur.fromJson(raw);
+    } else if (raw is Map) {
+      _utilisateur = Utilisateur.fromJson(Map<String, dynamic>.from(raw));
+    } else if (_utilisateur != null) {
+      // Fallback si la forme de réponse change : maj locale du flag.
+      final u = _utilisateur!;
+      _utilisateur = Utilisateur(
+        id: u.id,
+        telephone: u.telephone,
+        email: u.email,
+        nom: u.nom,
+        role: u.role,
+        langue: u.langue,
+        photoUrl: u.photoUrl,
+        telephoneVerifie: u.telephoneVerifie,
+        deuxFAActif: actif,
+        creeLe: u.creeLe,
+      );
+    }
     notifyListeners();
   }
 

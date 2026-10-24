@@ -17,12 +17,18 @@ Future<void> demarrerApp({required AppFlavor roleForce}) async {
   final auth = AuthProvider();
   await auth.initialiser();
 
+  final langue = LangueProvider();
+  await langue.initialiser();
+
+  final theme = ThemeProvider();
+  await theme.initialiser();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: auth),
-        ChangeNotifierProvider(create: (_) => LangueProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider.value(value: langue),
+        ChangeNotifierProvider.value(value: theme),
       ],
       child: ReservaApp(auth: auth),
     ),
@@ -36,10 +42,13 @@ class ReservaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final router = createRouter(auth);
+    final themeMode = context.watch<ThemeProvider>().mode;
     return MaterialApp.router(
       title: AppFlavorConfig.nomApp,
       debugShowCheckedModeBanner: false,
       theme: appTheme(),
+      darkTheme: appThemeSombre(),
+      themeMode: themeMode,
       routerConfig: router,
       // Column soft (pas Overlay) : bannière toujours au-dessus des Scaffold.
       builder: (context, child) => MiseAJourGate(child: child ?? const SizedBox.shrink()),

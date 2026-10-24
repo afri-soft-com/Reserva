@@ -68,34 +68,36 @@ class ProfilScreen extends StatelessWidget {
                 leading: const Icon(Icons.language, color: AppCouleurs.primaire),
                 title: Text(AppTraductions.t('langue'), style: const TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(_libelleLangue(context.watch<LangueProvider>().langue)),
-                trailing: DropdownButton<String>(
-                  value: context.watch<LangueProvider>().langue,
-                  underline: const SizedBox(),
-                  icon: const Icon(Icons.arrow_drop_down),
-                  items: const [
-                    DropdownMenuItem(value: 'fr', child: Text('Français')),
-                    DropdownMenuItem(value: 'ln', child: Text('Lingála')),
-                    DropdownMenuItem(value: 'sw', child: Text('Kiswahili')),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _libelleLangue(context.watch<LangueProvider>().langue),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const Icon(Icons.arrow_drop_down),
                   ],
-                  onChanged: (v) {
-                    if (v != null) context.read<LangueProvider>().definir(v);
-                  },
                 ),
+                onTap: () => _choisirLangue(context),
               ),
             ),
-            if (auth.biometrieDisponible) ...[
-              const SizedBox(height: 16),
-              Carte(
-                child: SwitchListTile(
-                  title: const Text('Déverrouillage biométrique', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Utilisez votre empreinte ou FaceID'),
-                  secondary: const Icon(Icons.fingerprint, color: AppCouleurs.primaire),
-                  value: auth.biometrieActivee,
-                  onChanged: (_) => auth.basculerBiometrie(),
-                  activeColor: AppCouleurs.primaire,
+            const SizedBox(height: 16),
+            Carte(
+              child: SwitchListTile(
+                title: const Text('Déverrouillage biométrique', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(
+                  auth.biometrieDisponible
+                      ? 'Utilisez votre empreinte ou FaceID'
+                      : 'Non disponible sur cet appareil',
                 ),
+                secondary: const Icon(Icons.fingerprint, color: AppCouleurs.primaire),
+                value: auth.biometrieActivee,
+                onChanged: auth.biometrieDisponible
+                    ? (_) => _basculerBiometrie(context)
+                    : null,
+                activeColor: AppCouleurs.primaire,
               ),
-            ],
+            ),
             const SizedBox(height: 16),
             Carte(
               child: SwitchListTile(
@@ -335,13 +337,78 @@ class ProfilScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _choisirLangue(BuildContext context) async {
+    final actuelle = context.read<LangueProvider>().langue;
+    final choix = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        Widget option(String code, String label) {
+          final selected = code == actuelle;
+          return ListTile(
+            title: Text(label, style: TextStyle(fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+            trailing: selected ? const Icon(Icons.check, color: AppCouleurs.primaire) : null,
+            onTap: () => Navigator.pop(ctx, code),
+          );
+        }
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Text('Choisir la langue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              ),
+              option('fr', 'Français'),
+              option('ln', 'Lingála'),
+              option('sw', 'Kiswahili'),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (choix == null || !context.mounted) return;
+    final langue = context.read<LangueProvider>();
+    final auth = context.read<AuthProvider>();
+    await langue.definir(choix);
+    try {
+      await auth.mettreAJourProfil(langue: choix);
+    } catch (_) {
+      /* langue locale déjà appliquée */
+    }
+  }
+
+  Future<void> _basculerBiometrie(BuildContext context) async {
+    final err = await context.read<AuthProvider>().basculerBiometrie();
+    if (!context.mounted) return;
+    if (err != null) {
+      ToastWidget.show(context, err, type: 'erreur');
+    } else {
+      final actif = context.read<AuthProvider>().biometrieActivee;
+      ToastWidget.show(
+        context,
+        actif ? 'Déverrouillage biométrique activé' : 'Déverrouillage biométrique désactivé',
+        type: 'succes',
+      );
+    }
+  }
+
   Future<void> _basculer2FA(BuildContext context, bool actif) async {
     final auth = context.read<AuthProvider>();
     try {
       await auth.definir2FA(actif);
-      if (context.mounted) ToastWidget.show(context, actif ? 'Vérification en 2 étapes activée' : 'Vérification en 2 étapes désactivée', type: 'succes');
+      if (context.mounted) {
+        ToastWidget.show(
+          context,
+          actif ? 'Vérification en 2 étapes activée' : 'Vérification en 2 étapes désactivée',
+          type: 'succes',
+        );
+      }
     } catch (e) {
-      if (context.mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      if (!context.mounted) return;
+      final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      ToastWidget.show(context, msg, type: 'erreur');
     }
   }
 }
