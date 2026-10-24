@@ -18,19 +18,19 @@ export type ConfigVersions = Record<CanalVersion, ConfigVersionCanal>;
 /** Seuils par défaut (seed uniquement si clé absente — n'écrase jamais l'admin). */
 const DEFAUTS: ConfigVersions = {
   client: {
-    minSoft: "1.0.3",
+    minSoft: "1.0.4",
     minForce: "1.0.2",
     storeUrlAndroid: "https://play.google.com/store/apps/details?id=com.reserva.client",
     storeUrlIos: "https://apps.apple.com/app/id6820885784",
   },
   pro: {
-    minSoft: "1.0.3",
+    minSoft: "1.0.4",
     minForce: "1.0.2",
     storeUrlAndroid: "https://play.google.com/store/apps/details?id=com.reserva.pro",
     storeUrlIos: "https://apps.apple.com/app/id6820887223",
   },
   web: {
-    minSoft: "1.0.1",
+    minSoft: "1.0.2",
     minForce: "1.0.0",
   },
 };

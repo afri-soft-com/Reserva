@@ -198,7 +198,7 @@ jobs:
         run: npm run build:web
         env:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api
-          NEXT_PUBLIC_APP_VERSION: "1.0.1"
+          NEXT_PUBLIC_APP_VERSION: "1.0.2"
       - name: Playwright e2e admin (chromium)
         working-directory: apps/web
         run: |
