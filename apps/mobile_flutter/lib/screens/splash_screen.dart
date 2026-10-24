@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app_flavor.dart';
 import '../theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -67,9 +68,20 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 ),
               ),
               const SizedBox(height: 28),
-              const Text('RESERVA', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 3)),
+              Text(
+                AppFlavorConfig.nomApp,
+                style: TextStyle(
+                  fontSize: AppFlavorConfig.estPrestataire ? 28 : 32,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: AppFlavorConfig.estPrestataire ? 1.5 : 3,
+                ),
+              ),
               const SizedBox(height: 6),
-              Text('Réservez. Sereinement.', style: TextStyle(fontSize: 15, color: AppCouleurs.primaireClair, letterSpacing: 0.5)),
+              Text(
+                AppFlavorConfig.estPrestataire ? 'Gérez. Encaissez. Grandissez.' : 'Réservez. Sereinement.',
+                style: TextStyle(fontSize: 15, color: AppCouleurs.primaireClair, letterSpacing: 0.5),
+              ),
               const SizedBox(height: 48),
               const SizedBox(
                 width: 22, height: 22,

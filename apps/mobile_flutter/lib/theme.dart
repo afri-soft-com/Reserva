@@ -55,6 +55,14 @@ class StatutStyles {
   };
 }
 
+PageTransitionsTheme get _transitionsFluides => const PageTransitionsTheme(
+  builders: {
+    TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+    TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+  },
+);
+
 ThemeData appTheme() {
   return ThemeData(
     useMaterial3: true,
@@ -67,6 +75,7 @@ ThemeData appTheme() {
     ),
     scaffoldBackgroundColor: AppCouleurs.fond,
     fontFamily: 'Inter',
+    pageTransitionsTheme: _transitionsFluides,
     appBarTheme: const AppBarTheme(
       backgroundColor: AppCouleurs.blanc,
       foregroundColor: AppCouleurs.texte,
@@ -121,6 +130,7 @@ ThemeData appThemeSombre() {
     ),
     scaffoldBackgroundColor: AppCouleurs.fondSombre,
     fontFamily: 'Inter',
+    pageTransitionsTheme: _transitionsFluides,
     appBarTheme: const AppBarTheme(
       backgroundColor: AppCouleurs.fondCarteSombre,
       foregroundColor: AppCouleurs.texteSombre,

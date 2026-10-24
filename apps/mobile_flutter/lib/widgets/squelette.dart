@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
-class Squelette extends StatelessWidget {
+class Squelette extends StatefulWidget {
   final double largeur;
   final double hauteur;
   final double rayon;
@@ -9,13 +9,35 @@ class Squelette extends StatelessWidget {
   const Squelette({super.key, this.largeur = double.infinity, this.hauteur = 16, this.rayon = 8});
 
   @override
+  State<Squelette> createState() => _SqueletteState();
+}
+
+class _SqueletteState extends State<Squelette> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      width: largeur,
-      height: hauteur,
-      decoration: BoxDecoration(
-        color: AppCouleurs.texteSecondaire.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(rayon),
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.45, end: 1).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut)),
+      child: Container(
+        width: widget.largeur,
+        height: widget.hauteur,
+        decoration: BoxDecoration(
+          color: AppCouleurs.texteSecondaire.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(widget.rayon),
+        ),
       ),
     );
   }
@@ -79,6 +101,36 @@ class EcranVide extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// État d'erreur distinct d'un écran vide (avec retry).
+class EcranErreur extends StatelessWidget {
+  final String message;
+  final String? sousTitre;
+  final VoidCallback? onRetry;
+
+  const EcranErreur({
+    super.key,
+    this.message = 'Impossible de charger',
+    this.sousTitre = 'Vérifiez votre connexion puis réessayez.',
+    this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return EcranVide(
+      icone: Icons.cloud_off_outlined,
+      message: message,
+      sousTitre: sousTitre,
+      action: onRetry == null
+          ? null
+          : OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Réessayer'),
+            ),
     );
   }
 }

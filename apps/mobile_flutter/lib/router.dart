@@ -101,10 +101,13 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(path: '/cgu', builder: (ctx, state) => const CguScreen()),
       GoRoute(path: '/confidentialite', builder: (ctx, state) => const ConfidentialiteScreen()),
       GoRoute(path: '/manuel', builder: (ctx, state) => const ManuelUtilisateurScreen()),
-      GoRoute(path: '/accueil', builder: (ctx, state) => const MainShell()),
+      GoRoute(
+        path: '/accueil',
+        builder: (ctx, state) => MainShell(ongletInitial: MainShellTabs.ongletParDefaut(auth)),
+      ),
       GoRoute(
         path: '/reservations',
-        builder: (ctx, state) => const MainShell(ongletInitial: 2),
+        builder: (ctx, state) => MainShell(ongletInitial: MainShellTabs.indexReservations(auth)),
       ),
       GoRoute(path: '/services', builder: (ctx, state) {
         final categorie = state.extra as String?;

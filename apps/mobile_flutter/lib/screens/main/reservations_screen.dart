@@ -160,7 +160,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                         message: _erreur ?? AppTraductions.t('aucuneReservation'),
                         sousTitre: _erreur != null ? AppTraductions.t('tirezPourReessayer') : AppTraductions.t('aucuneReservationCategorie'),
                         action: _erreur != null ? null : ElevatedButton.icon(
-                          onPressed: () => context.go('/services'),
+                          onPressed: () => context.push('/services'),
                           icon: const Icon(Icons.search, size: 18),
                           label: Text(AppTraductions.t('parcourirServices')),
                           style: ElevatedButton.styleFrom(backgroundColor: AppCouleurs.primaire, foregroundColor: AppCouleurs.blanc),

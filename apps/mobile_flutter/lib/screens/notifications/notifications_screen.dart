@@ -15,6 +15,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<NotificationItem> _notifications = [];
   bool _chargement = true;
+  bool _erreur = false;
 
   @override
   void initState() {
@@ -23,12 +24,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    setState(() {
+      _chargement = true;
+      _erreur = false;
+    });
     try {
       final data = await ApiNotifications.lister();
-      if (mounted) setState(() => _notifications = data);
+      if (mounted) {
+        setState(() {
+          _notifications = data;
+          _erreur = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _notifications = []);
+      if (mounted) {
+        setState(() {
+          _notifications = [];
+          _erreur = true;
+        });
+      }
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -114,8 +128,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
       body: _chargement
-        ? const Padding(padding: EdgeInsets.all(16), child: Squelette())
-        : _notifications.isEmpty
+        ? const Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              children: [
+                CarteSquelette(),
+                CarteSquelette(),
+                CarteSquelette(),
+              ],
+            ),
+          )
+        : _erreur
+          ? EcranErreur(onRetry: _charger)
+          : _notifications.isEmpty
           ? EcranVide(
               icone: Icons.notifications_off,
               message: AppTraductions.t('aucuneNotification'),

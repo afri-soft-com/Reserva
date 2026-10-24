@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../app_flavor.dart';
 import '../../theme.dart';
 import '../../i18n.dart';
 import '../../providers/auth_provider.dart';
@@ -10,9 +11,9 @@ import '../../services/api_reservations.dart';
 import '../../services/api_services.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/badge_statut.dart';
-import '../../widgets/toast.dart';
 import '../../widgets/banniere_publicite.dart';
 import '../../widgets/carte_prestataires.dart';
+import '../../widgets/squelette.dart';
 
 class AccueilScreen extends StatefulWidget {
   const AccueilScreen({super.key});
@@ -26,6 +27,8 @@ class _AccueilScreenState extends State<AccueilScreen> {
   List<ServiceAvecPrestataire> _servicesRecents = [];
   List<ServiceAvecPrestataire> _recommandations = [];
   int _nbEnAttente = 0;
+  bool _chargement = true;
+  bool _erreur = false;
 
   @override
   void initState() {
@@ -34,6 +37,10 @@ class _AccueilScreenState extends State<AccueilScreen> {
   }
 
   Future<void> _charger() async {
+    setState(() {
+      _chargement = true;
+      _erreur = false;
+    });
     try {
       final results = await Future.wait([
         ApiReservations.listerMesReservations(),
@@ -53,10 +60,13 @@ class _AccueilScreenState extends State<AccueilScreen> {
           _servicesRecents = services;
           _recommandations = recommandations;
           _nbEnAttente = reservations.where((r) => r.reservation.statut == 'EN_ATTENTE').length;
+          _erreur = false;
         });
       }
     } catch (_) {
-      if (mounted) ToastWidget.show(context, 'Erreur de chargement', type: 'erreur');
+      if (mounted) setState(() => _erreur = true);
+    } finally {
+      if (mounted) setState(() => _chargement = false);
     }
   }
 
@@ -65,51 +75,55 @@ class _AccueilScreenState extends State<AccueilScreen> {
     return '${montant.toStringAsFixed(0)} FC';
   }
 
-  /// Bandeau confiance type OTA (hold, PIN, QR).
+  /// Bandeau confiance type OTA (hold, PIN, QR) — wrap pour petits écrans.
   Widget _bandeauConfiance() {
     Widget item(IconData icon, String titre, String sous) {
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppCouleurs.blanc,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppCouleurs.bordure),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: AppCouleurs.primaire, size: 22),
-              const SizedBox(height: 8),
-              Text(titre, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-              const SizedBox(height: 2),
-              Text(sous, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire, height: 1.25)),
-            ],
-          ),
+      return Container(
+        width: 148,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppCouleurs.blanc,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppCouleurs.bordure),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: AppCouleurs.primaire, size: 22),
+            const SizedBox(height: 8),
+            Text(titre, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+            const SizedBox(height: 2),
+            Text(sous, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire, height: 1.25)),
+          ],
         ),
       );
     }
 
-    return Row(
-      children: [
-        item(Icons.timer_outlined, 'Hold 15 min', 'Comme Booking : réservez sans stress'),
-        const SizedBox(width: 8),
-        item(Icons.pin, 'PIN sécurisé', 'SMS une seule fois à l\'inscription'),
-        const SizedBox(width: 8),
-        item(Icons.qr_code_2, 'QR billet', 'Check-in rapide chez le prestataire'),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          item(Icons.timer_outlined, 'Hold 15 min', 'Comme Booking : réservez sans stress'),
+          const SizedBox(width: 8),
+          item(Icons.pin, 'PIN sécurisé', 'SMS une seule fois à l\'inscription'),
+          const SizedBox(width: 8),
+          item(Icons.qr_code_2, 'QR billet', 'Check-in rapide chez le prestataire'),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     context.watch<LangueProvider>();
-    final user = context.watch<AuthProvider>().utilisateur;
+    final auth = context.watch<AuthProvider>();
+    final user = auth.utilisateur;
+    final estPro = auth.estPrestataire || AppFlavorConfig.estPrestataire;
 
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
       appBar: AppBar(
-        title: const Text('RESERVA', style: TextStyle(fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
+        title: Text(AppFlavorConfig.nomApp, style: const TextStyle(fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
         centerTitle: false,
         actions: [
           IconButton(
@@ -118,7 +132,21 @@ class _AccueilScreenState extends State<AccueilScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
+      body: _chargement
+          ? const Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Squelette(hauteur: 140, rayon: 16),
+                  SizedBox(height: 16),
+                  CarteSquelette(),
+                  CarteSquelette(),
+                ],
+              ),
+            )
+          : _erreur
+          ? EcranErreur(onRetry: _charger)
+          : RefreshIndicator(
         onRefresh: _charger,
         color: AppCouleurs.primaire,
         child: SingleChildScrollView(
@@ -127,22 +155,24 @@ class _AccueilScreenState extends State<AccueilScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildBanniere(user),
-              const BannierePublicite(),
+              _buildBanniere(user, estPro: estPro),
+              if (!estPro) const BannierePublicite(),
               const SizedBox(height: 20),
               if (_prochaineResa != null) ...[
                 _buildProchaineReservation(),
                 const SizedBox(height: 20),
               ],
+              if (!estPro) ...[
                 _buildStatsRow(),
-              const SizedBox(height: 20),
-              if (_recommandations.isNotEmpty) ...[
+                const SizedBox(height: 20),
+              ],
+              if (!estPro && _recommandations.isNotEmpty) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Recommandé pour vous', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                     TextButton(
-                      onPressed: () => context.go('/services'),
+                      onPressed: () => context.push('/services'),
                       child: Text(AppTraductions.t('voirTout'), style: const TextStyle(fontSize: 13)),
                     ),
                   ],
@@ -151,19 +181,21 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 _buildServicesRow(services: _recommandations),
                 const SizedBox(height: 24),
               ],
-              _bandeauConfiance(),
-              const SizedBox(height: 20),
-              Text(AppTraductions.t('categories'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              _categoriesGrid(context),
-              if (_servicesRecents.isNotEmpty) ...[
+              if (!estPro) ...[
+                _bandeauConfiance(),
+                const SizedBox(height: 20),
+                Text(AppTraductions.t('categories'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                _categoriesGrid(context),
+              ],
+              if (!estPro && _servicesRecents.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(AppTraductions.t('servicesPopulaires'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                     TextButton(
-                      onPressed: () => context.go('/services'),
+                      onPressed: () => context.push('/services'),
                       child: Text(AppTraductions.t('voirTout'), style: const TextStyle(fontSize: 13)),
                     ),
                   ],
@@ -171,10 +203,34 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 const SizedBox(height: 8),
                 _buildServicesRow(services: _servicesRecents),
               ],
-              const SizedBox(height: 24),
-              Text(AppTraductions.t('prestatairesProches'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              SizedBox(height: 300, child: CartePrestataires()),
+              if (!estPro) ...[
+                const SizedBox(height: 24),
+                Text(AppTraductions.t('prestatairesProches'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                const SizedBox(height: 300, child: CartePrestataires()),
+              ],
+              if (estPro) ...[
+                Carte(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Espace prestataire', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Gérez agenda, QR, soldes et avis depuis l’onglet Prestataire.',
+                        style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _prochaineResa != null
+                            ? 'Prochaine mission : ${_prochaineResa!.service.nom}'
+                            : 'Aucune réservation à venir pour le moment.',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
             ],
           ),
@@ -183,7 +239,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
     );
   }
 
-  Widget _buildBanniere(Utilisateur? user) {
+  Widget _buildBanniere(Utilisateur? user, {required bool estPro}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -194,38 +250,48 @@ class _AccueilScreenState extends State<AccueilScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${AppTraductions.t('bonjour')}${user != null ? ' ${user.nom.split(' ').first}' : ''} 👋',
+          Text('${AppTraductions.t('bonjour')}${user != null ? ' ${user.nom.split(' ').first}' : ''}',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 4),
-          Text(AppTraductions.t('slogan'),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+          Text(
+            estPro ? 'Votre journée Pro' : AppTraductions.t('slogan'),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+          ),
           const SizedBox(height: 8),
-          Text(AppTraductions.t('sousTitreAccueil'),
-            style: const TextStyle(fontSize: 14, color: AppCouleurs.primaireClair)),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => context.push('/voyages'),
-              icon: const Icon(Icons.flight_takeoff),
-              label: const Text('Voyages — hôtels & bus'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppCouleurs.accent,
-                foregroundColor: AppCouleurs.primaireFonce,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          Text(
+            estPro ? AppFlavorConfig.sousTitreBienvenue : AppTraductions.t('sousTitreAccueil'),
+            style: const TextStyle(fontSize: 14, color: AppCouleurs.primaireClair),
+          ),
+          if (!estPro) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => context.push('/voyages'),
+                icon: const Icon(Icons.flight_takeoff),
+                label: const Text('Voyages — hôtels & bus'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppCouleurs.accent,
+                  foregroundColor: AppCouleurs.primaireFonce,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.go('/services'),
-              icon: const Icon(Icons.search),
-              label: Text(AppTraductions.t('trouverService')),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/services'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white70),
+                ),
+                icon: const Icon(Icons.search),
+                label: Text(AppTraductions.t('trouverService')),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -236,7 +302,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
     final dateStr = r.creneau.debut.substring(0, 10);
     final heureStr = '${r.creneau.debut.substring(11, 16)} - ${r.creneau.fin.substring(11, 16)}';
     return GestureDetector(
-      onTap: () => context.go('/reservation/${r.reservation.id}'),
+      onTap: () => context.push('/reservation/${r.reservation.id}'),
       child: Carte(
         child: Row(
           children: [
@@ -337,7 +403,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
             } else if (categories[i].$3 == 'TRANSPORT') {
               context.push('/transport');
             } else {
-              context.go('/services', extra: categories[i].$3);
+              context.push('/services', extra: categories[i].$3);
             }
           },
           child: Container(
@@ -378,7 +444,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
         itemBuilder: (ctx, i) {
           final s = services[i];
           return GestureDetector(
-            onTap: () => context.go('/service/${s.id}'),
+            onTap: () => context.push('/service/${s.id}'),
             child: Container(
               width: 160,
               padding: const EdgeInsets.all(12),

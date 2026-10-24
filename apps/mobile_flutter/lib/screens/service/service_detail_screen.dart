@@ -27,6 +27,7 @@ class ServiceDetailScreen extends StatefulWidget {
 class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   Map<String, dynamic>? _data;
   bool _chargement = true;
+  bool _erreurReseau = false;
   String? _selectedCreneauId;
   bool _reservationEnCours = false;
   int _occurrences = 1;
@@ -42,15 +43,27 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    setState(() {
+      _chargement = true;
+      _erreurReseau = false;
+    });
     try {
       final data = await ApiServices.obtenirDetailService(widget.serviceId);
       if (mounted) {
-        setState(() => _data = data);
+        setState(() {
+          _data = data;
+          _erreurReseau = false;
+        });
         _chargerPackages((data['prestataire'] as Map<String, dynamic>?)?['id'] as String?);
       }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      if (mounted) {
+        setState(() {
+          _data = null;
+          _erreurReseau = true;
+        });
+        ToastWidget.show(context, e.toString().replaceFirst('Exception: ', ''), type: 'erreur');
+      }
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -192,7 +205,12 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       return Scaffold(
         backgroundColor: AppCouleurs.fond,
         appBar: AppBar(title: Text(AppTraductions.t('service'))),
-        body: Center(child: Text(AppTraductions.t('serviceNonTrouve'))),
+        body: _erreurReseau
+            ? EcranErreur(onRetry: _charger)
+            : EcranVide(
+                icone: Icons.miscellaneous_services_outlined,
+                message: AppTraductions.t('serviceNonTrouve'),
+              ),
       );
     }
 
@@ -727,7 +745,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: InkWell(
-              onTap: () => context.go('/service/${sim.id}'),
+              onTap: () => context.push('/service/${sim.id}'),
               child: Carte(
                 child: Row(
                   children: [

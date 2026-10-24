@@ -229,7 +229,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
         width: 44,
         height: 44,
         child: GestureDetector(
-          onTap: () => context.go('/service/${s.id}'),
+          onTap: () => context.push('/service/${s.id}'),
           child: Container(
             decoration: BoxDecoration(
               color: AppCouleurs.primaire,
@@ -622,7 +622,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                             final s = _services[i];
                             final estFavori = _favorisIds.contains(s.id);
                             return GestureDetector(
-                              onTap: () => context.go('/service/${s.id}'),
+                              onTap: () => context.push('/service/${s.id}'),
                               child: Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: Carte(

@@ -36,6 +36,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
   Map<String, dynamic>? _exigenceDocuments;
   Map<String, dynamic>? _abonnement;
   bool _chargement = true;
+  bool _erreurReseau = false;
   int _ongletCourant = 0;
   String? _moisSelectionne;
 
@@ -52,7 +53,10 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
   final _codeActivationCtrl = TextEditingController();
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    setState(() {
+      _chargement = true;
+      _erreurReseau = false;
+    });
     try {
       final profil = await ApiPrestataire.obtenirProfil();
       final activationRequise = profil['activationRequise'] == true;
@@ -62,6 +66,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         _kycMotif = profil['kycMotifRejet'] as String?;
         _exigenceDocuments = profil['exigenceDocuments'] as Map<String, dynamic>?;
         _activationRequise = activationRequise;
+        _erreurReseau = false;
       });
       if (activationRequise ||
           _profilStatut == 'EN_ATTENTE_VALIDATION' ||
@@ -82,10 +87,14 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
           _exigenceDocuments = _exigenceDocuments
               ?? (results[0] as DashboardData).exigenceDocuments;
           _abonnement = results[3] as Map<String, dynamic>?;
+          _erreurReseau = false;
         });
       }
     } catch (_) {
-      if (mounted) { ToastWidget.show(context, 'Erreur chargement tableau de bord', type: 'erreur'); }
+      if (mounted) {
+        setState(() => _erreurReseau = true);
+        ToastWidget.show(context, 'Erreur chargement tableau de bord', type: 'erreur');
+      }
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -137,7 +146,18 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
       return Scaffold(
         backgroundColor: AppCouleurs.fond,
         appBar: AppBar(title: const Text('Mon espace')),
-        body: const Padding(padding: EdgeInsets.all(16), child: Squelette()),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(children: [CarteSquelette(), CarteSquelette(), CarteSquelette()]),
+        ),
+      );
+    }
+
+    if (_erreurReseau && _dashboard == null && !_activationRequise) {
+      return Scaffold(
+        backgroundColor: AppCouleurs.fond,
+        appBar: AppBar(title: const Text('Mon espace')),
+        body: EcranErreur(onRetry: _charger),
       );
     }
 

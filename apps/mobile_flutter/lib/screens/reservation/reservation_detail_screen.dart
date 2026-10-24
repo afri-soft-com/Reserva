@@ -15,6 +15,7 @@ import '../../widgets/badge_statut.dart';
 import '../../widgets/bouton.dart';
 import '../../widgets/toast.dart';
 import '../../widgets/qr_code_reservation.dart';
+import '../../widgets/squelette.dart';
 import 'modifier_reservation_screen.dart';
 import '../chat/appel_vocal_screen.dart';
 
@@ -29,6 +30,7 @@ class ReservationDetailScreen extends StatefulWidget {
 class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
   ReservationDetaillee? _detail;
   bool _chargement = true;
+  bool _erreurReseau = false;
 
   @override
   void initState() {
@@ -37,12 +39,26 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    setState(() {
+      _chargement = true;
+      _erreurReseau = false;
+    });
     try {
       final detail = await ApiReservations.obtenirDetail(widget.reservationId);
-      if (mounted) setState(() => _detail = detail);
+      if (mounted) {
+        setState(() {
+          _detail = detail;
+          _erreurReseau = false;
+        });
+      }
     } catch (e) {
-      if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+      if (mounted) {
+        setState(() {
+          _detail = null;
+          _erreurReseau = true;
+        });
+        ToastWidget.show(context, e.toString().replaceFirst('Exception: ', ''), type: 'erreur');
+      }
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
@@ -155,8 +171,29 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_chargement) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_detail == null) return const Scaffold(body: Center(child: Text('Réservation non trouvée')));
+    if (_chargement) {
+      return Scaffold(
+        backgroundColor: AppCouleurs.fond,
+        appBar: AppBar(title: const Text('Réservation')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(children: [CarteSquelette(), CarteSquelette()]),
+        ),
+      );
+    }
+    if (_detail == null) {
+      return Scaffold(
+        backgroundColor: AppCouleurs.fond,
+        appBar: AppBar(title: const Text('Réservation')),
+        body: _erreurReseau
+            ? EcranErreur(onRetry: _charger)
+            : const EcranVide(
+                icone: Icons.event_busy,
+                message: 'Réservation non trouvée',
+                sousTitre: 'Elle a peut-être été annulée ou n’existe plus.',
+              ),
+      );
+    }
 
     final r = _detail!;
     final auth = context.watch<AuthProvider>();

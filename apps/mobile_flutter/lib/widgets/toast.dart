@@ -3,16 +3,23 @@ import 'package:flutter/material.dart';
 class ToastWidget extends StatefulWidget {
   final String message;
   final String type;
+  final VoidCallback? onReadyToRemove;
 
-  const ToastWidget({super.key, required this.message, this.type = 'info'});
+  const ToastWidget({super.key, required this.message, this.type = 'info', this.onReadyToRemove});
 
   static void show(BuildContext context, String message, {String type = 'info'}) {
     final overlay = Overlay.of(context);
-    final entry = OverlayEntry(
-      builder: (_) => ToastWidget(message: message, type: type),
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => ToastWidget(
+        message: message,
+        type: type,
+        onReadyToRemove: () {
+          entry.remove();
+        },
+      ),
     );
     overlay.insert(entry);
-    Future.delayed(const Duration(seconds: 3), () => entry.remove());
   }
 
   @override
@@ -27,10 +34,19 @@ class _ToastWidgetState extends State<ToastWidget> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _slide = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    _fade = Tween<double>(begin: 0, end: 1).animate(_controller);
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 280));
+    _slide = Tween<Offset>(begin: const Offset(0, 0.35), end: Offset.zero).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+    _fade = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
+    Future.delayed(const Duration(milliseconds: 2600), _fermer);
+  }
+
+  Future<void> _fermer() async {
+    if (!mounted) return;
+    await _controller.reverse();
+    widget.onReadyToRemove?.call();
   }
 
   @override
@@ -67,19 +83,21 @@ class _ToastWidgetState extends State<ToastWidget> with SingleTickerProviderStat
           opacity: _fade,
           child: Material(
             color: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: _bgColor(),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
-                ],
-              ),
-              child: Text(
-                widget.message,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textColor()),
+            child: SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: _bgColor(),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
+                  ],
+                ),
+                child: Text(
+                  widget.message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textColor()),
+                ),
               ),
             ),
           ),
