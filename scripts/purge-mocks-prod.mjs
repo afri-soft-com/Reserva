@@ -20,13 +20,14 @@ const keepSeedAccounts = process.env.KEEP_SEED_ACCOUNTS === "1";
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const API = "https://api.render.com/v1";
 
+/** Comptes smoke CI — ne PAS soft-delete (restaurés via restore-smoke-accounts-prod.mjs). */
+const SMOKE_CI_PHONES = new Set(["+243970000001", "+243991234567"]);
+
 const SEED_PHONES = [
-  "+243970000001",
   "+243970000002",
   "+243970000003",
   "+243970000004",
   "+243970000005",
-  "+243991234567",
   "+243981234568",
 ];
 
@@ -36,13 +37,14 @@ const SEED_ENTREPRISES = new Set([
   "Hôtel Fleuve Congo",
 ]);
 
-/** Prestataires réels à préserver (noms connus). */
+/** Prestataires réels / techniques à préserver. */
 const GARDER_NOMS = new Set([
   "Celestin Kasereka",
   "afriri",
   "mar",
   "Cls",
   "Clinique Espoir",
+  "Smoke Clinique CI",
 ]);
 
 const NOM_ANGLAIS = /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}$/;
@@ -171,6 +173,10 @@ async function main() {
     console.log("→ Comptes seed (soft-delete)");
     let suppr = 0;
     for (const tel of SEED_PHONES) {
+      if (SMOKE_CI_PHONES.has(tel)) {
+        console.log(`  keep smoke CI ${tel}`);
+        continue;
+      }
       try {
         const id = await chercherUserId(token, tel);
         if (!id) {

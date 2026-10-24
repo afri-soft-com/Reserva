@@ -234,7 +234,8 @@ export async function executerParcoursEcriture(opts) {
     console.log("  aucun dossier KYC — skip");
   }
 
-  // --- 3. Hôtel checkout ---
+  // --- 3. Hôtel checkout (skip si catalogue réel vide — pas de re-seed mocks) ---
+  let sejourId = null;
   console.log("→ Hôtel search → hold → payer → annuler");
   const arrivee = datePlus(5);
   const depart = datePlus(7);
@@ -245,54 +246,58 @@ export async function executerParcoursEcriture(opts) {
   );
   const hotels = itemsOf(hotelsData);
   const hotel = hotels[0];
-  if (!hotel?.id) throw new Error("Aucun hôtel trouvé");
+  if (!hotel?.id) {
+    console.log("  ⚠ catalogue hôtels vide — skip (prod sans mocks)");
+  } else {
+    const detailHotel = await get(
+      gateway,
+      `/hotels/${hotel.id}?arrivee=${arrivee}&depart=${depart}&adultes=2`,
+      client.token
+    );
+    const typeChambre =
+      (detailHotel.chambres || []).find((c) => (c.tarifs || []).length > 0) || detailHotel.chambres?.[0];
+    const planTarif = typeChambre?.tarifs?.[0];
+    if (!typeChambre?.id || !planTarif?.id) throw new Error("Hôtel sans chambre/tarif (detail)");
 
-  const detailHotel = await get(
-    gateway,
-    `/hotels/${hotel.id}?arrivee=${arrivee}&depart=${depart}&adultes=2`,
-    client.token
-  );
-  const typeChambre = (detailHotel.chambres || []).find((c) => (c.tarifs || []).length > 0) || detailHotel.chambres?.[0];
-  const planTarif = typeChambre?.tarifs?.[0];
-  if (!typeChambre?.id || !planTarif?.id) throw new Error("Hôtel sans chambre/tarif (detail)");
+    const hold = await post(
+      gateway,
+      "/checkout/hold",
+      {
+        hotelId: hotel.id,
+        typeChambreId: typeChambre.id,
+        planTarifId: planTarif.id,
+        arrivee,
+        depart,
+        adultes: 2,
+        enfants: 0,
+        notes: `Smoke hotel ${uid}`,
+      },
+      client.token
+    );
+    sejourId = hold.id || hold.sejourId;
+    if (!sejourId) throw new Error("Hold hôtel sans id");
+    const montantHotel = hold.montantTotal || hold.total || planTarif.prixParNuit || 85;
+    console.log("  hold", sejourId, "montant", montantHotel);
 
-  const hold = await post(
-    gateway,
-    "/checkout/hold",
-    {
-      hotelId: hotel.id,
-      typeChambreId: typeChambre.id,
-      planTarifId: planTarif.id,
-      arrivee,
-      depart,
-      adultes: 2,
-      enfants: 0,
-      notes: `Smoke hotel ${uid}`,
-    },
-    client.token
-  );
-  const sejourId = hold.id || hold.sejourId;
-  if (!sejourId) throw new Error("Hold hôtel sans id");
-  const montantHotel = hold.montantTotal || hold.total || planTarif.prixParNuit || 85;
-  console.log("  hold", sejourId, "montant", montantHotel);
+    await post(
+      gateway,
+      `/checkout/sejours/${sejourId}/payer`,
+      {
+        operateur: "MPESA",
+        telephonePaiement: clientPhone,
+        montant: Number(montantHotel),
+        idempotencyKey: `${uid}-pay-hotel`,
+      },
+      client.token
+    );
+    console.log("  payé");
 
-  await post(
-    gateway,
-    `/checkout/sejours/${sejourId}/payer`,
-    {
-      operateur: "MPESA",
-      telephonePaiement: clientPhone,
-      montant: Number(montantHotel),
-      idempotencyKey: `${uid}-pay-hotel`,
-    },
-    client.token
-  );
-  console.log("  payé");
+    await post(gateway, `/checkout/sejours/${sejourId}/annuler`, {}, client.token);
+    console.log("  séjour annulé");
+  }
 
-  await post(gateway, `/checkout/sejours/${sejourId}/annuler`, {}, client.token);
-  console.log("  séjour annulé");
-
-  // --- 4. Transport billet ---
+  // --- 4. Transport billet (skip si catalogue vide) ---
+  let billetId = null;
   console.log("→ Transport rechercher → hold → payer → annuler");
   const dateTrajet = datePlus(3);
   const trajetsData = await get(
@@ -302,34 +307,36 @@ export async function executerParcoursEcriture(opts) {
   );
   const trajets = itemsOf(trajetsData);
   const trajet = trajets[0];
-  if (!trajet?.id) throw new Error("Aucun trajet Kinshasa→Matadi");
+  if (!trajet?.id) {
+    console.log("  ⚠ catalogue transport vide — skip (prod sans mocks)");
+  } else {
+    const billetHold = await post(
+      gateway,
+      "/checkout/billets/hold",
+      { trajetId: trajet.id, places: 1, notes: `Smoke bus ${uid}` },
+      client.token
+    );
+    billetId = billetHold.id || billetHold.billetId;
+    if (!billetId) throw new Error("Hold billet sans id");
+    const montantBus = billetHold.montantTotal || billetHold.total || trajet.prix || 45000;
+    console.log("  billet", billetId, "montant", montantBus);
 
-  const billetHold = await post(
-    gateway,
-    "/checkout/billets/hold",
-    { trajetId: trajet.id, places: 1, notes: `Smoke bus ${uid}` },
-    client.token
-  );
-  const billetId = billetHold.id || billetHold.billetId;
-  if (!billetId) throw new Error("Hold billet sans id");
-  const montantBus = billetHold.montantTotal || billetHold.total || trajet.prix || 45000;
-  console.log("  billet", billetId, "montant", montantBus);
+    await post(
+      gateway,
+      `/checkout/billets/${billetId}/payer`,
+      {
+        operateur: "MPESA",
+        telephonePaiement: clientPhone,
+        montant: Number(montantBus),
+        idempotencyKey: `${uid}-pay-bus`,
+      },
+      client.token
+    );
+    console.log("  billet payé");
 
-  await post(
-    gateway,
-    `/checkout/billets/${billetId}/payer`,
-    {
-      operateur: "MPESA",
-      telephonePaiement: clientPhone,
-      montant: Number(montantBus),
-      idempotencyKey: `${uid}-pay-bus`,
-    },
-    client.token
-  );
-  console.log("  billet payé");
-
-  await post(gateway, `/checkout/billets/${billetId}/annuler`, {}, client.token);
-  console.log("  billet annulé");
+    await post(gateway, `/checkout/billets/${billetId}/annuler`, {}, client.token);
+    console.log("  billet annulé");
+  }
 
   console.log("✓ Parcours écriture OK");
   return { reservationId, sejourId, billetId };
