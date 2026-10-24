@@ -169,6 +169,14 @@ async function main() {
   }
   console.log(`✓ ${suspendus} prestataire(s) suspendu(s)`);
 
+  // Désactive aussi les services seed / smoke (suspendre le presta ne suffit pas toujours)
+  console.log("→ Services seed / smoke (actif=false)");
+  try {
+    run("node", ["scripts/hide-smoke-from-catalogue.mjs"], {});
+  } catch (e) {
+    console.log(`  ⚠ hide-smoke: ${e.message}`);
+  }
+
   if (!keepSeedAccounts) {
     console.log("→ Comptes seed (soft-delete)");
     let suppr = 0;

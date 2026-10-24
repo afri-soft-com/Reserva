@@ -153,15 +153,27 @@ export async function listerTousPrestataires(
       { utilisateur: { telephone: { contains: q } } },
     ];
   }
+  // Masque soft-supprimés + comptes techniques CI (Smoke *)
+  const whereEffectif = {
+    ...where,
+    AND: [
+      ...(where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : []),
+      { NOT: { nomEntreprise: { startsWith: "[supprimé]" } } },
+      { NOT: { nomEntreprise: { startsWith: "Smoke " } } },
+      { NOT: { utilisateur: { nom: "Compte supprimé" } } },
+      { NOT: { utilisateur: { nom: { startsWith: "Smoke " } } } },
+    ],
+  };
+
   const [items, total] = await Promise.all([
     prisma.prestataire.findMany({
-      where,
+      where: whereEffectif,
       skip,
       take: parPage,
       include: { utilisateur: { select: { nom: true, telephone: true, email: true, creeLe: true } } },
       orderBy: { creeLe: "desc" },
     }),
-    prisma.prestataire.count({ where }),
+    prisma.prestataire.count({ where: whereEffectif }),
   ]);
   return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) };
 }
@@ -192,9 +204,20 @@ export async function listerTousUtilisateurs(
       where.OR = rechercheOr;
     }
   }
+  // Masque soft-supprimés + comptes techniques CI
+  const whereEffectif = {
+    ...where,
+    AND: [
+      ...(where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : []),
+      { NOT: { nom: "Compte supprimé" } },
+      { NOT: { nom: { startsWith: "Smoke " } } },
+      { NOT: { telephone: { in: ["+243970000001", "+243991234567"] } } },
+    ],
+  };
+
   const [items, total] = await Promise.all([
     prisma.utilisateur.findMany({
-      where,
+      where: whereEffectif,
       skip,
       take: parPage,
       select: {
@@ -212,7 +235,7 @@ export async function listerTousUtilisateurs(
       },
       orderBy: { creeLe: "desc" },
     }),
-    prisma.utilisateur.count({ where }),
+    prisma.utilisateur.count({ where: whereEffectif }),
   ]);
   return { items, total, page, parPage, totalPages: Math.ceil(total / parPage) };
 }

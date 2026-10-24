@@ -85,14 +85,18 @@ export async function executerParcoursEcriture(opts) {
     );
   }
 
-  console.log("→ Recherche service SANTE");
-  const servicesData = await get(gateway, "/services?categorie=SANTE&ville=Kinshasa&parPage=20", client.token);
-  let services = itemsOf(servicesData);
-  if (!services.length) {
-    const all = await get(gateway, "/services?ville=Kinshasa&parPage=20", client.token);
-    services = itemsOf(all);
+  // Service smoke = catalogue pro (hors recherche publique / mocks cachés)
+  console.log("→ Bootstrap service + créneaux via pro smoke");
+  const proBootstrap = await login(gateway, proPhone, pin);
+  const mesServices = itemsOf(await get(gateway, "/prestataires/moi/services", proBootstrap.token));
+  let service = mesServices.find((s) => String(s.nom || "").startsWith("Consultation smoke")) || mesServices[0];
+  if (!service?.id) throw new Error("Pro smoke sans service (restore-smoke-accounts-prod ?)");
+
+  // Visible pour la réservation (detail/créneaux) mais exclu du catalogue public côté API
+  if (service.actif === false) {
+    await patch(gateway, `/prestataires/moi/services/${service.id}`, { actif: true }, proBootstrap.token);
+    service = { ...service, actif: true };
   }
-  if (!services.length) throw new Error("Aucun service trouvé (seed manquant ?)");
 
   async function trouverCreneauDispo(serviceId) {
     const detail = await get(gateway, `/services/${serviceId}`, client.token);
@@ -105,24 +109,9 @@ export async function executerParcoursEcriture(opts) {
     );
   }
 
-  let service = null;
-  let creneau = null;
-  for (const s of services) {
-    const c = await trouverCreneauDispo(s.id);
-    if (c) {
-      service = s;
-      creneau = c;
-      break;
-    }
-  }
-
-  // Créneaux seed épuisés / expirés → le pro smoke régénère sur SES services
+  let creneau = await trouverCreneauDispo(service.id);
   if (!creneau?.id) {
-    console.log("→ Aucun créneau dispo — génération récurrente via pro smoke");
-    const proBootstrap = await login(gateway, proPhone, pin);
-    const mesServices = itemsOf(await get(gateway, "/prestataires/moi/services", proBootstrap.token));
-    service = mesServices[0] || services[0];
-    if (!service?.id) throw new Error("Pro smoke sans service pour générer des créneaux");
+    console.log("→ Génération créneaux récurrents smoke");
     const debut = datePlus(1);
     const fin = datePlus(5);
     await post(
@@ -209,6 +198,14 @@ export async function executerParcoursEcriture(opts) {
     throw new Error(`Annulation inattendue: ${JSON.stringify(annulee).slice(0, 200)}`);
   }
   console.log("  annule", annulee.annule, "remboursé", annulee.montantRembourse);
+
+  // Remasquer le service technique CI
+  try {
+    await patch(gateway, `/prestataires/moi/services/${service.id}`, { actif: false }, pro.token);
+    console.log("  → service smoke remasqué");
+  } catch (e) {
+    console.log("  ⚠ remask smoke:", e.message || e);
+  }
 
   // --- 2. KYC admin ---
   console.log("→ KYC admin reviser (si dossier EN_REVUE)");

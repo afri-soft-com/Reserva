@@ -109,13 +109,14 @@ async function main() {
         dureeMinutes: 30,
         prix: 15000,
         devise: "CDF",
-        actif: true,
+        // Hors catalogue public (filtre API + actif=false) ; le smoke réactive au besoin
+        actif: false,
       },
     });
   } else {
     service = await prisma.serviceOffert.update({
       where: { id: service.id },
-      data: { actif: true, prix: 15000 },
+      data: { actif: false, prix: 15000 },
     });
   }
   console.log("✓ service", service.id);

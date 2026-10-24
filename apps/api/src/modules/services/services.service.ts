@@ -1,4 +1,4 @@
-﻿import { prisma } from "../../config/prisma";
+import { prisma } from "../../config/prisma";
 import { ErreurNonTrouve, ErreurValidation, ErreurInterdit, ErreurConflit } from "../../utils/erreurs";
 import { RechercheServicesInput, CreerCreneauInput, calculerOffset } from "@reserva/shared";
 
@@ -36,11 +36,24 @@ function creneauEstBloque(
   );
 }
 
-/** Recherche publique de services â€” utilisÃ©e par les clients pour dÃ©couvrir des prestataires */
+/** Comptes / services techniques CI — exclus du catalogue client. */
+function filtreHorsSmokeTechnique() {
+  return {
+    NOT: {
+      OR: [
+        { nom: { startsWith: "Consultation smoke" } },
+        { prestataire: { nomEntreprise: { startsWith: "Smoke " } } },
+      ],
+    },
+  };
+}
+
+/** Recherche publique de services — utilisée par les clients pour découvrir des prestataires */
 export async function rechercherServices(filtres: RechercheServicesInput) {
   const ou: any = {
     actif: true,
     prestataire: { statut: "APPROUVE", activationConfirmeeLe: { not: null } },
+    ...filtreHorsSmokeTechnique(),
   };
 
   if (filtres.categorie) {
@@ -425,7 +438,11 @@ export async function recommanderServices(utilisateurId: string, limite = 10) {
 
   const prestataireIds = categoriesReservees.map((r) => r.prestataireId);
 
-  let ou: any = { actif: true, prestataire: { statut: "APPROUVE", activationConfirmeeLe: { not: null } } };
+  let ou: any = {
+    actif: true,
+    prestataire: { statut: "APPROUVE", activationConfirmeeLe: { not: null } },
+    ...filtreHorsSmokeTechnique(),
+  };
 
   if (prestataireIds.length > 0) {
     // RÃ©cupÃ¨re les catÃ©gories des prestataires frÃ©quentÃ©s
