@@ -1,9 +1,16 @@
 import 'dart:io';
 
 class AppConfig {
+  /// Gateway prod — fallback release si `--dart-define=API_URL` oublié
+  /// (sinon localhost → /app/versions KO → bannières MAJ invisibles).
+  static const String apiUrlProd = 'https://reserva-gateway.onrender.com/api';
+
   static String get apiUrl {
     const depuisEnv = String.fromEnvironment('API_URL');
     if (depuisEnv.isNotEmpty) return depuisEnv;
+    // true en release / profile (builds stores)
+    const release = bool.fromEnvironment('dart.vm.product');
+    if (release) return apiUrlProd;
     if (Platform.isAndroid) return 'http://10.0.2.2:4000/api';
     return 'http://127.0.0.1:4000/api';
   }

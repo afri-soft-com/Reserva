@@ -41,6 +41,7 @@ class ReservaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: appTheme(),
       routerConfig: router,
+      // Column soft (pas Overlay) : bannière toujours au-dessus des Scaffold.
       builder: (context, child) => MiseAJourGate(child: child ?? const SizedBox.shrink()),
     );
   }

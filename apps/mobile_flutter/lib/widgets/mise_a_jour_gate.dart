@@ -8,11 +8,10 @@ import '../services/api_app_versions.dart';
 import '../theme.dart';
 import '../utils/comparer_versions.dart';
 
-/// Intervalle de relecture des seuils pendant l'utilisation (garde-fou CI).
-const Duration kIntervallePollMiseAJour = Duration(minutes: 2);
+/// Intervalle de relecture des seuils pendant l'utilisation.
+const Duration kIntervallePollMiseAJour = Duration(minutes: 1);
 
-/// Soft banner + force blocking overlay selon /api/app/versions.
-/// Relit les seuils en cours d'utilisation ; réaffiche si minSoft augmente.
+/// Soft banner + force blocking selon /api/app/versions.
 class MiseAJourGate extends StatefulWidget {
   final Widget child;
   const MiseAJourGate({super.key, required this.child});
@@ -27,7 +26,7 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
   String? _minForce;
   String? _storeUrl;
   bool _dismissSoft = false;
-  bool _charge = true;
+  bool _pret = false;
   bool _chargementEnCours = false;
   Timer? _poll;
 
@@ -36,7 +35,6 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _charger();
-    // Poll fréquent : bannière dès qu'une MAJ est publiée côté API, sans relancer l'app.
     _poll = Timer.periodic(kIntervallePollMiseAJour, (_) => _charger(silencieux: true));
   }
 
@@ -50,7 +48,6 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Réaffiche la soft si l'utilisateur est encore en retard (après « Plus tard »).
       if (_dismissSoft && _mode == 'soft') {
         setState(() => _dismissSoft = false);
       }
@@ -58,14 +55,14 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
     }
   }
 
-  Future<void> _appliquerConfig({
+  void _appliquerConfig({
     required String installee,
     required Map<String, dynamic> cfg,
-  }) async {
-    final android = cfg['storeUrlAndroid'] as String?;
-    final ios = cfg['storeUrlIos'] as String?;
-    final minSoft = cfg['minSoft'] as String? ?? '1.0.1';
-    final minForce = cfg['minForce'] as String? ?? '1.0.0';
+  }) {
+    final android = cfg['storeUrlAndroid']?.toString();
+    final ios = cfg['storeUrlIos']?.toString();
+    final minSoft = cfg['minSoft']?.toString() ?? '1.0.1';
+    final minForce = cfg['minForce']?.toString() ?? '1.0.0';
     final precedentSoft = _minSoft;
 
     if (!mounted) return;
@@ -74,13 +71,12 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
       _minSoft = minSoft;
       _minForce = minForce;
       _storeUrl = Platform.isIOS ? ios : android;
-      _charge = false;
+      _pret = true;
       final mode = decideModeMiseAJour(
         versionInstallee: installee,
         minSoft: minSoft,
         minForce: minForce,
       );
-      // Nouvelle publication (minSoft ↑) ou plus de besoin de MAJ → réafficher / reset dismiss.
       if (mode == 'none' ||
           mode == 'force' ||
           (precedentSoft != null && comparerVersions(minSoft, precedentSoft) > 0)) {
@@ -96,8 +92,14 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
       final info = await PackageInfo.fromPlatform();
       final versions = await ApiAppVersions.lire();
       final canal = AppFlavorConfig.estPrestataire ? 'pro' : 'client';
-      final cfg = Map<String, dynamic>.from(versions[canal] as Map? ?? {});
-      await _appliquerConfig(installee: info.version, cfg: cfg);
+      final raw = versions[canal];
+      if (raw is! Map) {
+        throw Exception('Canal $canal absent de /app/versions');
+      }
+      _appliquerConfig(
+        installee: info.version,
+        cfg: Map<String, dynamic>.from(raw),
+      );
     } catch (_) {
       if (!silencieux) {
         await Future<void>.delayed(const Duration(seconds: 2));
@@ -106,14 +108,19 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
           final info = await PackageInfo.fromPlatform();
           final versions = await ApiAppVersions.lire();
           final canal = AppFlavorConfig.estPrestataire ? 'pro' : 'client';
-          final cfg = Map<String, dynamic>.from(versions[canal] as Map? ?? {});
-          await _appliquerConfig(installee: info.version, cfg: cfg);
-          return;
+          final raw = versions[canal];
+          if (raw is Map) {
+            _appliquerConfig(
+              installee: info.version,
+              cfg: Map<String, dynamic>.from(raw),
+            );
+          }
         } catch (_) {
-          /* ignore */
+          /* conserve la dernière config connue — ne pas masquer une bannière déjà visible */
         }
       }
-      if (mounted && _charge) setState(() => _charge = false);
+      // Si on n'a jamais eu de config, marquer prêt pour ne pas bloquer l'UI.
+      if (mounted && !_pret) setState(() => _pret = true);
     } finally {
       _chargementEnCours = false;
     }
@@ -143,23 +150,24 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
 
   Widget _banniereSoft() {
     return Material(
-      elevation: 12,
+      elevation: 16,
       color: const Color(0xFF1A56DB),
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
           child: Row(
             children: [
-              const Icon(Icons.system_update_alt, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
+              const Icon(Icons.system_update_alt, color: Colors.white, size: 22),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Mise à jour disponible (v$_installee → ≥ $_minSoft)',
+                  'Mise à jour disponible (v$_installee → $_minSoft)',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
                   ),
                 ),
               ),
@@ -167,12 +175,12 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
                 onPressed: _ouvrirStore,
                 child: const Text(
                   'Mettre à jour',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
                 ),
               ),
               IconButton(
                 tooltip: 'Plus tard',
-                icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                icon: const Icon(Icons.close, color: Colors.white70, size: 20),
                 onPressed: () => setState(() => _dismissSoft = true),
               ),
             ],
@@ -219,20 +227,20 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
-    // Overlay : ne pas restructurer l'arbre go_router (Column+Expanded cassait
-    // parfois la bannière soft selon le Scaffold enfant).
-    return Stack(
-      fit: StackFit.expand,
+    // Bannière soft dans une Column (pas seulement Overlay) : toujours visible
+    // au-dessus du contenu, y compris AppBar des écrans enfants.
+    return Column(
       children: [
-        widget.child,
-        if (!_charge && _soft)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: _banniereSoft(),
+        if (_pret && _soft) _banniereSoft(),
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              widget.child,
+              if (_pret && _force) Positioned.fill(child: _ecranForce()),
+            ],
           ),
-        if (!_charge && _force) Positioned.fill(child: _ecranForce()),
+        ),
       ],
     );
   }
