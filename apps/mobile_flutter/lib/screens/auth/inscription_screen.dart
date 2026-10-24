@@ -18,10 +18,9 @@ class InscriptionScreen extends StatefulWidget {
 }
 
 class _InscriptionScreenState extends State<InscriptionScreen> {
-  /// FORMULAIRE (+ CGU) → OTP → PIN  |  téléphone prérempli depuis /bienvenue
+  /// FORMULAIRE → OTP → PIN  |  téléphone prérempli depuis /bienvenue (CGU déjà acceptées là)
   String _etape = 'FORMULAIRE';
   bool _chargement = false;
-  bool _accepteCgu = false;
   bool _telDepuisExtra = false;
   final _nomCtrl = TextEditingController();
   final _telephoneCtrl = TextEditingController(text: '+243');
@@ -64,14 +63,6 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
     }
     if (_nomCtrl.text.trim().length < 2) {
       ToastWidget.show(context, 'Indiquez votre nom complet', type: 'erreur');
-      return;
-    }
-    if (!_accepteCgu) {
-      ToastWidget.show(
-        context,
-        'Veuillez accepter les CGU et la Politique de confidentialité pour continuer',
-        type: 'erreur',
-      );
       return;
     }
     setState(() => _chargement = true);
@@ -294,7 +285,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
       case 'PIN':
         return 'Ce PIN à 4 chiffres servira pour toutes vos prochaines connexions — sans SMS.';
       default:
-        return 'Complétez votre profil ${AppFlavorConfig.estPrestataire ? 'prestataire' : 'client'}, acceptez les CGU, puis recevez le SMS.';
+        return 'Complétez votre profil ${AppFlavorConfig.estPrestataire ? 'prestataire' : 'client'}, puis recevez le SMS.';
     }
   }
 
@@ -348,41 +339,6 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
           controller: _codeParrainageCtrl,
           placeholder: 'Ex: RESV-JEAN-1234',
           prefixIcon: Icons.card_giftcard_outlined,
-        ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Checkbox(
-              value: _accepteCgu,
-              activeColor: AppCouleurs.primaire,
-              onChanged: (v) => setState(() => _accepteCgu = v ?? false),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Wrap(
-                  children: [
-                    const Text('J\'accepte les ', style: TextStyle(fontSize: 13)),
-                    GestureDetector(
-                      onTap: () => context.push('/cgu'),
-                      child: const Text('CGU', style: TextStyle(fontSize: 13, color: AppCouleurs.primaire, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
-                    ),
-                    const Text(', la ', style: TextStyle(fontSize: 13)),
-                    GestureDetector(
-                      onTap: () => context.push('/confidentialite'),
-                      child: const Text('Politique de confidentialité', style: TextStyle(fontSize: 13, color: AppCouleurs.primaire, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
-                    ),
-                    const Text(' et le ', style: TextStyle(fontSize: 13)),
-                    GestureDetector(
-                      onTap: () => context.push('/manuel'),
-                      child: const Text('manuel utilisateur', style: TextStyle(fontSize: 13, color: AppCouleurs.primaire, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ),
         const SizedBox(height: 16),
         _boutonPrincipal('Recevoir le SMS', _gererFormulaire),
