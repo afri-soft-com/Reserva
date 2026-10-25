@@ -48,9 +48,8 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      if (_dismissSoft && _mode == 'soft') {
-        setState(() => _dismissSoft = false);
-      }
+      // Ne pas réafficher une soft déjà fermée (« Plus tard ») :
+      // elle ne revient que si minSoft augmente (_appliquerConfig).
       _charger(silencieux: true);
     }
   }
