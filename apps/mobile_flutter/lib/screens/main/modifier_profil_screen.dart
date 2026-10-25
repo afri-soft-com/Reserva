@@ -123,13 +123,15 @@ class _ModifierProfilScreenState extends State<ModifierProfilScreen> {
     setState(() => _otpEnCours = true);
     try {
       final data = await ApiAuth.confirmerChangementTelephone(tel, code);
+      if (!mounted) return;
       final token = data['token'] as String?;
       final raw = data['utilisateur'];
       if (token == null || raw is! Map) {
         throw Exception('Réponse serveur invalide');
       }
       final utilisateur = Utilisateur.fromJson(Map<String, dynamic>.from(raw));
-      await context.read<AuthProvider>().connecterStore(token, utilisateur);
+      final auth = context.read<AuthProvider>();
+      await auth.connecterStore(token, utilisateur);
       await ApiClient.saveDernierTelephone(utilisateur.telephone);
       if (!mounted) return;
       setState(() {

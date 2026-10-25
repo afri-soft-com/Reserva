@@ -327,22 +327,6 @@ class ProfilScreen extends StatelessWidget {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppCouleurs.texteSecondaire),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.texteSecondaire)),
-            Text(value, style: TextStyle(fontSize: 15, color: AppCouleurs.texte)),
-          ],
-        ),
-      ],
-    );
-  }
-
   String _libelleLangue(String code) {
     switch (code) {
       case 'ln': return AppTraductions.t('lingala');
