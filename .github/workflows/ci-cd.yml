@@ -543,9 +543,13 @@ jobs:
           echo "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
           gem install fastlane --no-document
           fastlane deploy
-      - name: Vérifier bannières MAJ (mobile, sans bump seuils)
+      - name: Promouvoir bannières MAJ (minSoft = version publiée)
         working-directory: .
-        run: npm ci --ignore-scripts && npm run db:generate && npm run sync:app-versions -- --canaux=mobile --verify-only
+        run: |
+          npm ci --ignore-scripts
+          npm run db:generate
+          npm run promote:bannieres-store -- --canaux=client,pro
+          npm run sync:app-versions -- --canaux=mobile --verify-only
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -756,9 +760,13 @@ jobs:
           printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > fastlane/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
           gem install fastlane --no-document
           fastlane deploy
-      - name: Vérifier bannières MAJ (mobile, sans bump seuils)
+      - name: Promouvoir bannières MAJ (minSoft = version publiée)
         working-directory: .
-        run: npm ci --ignore-scripts && npm run db:generate && npm run sync:app-versions -- --canaux=mobile --verify-only
+        run: |
+          npm ci --ignore-scripts
+          npm run db:generate
+          npm run promote:bannieres-store -- --canaux=client,pro
+          npm run sync:app-versions -- --canaux=mobile --verify-only
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

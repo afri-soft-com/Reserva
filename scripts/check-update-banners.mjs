@@ -178,18 +178,28 @@ mustInclude(
 );
 mustInclude(
   "package.json",
-  ['"sync:app-versions"', '"check:update-banners"', '"ci:quality"'],
+  ['"sync:app-versions"', '"promote:bannieres-store"', '"check:update-banners"', '"ci:quality"'],
   "npm-scripts"
 );
 mustInclude(
   ".github/workflows/ci-cd.yml",
-  ["sync:app-versions", "--verify-only", "Vérifier bannières MAJ", "ci:quality"],
+  ["sync:app-versions", "--verify-only", "Promouvoir bannières MAJ", "ci:quality"],
   "ci-sync"
 );
 mustInclude(
   ".github/workflows/deploy-app-store.yml",
-  ["Vérifier bannières MAJ", "sync:app-versions", "--verify-only"],
+  ["promote:bannieres-store", "sync:app-versions", "--verify-only"],
   "asc-sync"
+);
+mustInclude(
+  ".github/workflows/ci-cd.yml",
+  ["promote:bannieres-store", "Promouvoir bannières MAJ"],
+  "cicd-promote-bannieres"
+);
+mustInclude(
+  "scripts/promote-bannieres-apres-store.mjs",
+  ["minSoft", "publiee", "jamais", "assertConfigBannieres"],
+  "promote-script"
 );
 mustInclude(
   ".github/workflows/bump-app-versions.yml",
@@ -197,29 +207,25 @@ mustInclude(
   "bump-workflow"
 );
 
-/** Post-deploy verify ne doit jamais être continue-on-error. */
-function assertSyncBloquante(rel) {
+/** Post-store : promote aligné sur pubspec + verify ; jamais continue-on-error. */
+function assertPromoteStore(rel) {
   const src = read(rel);
-  const parts = src.split(/- name:\s*Vérifier bannières MAJ[^\n]*/);
-  for (let i = 1; i < parts.length; i++) {
-    const stepHead = parts[i].slice(0, 500);
-    if (/continue-on-error:\s*true/.test(stepHead)) {
-      throw new Error(`[sync-bloquante] ${rel}: vérif bannières ne doit pas avoir continue-on-error`);
-    }
-    if (!/--verify-only/.test(stepHead) && !/sync:app-versions/.test(stepHead)) {
-      /* step body may be on following lines */
-    }
+  if (!src.includes("promote:bannieres-store") && !src.includes("promote-bannieres-apres-store")) {
+    throw new Error(`[promote-store] ${rel}: doit promouvoir minSoft = version publiée après upload`);
   }
   if (!src.includes("--verify-only")) {
-    throw new Error(`[sync-bloquante] ${rel}: post-deploy doit utiliser --verify-only (pas de bump auto)`);
+    throw new Error(`[promote-store] ${rel}: doit vérifier (--verify-only) après promote`);
+  }
+  if (/promote:bannieres-store[\s\S]{0,200}continue-on-error:\s*true/.test(src)) {
+    throw new Error(`[promote-store] ${rel}: promote bannières ne doit pas avoir continue-on-error`);
   }
   if (/sync:app-versions[^\n]*--bump-min-soft/.test(src) && !rel.includes("bump-app-versions")) {
-    throw new Error(`[sync-bloquante] ${rel}: ne pas bumper minSoft dans le deploy store`);
+    throw new Error(`[promote-store] ${rel}: ne pas utiliser --bump-min-soft dans le deploy store`);
   }
-  console.log(`  ✓ sync-bloquante: ${rel}`);
+  console.log(`  ✓ promote-store: ${rel}`);
 }
-assertSyncBloquante(".github/workflows/ci-cd.yml");
-assertSyncBloquante(".github/workflows/deploy-app-store.yml");
+assertPromoteStore(".github/workflows/ci-cd.yml");
+assertPromoteStore(".github/workflows/deploy-app-store.yml");
 
 mustMatch("apps/mobile_flutter/pubspec.yaml", /^version:\s*\d+\.\d+\.\d+/m, "pubspec-version");
 mustMatch("apps/web/package.json", /"version":\s*"\d+\.\d+\.\d+"/, "web-package-version");

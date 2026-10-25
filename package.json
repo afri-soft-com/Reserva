@@ -53,6 +53,7 @@
     "ensure:prod-catalogue": "node scripts/ensure-prod-catalogue.mjs",
     "migrate:prod": "node scripts/migrate-prod.mjs",
     "sync:app-versions": "node scripts/sync-app-versions-prod.mjs",
+    "promote:bannieres-store": "node scripts/promote-bannieres-apres-store.mjs",
     "wait:render": "node scripts/wait-render-ready.mjs",
     "db:migrate:core": "node scripts/db-migrate-service.mjs core",
     "db:migrate:hotels": "node scripts/db-migrate-service.mjs hotels",

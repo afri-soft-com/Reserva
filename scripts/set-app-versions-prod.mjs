@@ -5,9 +5,18 @@
  *   node scripts/set-app-versions-prod.mjs --client=1.0.3 --pro=1.0.3 --web=1.0.1
  *   node scripts/set-app-versions-prod.mjs --client-soft=1.0.3 --client-force=1.0.2 ...
  *
+ * Garde-fou : refuse minSoft mobile > version pubspec sauf --allow-ahead
+ * (évite les bannières collées après MAJ store).
+ *
  * Env: GATEWAY_URL, SMOKE_ADMIN_PHONE, SMOKE_ADMIN_PIN
  */
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const gateway = (process.env.GATEWAY_URL || "https://reserva-gateway.onrender.com/api").replace(/\/$/, "");
+const allowAhead = process.argv.includes("--allow-ahead");
 
 function arg(name, def) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -67,6 +76,26 @@ async function main() {
     ["web", webSoft, webForce],
   ]) {
     if (cmpVer(force, soft) > 0) throw new Error(`${label}: force ${force} > soft ${soft}`);
+  }
+
+  if (!allowAhead) {
+    const pubspec = fs.readFileSync(path.join(racine, "apps/mobile_flutter/pubspec.yaml"), "utf8");
+    const m = pubspec.match(/^\s*version:\s*([^\s+]+)/m);
+    const publiee = m?.[1]?.trim();
+    if (publiee) {
+      for (const [label, soft] of [
+        ["client", clientSoft],
+        ["pro", proSoft],
+      ]) {
+        if (cmpVer(soft, publiee) > 0) {
+          throw new Error(
+            `${label}: minSoft ${soft} > version pubspec ${publiee}. ` +
+              `Cela laisse la bannière soft après MAJ. Utilisez promote:bannieres-store, ` +
+              `ou --allow-ahead seulement pour un test ponctuel.`
+          );
+        }
+      }
+    }
   }
 
   const login = await fetch(`${gateway}/auth/connexion`, {

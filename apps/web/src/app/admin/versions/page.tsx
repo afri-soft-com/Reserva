@@ -88,12 +88,13 @@ export default function PageVersions() {
       <div>
         <h1 className="text-2xl font-extrabold text-gray-900">Versions apps</h1>
         <p className="mt-1 max-w-3xl text-sm text-gray-500">
-          La bannière s&apos;affiche seulement si la version <em>installée</em> est{" "}
-          <strong>strictement inférieure</strong> au seuil. Ex. app store en{" "}
-          <code className="rounded bg-gray-100 px-1">1.0.1</code> → mettez{" "}
-          <code className="rounded bg-gray-100 px-1">minSoft = 1.0.1</code> pour les clients
-          encore en 1.0.0 ; pour tester sur votre appareil déjà en 1.0.1, mettez{" "}
-          <code className="rounded bg-gray-100 px-1">1.0.2</code>.
+          La bannière soft s&apos;affiche si la version <em>installée</em> est{" "}
+          <strong>strictement inférieure</strong> à <code className="rounded bg-gray-100 px-1">minSoft</code>.
+          Après chaque upload Play / App Store, la CI pose automatiquement{" "}
+          <code className="rounded bg-gray-100 px-1">minSoft = version publiée</code> : les anciennes
+          installs voient la bannière, la dernière build non.{" "}
+          <strong>Ne montez pas minSoft au-dessus de la version du store</strong> — la bannière resterait
+          collée après mise à jour.
         </p>
       </div>
 
