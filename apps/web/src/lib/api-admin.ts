@@ -111,6 +111,7 @@ export async function modifierUtilisateurAdmin(
   utilisateurId: string,
   input: Partial<{
     nom: string;
+    telephone: string;
     email: string | null;
     role: "CLIENT" | "ADMIN" | "AGENT" | "PRESTATAIRE";
     langue: string;

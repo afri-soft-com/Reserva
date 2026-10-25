@@ -285,6 +285,7 @@ export async function modifierUtilisateurAdmin(
   utilisateurId: string,
   input: {
     nom?: string;
+    telephone?: string;
     email?: string | null;
     role?: "CLIENT" | "ADMIN" | "AGENT" | "PRESTATAIRE";
     langue?: string;
@@ -312,8 +313,23 @@ export async function modifierUtilisateurAdmin(
     if (emailPris) throw new Error("Cet email est déjà utilisé");
   }
 
+  let telephoneNormalise: string | undefined;
+  if (input.telephone !== undefined) {
+    telephoneNormalise = normaliserTelephone(input.telephone);
+    if (telephoneNormalise !== u.telephone) {
+      const telPris = await prisma.utilisateur.findFirst({
+        where: { telephone: telephoneNormalise, NOT: { id: utilisateurId } },
+      });
+      if (telPris) throw new Error("Ce téléphone est déjà utilisé");
+    }
+  }
+
   const data: Record<string, unknown> = {};
   if (input.nom !== undefined) data.nom = input.nom.trim();
+  if (telephoneNormalise !== undefined) {
+    data.telephone = telephoneNormalise;
+    data.telephoneVerifie = true;
+  }
   if (input.email !== undefined) data.email = input.email?.trim() || null;
   if (input.role !== undefined) data.role = input.role;
   if (input.langue !== undefined) data.langue = input.langue;

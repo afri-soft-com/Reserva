@@ -36,6 +36,7 @@ const schemaCreerUtilisateur = z.object({
 });
 const schemaModifierUtilisateur = z.object({
   nom: z.string().trim().min(2).max(100).optional(),
+  telephone: z.string().trim().min(9).optional(),
   email: z.string().email().optional().nullable().or(z.literal("")),
   role: z.enum(["CLIENT", "ADMIN", "AGENT", "PRESTATAIRE"]).optional(),
   langue: z.enum(["fr", "ln", "sw"]).optional(),

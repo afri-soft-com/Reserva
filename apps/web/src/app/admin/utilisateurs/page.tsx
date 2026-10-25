@@ -123,6 +123,7 @@ export default function PageAdminUtilisateurs() {
       if (editionId) {
         await modifierUtilisateurAdmin(editionId, {
           nom: form.nom.trim(),
+          telephone: form.telephone.trim(),
           email: form.email.trim() || null,
           role: form.role,
           langue: form.langue,
@@ -411,21 +412,20 @@ export default function PageAdminUtilisateurs() {
               </button>
             </div>
             <div className="space-y-3">
-              {!editionId && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Téléphone *</label>
-                  <input
-                    className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-sm"
-                    value={form.telephone}
-                    onChange={(e) => setForm({ ...form, telephone: e.target.value })}
-                  />
-                </div>
-              )}
-              {editionId && (
-                <p className="text-sm text-gray-500">
-                  Téléphone : <span className="font-mono">{form.telephone}</span> (non modifiable)
-                </p>
-              )}
+              <div>
+                <label className="text-sm font-medium text-gray-700">Téléphone *</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-sm font-mono"
+                  value={form.telephone}
+                  onChange={(e) => setForm({ ...form, telephone: e.target.value })}
+                  placeholder="+243…"
+                />
+                {editionId && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Format international recommandé (+243…). Doit être unique.
+                  </p>
+                )}
+              </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Nom *</label>
                 <input
@@ -491,7 +491,11 @@ export default function PageAdminUtilisateurs() {
                   taille="sm"
                   className="flex-1"
                   chargement={soumission}
-                  disabled={!form.nom.trim() || (!editionId && (!form.telephone.trim() || form.pin.length !== 4))}
+                  disabled={
+                    !form.nom.trim() ||
+                    !form.telephone.trim() ||
+                    (!editionId && form.pin.length !== 4)
+                  }
                   onClick={soumettre}
                 >
                   {editionId ? "Enregistrer" : "Créer"}
