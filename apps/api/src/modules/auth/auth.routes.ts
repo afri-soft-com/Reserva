@@ -46,6 +46,30 @@ routesAuth.patch("/profil", authentifier, valider(z.object({
   langue: z.enum(["fr", "ln", "sw"]).optional(),
 })), authController.mettreAJourProfil);
 
+// Changement de téléphone (OTP sur le nouveau numéro)
+routesAuth.post(
+  "/telephone/demander",
+  authentifier,
+  valider(
+    z.object({
+      nouveauTelephone: z.string().trim().min(9),
+      smsAppHash: z.string().trim().min(4).max(32).optional(),
+    })
+  ),
+  authController.demanderChangementTelephone
+);
+routesAuth.post(
+  "/telephone/confirmer",
+  authentifier,
+  valider(
+    z.object({
+      nouveauTelephone: z.string().trim().min(9),
+      code: z.string().trim().length(6),
+    })
+  ),
+  authController.confirmerChangementTelephone
+);
+
 // Photo de profil
 routesAuth.patch("/photo", authentifier, valider(z.object({ photoUrl: z.string() })), authController.mettreAJourPhoto);
 

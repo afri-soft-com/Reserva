@@ -56,9 +56,23 @@ class ProfilScreen extends StatelessWidget {
             Carte(
               child: Column(
                 children: [
-                  _infoRow(Icons.phone, 'Téléphone', user?.telephone ?? ''),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.phone, color: AppCouleurs.primaire),
+                    title: const Text('Téléphone', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(user?.telephone ?? ''),
+                    trailing: const Icon(Icons.edit, size: 18, color: AppCouleurs.primaire),
+                    onTap: () => context.push('/modifier-profil'),
+                  ),
                   const Divider(height: 24),
-                  _infoRow(Icons.email, 'Email', user?.email ?? 'Non renseigné'),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.email, color: AppCouleurs.primaire),
+                    title: const Text('Email', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(user?.email ?? 'Non renseigné'),
+                    trailing: const Icon(Icons.edit, size: 18, color: AppCouleurs.primaire),
+                    onTap: () => context.push('/modifier-profil'),
+                  ),
                 ],
               ),
             ),
@@ -470,7 +484,7 @@ Future<void> _confirmerSuppressionCompte(BuildContext context) async {
     await auth.deconnecter();
     if (context.mounted) {
       ToastWidget.show(context, 'Compte supprimé', type: 'succes');
-      context.go('/bienvenue');
+      context.go('/connexion');
     }
   } catch (e) {
     if (context.mounted) ToastWidget.show(context, e.toString(), type: 'erreur');

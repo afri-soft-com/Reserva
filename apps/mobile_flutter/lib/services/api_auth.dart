@@ -100,6 +100,26 @@ class ApiAuth {
     return (await ApiClient.patch('/auth/profil', body: body)) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> demanderChangementTelephone(
+    String nouveauTelephone, {
+    String? smsAppHash,
+  }) async {
+    return (await ApiClient.post('/auth/telephone/demander', body: {
+      'nouveauTelephone': nouveauTelephone,
+      if (smsAppHash != null && smsAppHash.isNotEmpty) 'smsAppHash': smsAppHash,
+    })) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> confirmerChangementTelephone(
+    String nouveauTelephone,
+    String code,
+  ) async {
+    return (await ApiClient.post('/auth/telephone/confirmer', body: {
+      'nouveauTelephone': nouveauTelephone,
+      'code': code,
+    })) as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> monCodeParrainage() async {
     return (await ApiClient.get('/auth/moi/code-parrainage')) as Map<String, dynamic>;
   }

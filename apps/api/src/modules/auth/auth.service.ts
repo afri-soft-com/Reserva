@@ -445,6 +445,86 @@ export async function mettreAJourProfil(utilisateurId: string, donnees: { nom?: 
   return { utilisateur: formaterUtilisateurPublic(misAJour) };
 }
 
+/** Envoie un OTP au nouveau numéro pour changer le téléphone du compte connecté. */
+export async function demanderChangementTelephone(
+  utilisateurId: string,
+  nouveauTelephoneBrut: string,
+  smsAppHash?: string | null
+) {
+  const utilisateur = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });
+  if (!utilisateur) throw new ErreurNonTrouve("Utilisateur non trouvé");
+
+  const nouveauTelephone = normaliserTelephone(nouveauTelephoneBrut);
+  if (nouveauTelephone === utilisateur.telephone) {
+    throw new ErreurValidation("Ce numéro est déjà associé à votre compte");
+  }
+  const pris = await prisma.utilisateur.findUnique({ where: { telephone: nouveauTelephone } });
+  if (pris) throw new ErreurValidation("Ce numéro de téléphone est déjà utilisé");
+
+  const envoi = await genererEtEnvoyerOtp(utilisateurId, nouveauTelephone, smsAppHash);
+  return {
+    telephone: nouveauTelephone,
+    smsEnvoye: envoi.smsEnvoye,
+    ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
+    message: envoi.smsEnvoye
+      ? "Code envoyé au nouveau numéro"
+      : "SMS indisponible — utilisez le code affiché",
+  };
+}
+
+/** Confirme le changement de téléphone après OTP, renvoie un nouveau token. */
+export async function confirmerChangementTelephone(
+  utilisateurId: string,
+  input: { nouveauTelephone: string; code: string }
+) {
+  const utilisateur = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });
+  if (!utilisateur) throw new ErreurNonTrouve("Utilisateur non trouvé");
+
+  const nouveauTelephone = normaliserTelephone(input.nouveauTelephone);
+  if (nouveauTelephone === utilisateur.telephone) {
+    throw new ErreurValidation("Ce numéro est déjà associé à votre compte");
+  }
+  const pris = await prisma.utilisateur.findUnique({ where: { telephone: nouveauTelephone } });
+  if (pris) throw new ErreurValidation("Ce numéro de téléphone est déjà utilisé");
+
+  const otp = await prisma.otp.findFirst({
+    where: { utilisateurId, utilise: false },
+    orderBy: { creeLe: "desc" },
+  });
+  if (!otp) {
+    throw new ErreurValidation("Aucun code de vérification en attente. Demandez un nouveau code.");
+  }
+  if (otp.tentatives >= TENTATIVES_MAX_OTP) {
+    throw new ErreurValidation("Nombre maximal de tentatives atteint. Demandez un nouveau code.");
+  }
+  if (new Date() > otp.expireLe) {
+    throw new ErreurValidation("Ce code a expiré. Demandez un nouveau code.");
+  }
+  if (otp.code !== input.code) {
+    await prisma.otp.update({ where: { id: otp.id }, data: { tentatives: { increment: 1 } } });
+    throw new ErreurValidation("Code de vérification incorrect");
+  }
+
+  const [, misAJour] = await prisma.$transaction([
+    prisma.otp.update({ where: { id: otp.id }, data: { utilise: true } }),
+    prisma.utilisateur.update({
+      where: { id: utilisateurId },
+      data: { telephone: nouveauTelephone, telephoneVerifie: true },
+    }),
+  ]);
+
+  const token = genererToken({
+    utilisateurId: misAJour.id,
+    role: misAJour.role as RoleUtilisateur,
+    telephone: misAJour.telephone,
+  });
+
+  return {
+    token,
+    utilisateur: formaterUtilisateurPublic(misAJour),
+  };
+}
+
 /** Met à jour la photo de profil (reçoit une URL ou une data URI base64) */
 export async function mettreAJourPhoto(utilisateurId: string, photoUrl: string) {
   const utilisateur = await prisma.utilisateur.findUnique({ where: { id: utilisateurId } });

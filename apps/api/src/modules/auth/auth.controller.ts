@@ -68,6 +68,22 @@ export const mettreAJourProfil = asyncHandler(async (req: Request, res: Response
   envoyerSucces(res, resultat);
 });
 
+export const demanderChangementTelephone = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await authService.demanderChangementTelephone(
+    req.utilisateur.utilisateurId,
+    req.body.nouveauTelephone,
+    req.body.smsAppHash
+  );
+  envoyerSucces(res, resultat);
+});
+
+export const confirmerChangementTelephone = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.utilisateur) throw new ErreurNonAutorise();
+  const resultat = await authService.confirmerChangementTelephone(req.utilisateur.utilisateurId, req.body);
+  envoyerSucces(res, resultat);
+});
+
 export const definir2FA = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const resultat = await authService.definir2FA(req.utilisateur.utilisateurId, req.body.actif);
