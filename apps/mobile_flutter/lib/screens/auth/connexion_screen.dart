@@ -283,50 +283,66 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
   }
 
   Widget _formulaireConnexion() {
+    // Après déconnexion : uniquement le PIN (téléphone mémorisé en arrière-plan).
+    if (_modeDeverrouillage) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Champ(
+            libelle: AppTraductions.t('codePin'),
+            placeholder: '••••',
+            controller: _pinCtrl,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            prefixIcon: Icons.lock_outline,
+            validator: (v) => v == null || v.trim().length != 4 ? AppTraductions.t('pin4Chiffres') : null,
+          ),
+          const SizedBox(height: 16),
+          _boutonPrincipal('Déverrouiller', _connecter),
+          const SizedBox(height: 4),
+          Center(
+            child: TextButton(
+              onPressed: () => context.go('/reinitialiser-pin'),
+              child: Text(
+                AppTraductions.t('motDePasseOublie'),
+                style: const TextStyle(
+                  color: AppCouleurs.primaire,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: TextButton(
+              onPressed: () => setState(() {
+                _modeDeverrouillage = false;
+                _pinCtrl.clear();
+              }),
+              child: Text(
+                'Utiliser un autre compte',
+                style: TextStyle(color: AppCouleurs.texteSecondaire, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_modeDeverrouillage) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppCouleurs.blanc,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppCouleurs.bordure),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.phone_iphone, color: AppCouleurs.primaire),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _telephoneCtrl.text,
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppCouleurs.texte),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => setState(() {
-                    _modeDeverrouillage = false;
-                    _pinCtrl.clear();
-                  }),
-                  child: const Text('Changer', style: TextStyle(fontWeight: FontWeight.w700)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-        ] else ...[
-          Champ(
-            libelle: AppTraductions.t('telephone'),
-            placeholder: '+243…',
-            controller: _telephoneCtrl,
-            keyboardType: TextInputType.phone,
-            prefixIcon: Icons.phone_outlined,
-            validator: (v) => v == null || v.trim().isEmpty ? AppTraductions.t('telephoneRequis') : null,
-          ),
-          const SizedBox(height: 12),
-        ],
+        Champ(
+          libelle: AppTraductions.t('telephone'),
+          placeholder: '+243…',
+          controller: _telephoneCtrl,
+          keyboardType: TextInputType.phone,
+          prefixIcon: Icons.phone_outlined,
+          validator: (v) => v == null || v.trim().isEmpty ? AppTraductions.t('telephoneRequis') : null,
+        ),
+        const SizedBox(height: 12),
         Champ(
           libelle: AppTraductions.t('codePin'),
           placeholder: '••••',
@@ -338,17 +354,11 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
           validator: (v) => v == null || v.trim().length != 4 ? AppTraductions.t('pin4Chiffres') : null,
         ),
         const SizedBox(height: 16),
-        _boutonPrincipal(
-          _modeDeverrouillage ? 'Déverrouiller' : AppTraductions.t('seConnecter'),
-          _connecter,
-        ),
+        _boutonPrincipal(AppTraductions.t('seConnecter'), _connecter),
         const SizedBox(height: 4),
         Center(
           child: TextButton(
-            onPressed: () => context.go(
-              '/reinitialiser-pin',
-              // Préremplir via query n'est pas supporté ; stock déjà connu côté écran PIN oublié
-            ),
+            onPressed: () => context.go('/reinitialiser-pin'),
             child: Text(
               AppTraductions.t('motDePasseOublie'),
               style: const TextStyle(
