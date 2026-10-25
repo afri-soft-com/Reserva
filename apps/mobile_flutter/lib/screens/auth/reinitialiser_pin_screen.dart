@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/api_auth.dart';
+import '../../services/api_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/models.dart';
 import '../../theme.dart';
@@ -29,6 +30,15 @@ class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
   void initState() {
     super.initState();
     _codeCtrl.addListener(() => setState(() {}));
+    _prefillTelephone();
+  }
+
+  Future<void> _prefillTelephone() async {
+    final tel = await ApiClient.getDernierTelephone();
+    if (!mounted) return;
+    if (tel != null && tel.trim().length >= 10) {
+      setState(() => _telephoneCtrl.text = tel.trim());
+    }
   }
 
   @override

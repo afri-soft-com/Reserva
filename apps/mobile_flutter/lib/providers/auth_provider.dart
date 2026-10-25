@@ -100,6 +100,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> connecterStore(String token, Utilisateur utilisateur, {Prestataire? prestataire}) async {
     await ApiClient.saveToken(token);
+    if (utilisateur.telephone.trim().isNotEmpty) {
+      await ApiClient.saveDernierTelephone(utilisateur.telephone);
+    }
     _utilisateur = utilisateur;
     _prestataire = prestataire;
     _estConnecte = true;
@@ -148,15 +151,17 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> deconnecter() async {
+    // Conserve dernier téléphone + préférence biométrie pour l'écran PIN.
+    if (_utilisateur?.telephone != null && _utilisateur!.telephone.trim().isNotEmpty) {
+      await ApiClient.saveDernierTelephone(_utilisateur!.telephone);
+    }
     await ApiClient.deleteToken();
-    await ApiClient.deleteBiometriePref();
     await ServiceCache.vider();
     await CacheHorsLigne.vider();
     SocketService().deconnecter();
     _utilisateur = null;
     _prestataire = null;
     _estConnecte = false;
-    _biometrieActivee = false;
     notifyListeners();
   }
 }

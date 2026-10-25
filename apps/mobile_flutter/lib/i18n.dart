@@ -24,7 +24,7 @@ class AppTraductions {
       'montantTotal': 'Montant total',
       'codePin': 'Code PIN',
       'telephone': 'Numéro de téléphone',
-      'motDePasseOublie': 'Mot de passe oublié ?',
+      'motDePasseOublie': 'PIN oublié ?',
       'reinitialiserPin': 'Réinitialiser le code PIN',
       'nouveauPin': 'Nouveau code PIN',
       'confirmerPin': 'Confirmer le code PIN',

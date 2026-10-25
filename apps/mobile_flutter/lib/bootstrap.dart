@@ -7,6 +7,7 @@ import 'providers/langue_provider.dart';
 import 'providers/theme_provider.dart';
 import 'router.dart';
 import 'theme.dart';
+import 'widgets/biometrie_lock.dart';
 import 'widgets/mise_a_jour_gate.dart';
 
 Future<void> demarrerApp({required AppFlavor roleForce}) async {
@@ -52,7 +53,9 @@ class ReservaApp extends StatelessWidget {
       themeMode: themeMode,
       routerConfig: router,
       // Column soft (pas Overlay) : bannière toujours au-dessus des Scaffold.
-      builder: (context, child) => MiseAJourGate(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => MiseAJourGate(
+        child: BiometrieLockWrapper(child: child ?? const SizedBox.shrink()),
+      ),
     );
   }
 }

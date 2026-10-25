@@ -8,6 +8,7 @@ class ApiClient {
   static String get _baseUrl => AppConfig.apiUrl;
   static const String _tokenKey = 'reserva_token';
   static const String _biometrieKey = 'biometrie_activee';
+  static const String _dernierTelephoneKey = 'dernier_telephone';
   static final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   static Future<String?> getToken() => _storage.read(key: _tokenKey);
@@ -17,6 +18,12 @@ class ApiClient {
   static Future<String?> getBiometriePref() => _storage.read(key: _biometrieKey);
   static Future<void> saveBiometriePref(String valeur) => _storage.write(key: _biometrieKey, value: valeur);
   static Future<void> deleteBiometriePref() => _storage.delete(key: _biometrieKey);
+
+  /// Dernier téléphone connecté — pour l'écran PIN après déconnexion.
+  static Future<String?> getDernierTelephone() => _storage.read(key: _dernierTelephoneKey);
+  static Future<void> saveDernierTelephone(String telephone) =>
+      _storage.write(key: _dernierTelephoneKey, value: telephone.trim());
+  static Future<void> deleteDernierTelephone() => _storage.delete(key: _dernierTelephoneKey);
 
   /// Stocke une structure JSON localement (cache hors ligne)
   static Future<void> saveJson(String cle, Map<String, dynamic> donnees) =>
