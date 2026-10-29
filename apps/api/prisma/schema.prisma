@@ -62,16 +62,21 @@ model Utilisateur {
 }
 
 model Otp {
-  id           String   @id @default(uuid())
-  utilisateurId String
-  utilisateur  Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
-  code         String
-  expireLe     DateTime
-  utilise      Boolean  @default(false)
-  tentatives   Int      @default(0)
-  creeLe       DateTime @default(now())
+  id              String   @id @default(uuid())
+  utilisateurId   String
+  utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  code            String
+  // INSCRIPTION | RESET_PIN | DEUX_FA | CHANGEMENT_TELEPHONE
+  purpose         String   @default("INSCRIPTION")
+  // Target phone for CHANGEMENT_TELEPHONE; null = account phone
+  telephoneCible  String?
+  expireLe        DateTime
+  utilise         Boolean  @default(false)
+  tentatives      Int      @default(0)
+  creeLe          DateTime @default(now())
 
   @@index([utilisateurId])
+  @@index([utilisateurId, purpose, utilise])
   @@map("otps")
 }
 

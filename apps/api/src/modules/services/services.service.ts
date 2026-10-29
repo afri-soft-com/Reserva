@@ -230,6 +230,17 @@ export async function obtenirDetailService(serviceId: string) {
   if (!service || !service.actif) {
     throw new ErreurNonTrouve("Service non trouvÃ©");
   }
+  // Aligné sur la recherche publique : pas de smoke / presta non approuvé
+  const nomSvc = String(service.nom || "");
+  const nomPresta = String(service.prestataire?.nomEntreprise || "");
+  if (
+    nomSvc.startsWith("Consultation smoke") ||
+    nomPresta.startsWith("Smoke ") ||
+    service.prestataire?.statut !== "APPROUVE" ||
+    !service.prestataire?.activationConfirmeeLe
+  ) {
+    throw new ErreurNonTrouve("Service non trouvÃ©");
+  }
 
   // N'expose que les créneaux ayant encore de la capacité disponible et hors périodes d'indisponibilité
   const periodesBloquees = await chargerPeriodesBloquees([service.prestataireId]);

@@ -61,7 +61,11 @@ export async function verifierIdentityTokenApple(
   identityToken: string,
   nomFourni?: string | null
 ): Promise<ProfilApple> {
-  if (env.MODE_APPLE === "simulation" && identityToken.startsWith("SIM-APPLE:")) {
+  if (
+    env.NODE_ENV !== "production" &&
+    env.MODE_APPLE === "simulation" &&
+    identityToken.startsWith("SIM-APPLE:")
+  ) {
     const parts = identityToken.split(":");
     const email = parts[1] || "demo.apple@reserva.cd";
     const nom = parts.slice(2).join(":") || nomFourni || "Utilisateur Apple";

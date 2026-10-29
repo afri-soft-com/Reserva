@@ -20,6 +20,17 @@ import {
 } from "@reserva/shared";
 import { telephoneSynthetiqueGoogle, verifierIdTokenGoogle } from "./google.service";
 import { telephoneSynthetiqueApple, verifierIdentityTokenApple } from "./apple.service";
+import { estProduction } from "../../config/env";
+
+type OtpPurpose = "INSCRIPTION" | "RESET_PIN" | "DEUX_FA" | "CHANGEMENT_TELEPHONE";
+
+function reponseOtpPublic(envoi: { smsEnvoye: boolean; codeOtp?: string }) {
+  // Jamais renvoyer le code OTP aux clients en production (même si SMS hub en panne)
+  if (estProduction || !envoi.codeOtp) {
+    return { smsEnvoye: envoi.smsEnvoye };
+  }
+  return { smsEnvoye: envoi.smsEnvoye, codeOtp: envoi.codeOtp };
+}
 
 /** Étape 1 de l'inscription : crée le compte (non vérifié) et envoie un OTP par SMS */
 export async function demarrerInscription(input: InscriptionInput) {
@@ -48,13 +59,14 @@ export async function demarrerInscription(input: InscriptionInput) {
         data: { nom: input.nom.trim() },
       });
     }
-    const envoi = await genererEtEnvoyerOtp(utilisateurExistant.id, telephone, input.smsAppHash);
+    const envoi = await genererEtEnvoyerOtp(utilisateurExistant.id, telephone, input.smsAppHash, {
+      purpose: "INSCRIPTION",
+    });
     return {
       utilisateurId: utilisateurExistant.id,
       telephone,
       reprise: true,
-      smsEnvoye: envoi.smsEnvoye,
-      ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
+      ...reponseOtpPublic(envoi),
     };
   }
 
@@ -99,13 +111,14 @@ export async function demarrerInscription(input: InscriptionInput) {
     });
   }
 
-  const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephone, input.smsAppHash);
+  const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephone, input.smsAppHash, {
+    purpose: "INSCRIPTION",
+  });
 
   return {
     utilisateurId: utilisateur.id,
     telephone,
-    smsEnvoye: envoi.smsEnvoye,
-    ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
+    ...reponseOtpPublic(envoi),
   };
 }
 
@@ -162,14 +175,18 @@ async function crediterParrainage(parrainId: string, filleulId: string): Promise
   });
 }
 
-/** Génère un nouvel OTP, l'enregistre en base et l'envoie par SMS (cooldown 60 s / numéro). */
+/** Génère un nouvel OTP scopé par purpose, l'enregistre et l'envoie par SMS. */
 async function genererEtEnvoyerOtp(
   utilisateurId: string,
   telephone: string,
-  smsAppHash?: string | null
+  smsAppHash?: string | null,
+  opts: { purpose: OtpPurpose; telephoneCible?: string | null } = { purpose: "INSCRIPTION" }
 ): Promise<{ smsEnvoye: boolean; codeOtp?: string }> {
+  const purpose = opts.purpose;
+  const telephoneCible = opts.telephoneCible ?? null;
+
   const recent = await prisma.otp.findFirst({
-    where: { utilisateurId, creeLe: { gte: new Date(Date.now() - 60_000) } },
+    where: { utilisateurId, purpose, creeLe: { gte: new Date(Date.now() - 60_000) } },
     orderBy: { creeLe: "desc" },
   });
   if (recent) {
@@ -182,25 +199,30 @@ async function genererEtEnvoyerOtp(
     throw new ErreurValidation("Trop de SMS envoyés. Réessayez dans 15 minutes.");
   }
 
+  // Invalide les OTP non utilisés du même purpose (évite collision / réutilisation croisée)
+  await prisma.otp.updateMany({
+    where: { utilisateurId, purpose, utilise: false },
+    data: { utilise: true },
+  });
+
   const code = genererOtp();
   const expireLe = new Date(Date.now() + DUREE_VALIDITE_OTP_MINUTES * 60 * 1000);
 
   const otp = await prisma.otp.create({
-    data: { utilisateurId, code, expireLe },
+    data: { utilisateurId, code, expireLe, purpose, telephoneCible },
   });
 
   try {
     await envoyerOtpSms(telephone, code, smsAppHash);
     return { smsEnvoye: true };
   } catch (e) {
-    // Évite le 500 « erreur interne » côté app : le compte peut déjà exister.
     const detail = e instanceof Error ? e.message : String(e);
     console.error("[OTP SMS] échec envoi", telephone, detail);
     const providerDown =
       /MOVA_|SerdiPay|Hub SMS\s*[45]\d\d|DreamDigital|error occor/i.test(detail);
     if (providerDown) {
-      // Mode dégradé : OTP conservé + code affiché à l'écran (hub SerdiPay instable).
-      console.error(`[OTP CODE] telephone=${telephone} code=${code} otpId=${otp.id}`);
+      // Mode dégradé local : code loggé serveur ; jamais renvoyé en prod (voir reponseOtpPublic)
+      console.error(`[OTP CODE] telephone=${telephone} purpose=${purpose} code=${code} otpId=${otp.id}`);
       return { smsEnvoye: false, codeOtp: code };
     }
     await prisma.otp.delete({ where: { id: otp.id } }).catch(() => undefined);
@@ -208,6 +230,37 @@ async function genererEtEnvoyerOtp(
       "Impossible d'envoyer le SMS de vérification pour le moment. Vérifiez le numéro et réessayez dans une minute."
     );
   }
+}
+
+/** Consomme un OTP pour un purpose donné (et téléphone cible optionnel). */
+async function verifierEtConsommerOtp(
+  utilisateurId: string,
+  code: string,
+  purpose: OtpPurpose,
+  telephoneCible?: string | null
+) {
+  const where: Record<string, unknown> = { utilisateurId, utilise: false, purpose };
+  if (telephoneCible) where.telephoneCible = telephoneCible;
+
+  const otp = await prisma.otp.findFirst({
+    where,
+    orderBy: { creeLe: "desc" },
+  });
+
+  if (!otp) {
+    throw new ErreurValidation("Aucun code de vérification en attente. Demandez un nouveau code.");
+  }
+  if (otp.tentatives >= TENTATIVES_MAX_OTP) {
+    throw new ErreurValidation("Nombre maximal de tentatives atteint. Demandez un nouveau code.");
+  }
+  if (new Date() > otp.expireLe) {
+    throw new ErreurValidation("Ce code a expiré. Demandez un nouveau code.");
+  }
+  if (otp.code !== code) {
+    await prisma.otp.update({ where: { id: otp.id }, data: { tentatives: { increment: 1 } } });
+    throw new ErreurValidation("Code de vérification incorrect");
+  }
+  return otp;
 }
 
 /** Renvoie un nouvel OTP (ex: si le précédent a expiré ou n'est pas arrivé) */
@@ -222,11 +275,12 @@ export async function renvoyerOtp(telephone: string, smsAppHash?: string | null)
     throw new ErreurValidation("Ce numéro de téléphone est déjà vérifié");
   }
 
-  const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
+  const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash, {
+    purpose: "INSCRIPTION",
+  });
   return {
     telephone: telephoneNormalise,
-    smsEnvoye: envoi.smsEnvoye,
-    ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
+    ...reponseOtpPublic(envoi),
   };
 }
 
@@ -239,25 +293,7 @@ export async function verifierOtp(input: VerifierOtpInput) {
     throw new ErreurNonTrouve("Aucun compte associé à ce numéro de téléphone");
   }
 
-  const otp = await prisma.otp.findFirst({
-    where: { utilisateurId: utilisateur.id, utilise: false },
-    orderBy: { creeLe: "desc" },
-  });
-
-  if (!otp) {
-    throw new ErreurValidation("Aucun code de vérification en attente. Demandez un nouveau code.");
-  }
-  if (otp.tentatives >= TENTATIVES_MAX_OTP) {
-    throw new ErreurValidation("Nombre maximal de tentatives atteint. Demandez un nouveau code.");
-  }
-  if (new Date() > otp.expireLe) {
-    throw new ErreurValidation("Ce code a expiré. Demandez un nouveau code.");
-  }
-
-  if (otp.code !== input.code) {
-    await prisma.otp.update({ where: { id: otp.id }, data: { tentatives: { increment: 1 } } });
-    throw new ErreurValidation("Code de vérification incorrect");
-  }
+  const otp = await verifierEtConsommerOtp(utilisateur.id, input.code, "INSCRIPTION");
 
   await prisma.$transaction([
     prisma.otp.update({ where: { id: otp.id }, data: { utilise: true } }),
@@ -341,17 +377,15 @@ export async function connecterParPin(input: ConnexionPinInput) {
 
   // Si la 2FA est activée, on envoie un OTP et on exige une vérification supplémentaire
   if (utilisateur.deuxFAActif) {
-    const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephone);
+    const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephone, undefined, { purpose: "DEUX_FA" });
+    const pub = reponseOtpPublic(envoi);
     return {
       deuxfaRequis: true,
       telephone,
-      smsEnvoye: envoi.smsEnvoye,
-      ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
-      message: envoi.smsEnvoye
+      ...pub,
+      message: pub.smsEnvoye
         ? "Code de vérification 2FA envoyé par SMS"
-        : envoi.codeOtp
-          ? `SMS indisponible — votre code : ${envoi.codeOtp}`
-          : "Service SMS indisponible — saisissez le code si le support vous l'a communiqué.",
+        : "Service SMS indisponible — réessayez dans quelques minutes ou contactez le support.",
     };
   }
 
@@ -372,11 +406,12 @@ export async function demanderReinitialisationPin(telephone: string, smsAppHash?
     throw new ErreurNonTrouve("Aucun compte associé à ce numéro de téléphone");
   }
 
-  const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash);
+  const envoi = await genererEtEnvoyerOtp(utilisateur.id, telephoneNormalise, smsAppHash, {
+    purpose: "RESET_PIN",
+  });
   return {
     telephone: telephoneNormalise,
-    smsEnvoye: envoi.smsEnvoye,
-    ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
+    ...reponseOtpPublic(envoi),
   };
 }
 
@@ -389,24 +424,7 @@ export async function reinitialiserPin(input: { telephone: string; code: string;
     throw new ErreurNonTrouve("Aucun compte associé à ce numéro de téléphone");
   }
 
-  const otp = await prisma.otp.findFirst({
-    where: { utilisateurId: utilisateur.id, utilise: false },
-    orderBy: { creeLe: "desc" },
-  });
-
-  if (!otp) {
-    throw new ErreurValidation("Aucun code de vérification en attente. Demandez un nouveau code.");
-  }
-  if (otp.tentatives >= TENTATIVES_MAX_OTP) {
-    throw new ErreurValidation("Nombre maximal de tentatives atteint. Demandez un nouveau code.");
-  }
-  if (new Date() > otp.expireLe) {
-    throw new ErreurValidation("Ce code a expiré. Demandez un nouveau code.");
-  }
-  if (otp.code !== input.code) {
-    await prisma.otp.update({ where: { id: otp.id }, data: { tentatives: { increment: 1 } } });
-    throw new ErreurValidation("Code de vérification incorrect");
-  }
+  const otp = await verifierEtConsommerOtp(utilisateur.id, input.code, "RESET_PIN");
 
   const pinHash = await bcrypt.hash(input.nouveauPin, 10);
 
@@ -461,14 +479,17 @@ export async function demanderChangementTelephone(
   const pris = await prisma.utilisateur.findUnique({ where: { telephone: nouveauTelephone } });
   if (pris) throw new ErreurValidation("Ce numéro de téléphone est déjà utilisé");
 
-  const envoi = await genererEtEnvoyerOtp(utilisateurId, nouveauTelephone, smsAppHash);
+  const envoi = await genererEtEnvoyerOtp(utilisateurId, nouveauTelephone, smsAppHash, {
+    purpose: "CHANGEMENT_TELEPHONE",
+    telephoneCible: nouveauTelephone,
+  });
+  const pub = reponseOtpPublic(envoi);
   return {
     telephone: nouveauTelephone,
-    smsEnvoye: envoi.smsEnvoye,
-    ...(envoi.codeOtp ? { codeOtp: envoi.codeOtp } : {}),
-    message: envoi.smsEnvoye
+    ...pub,
+    message: pub.smsEnvoye
       ? "Code envoyé au nouveau numéro"
-      : "SMS indisponible — utilisez le code affiché",
+      : "SMS indisponible — réessayez dans quelques minutes.",
   };
 }
 
@@ -487,23 +508,12 @@ export async function confirmerChangementTelephone(
   const pris = await prisma.utilisateur.findUnique({ where: { telephone: nouveauTelephone } });
   if (pris) throw new ErreurValidation("Ce numéro de téléphone est déjà utilisé");
 
-  const otp = await prisma.otp.findFirst({
-    where: { utilisateurId, utilise: false },
-    orderBy: { creeLe: "desc" },
-  });
-  if (!otp) {
-    throw new ErreurValidation("Aucun code de vérification en attente. Demandez un nouveau code.");
-  }
-  if (otp.tentatives >= TENTATIVES_MAX_OTP) {
-    throw new ErreurValidation("Nombre maximal de tentatives atteint. Demandez un nouveau code.");
-  }
-  if (new Date() > otp.expireLe) {
-    throw new ErreurValidation("Ce code a expiré. Demandez un nouveau code.");
-  }
-  if (otp.code !== input.code) {
-    await prisma.otp.update({ where: { id: otp.id }, data: { tentatives: { increment: 1 } } });
-    throw new ErreurValidation("Code de vérification incorrect");
-  }
+  const otp = await verifierEtConsommerOtp(
+    utilisateurId,
+    input.code,
+    "CHANGEMENT_TELEPHONE",
+    nouveauTelephone
+  );
 
   const [, misAJour] = await prisma.$transaction([
     prisma.otp.update({ where: { id: otp.id }, data: { utilise: true } }),
@@ -559,24 +569,7 @@ export async function verifier2FA(input: { telephone: string; code: string }) {
     throw new ErreurValidation("La 2FA n'est pas activée sur ce compte");
   }
 
-  const otp = await prisma.otp.findFirst({
-    where: { utilisateurId: utilisateur.id, utilise: false },
-    orderBy: { creeLe: "desc" },
-  });
-
-  if (!otp) {
-    throw new ErreurValidation("Aucun code de vérification en attente");
-  }
-  if (otp.tentatives >= TENTATIVES_MAX_OTP) {
-    throw new ErreurValidation("Nombre maximal de tentatives atteint. Demandez un nouveau code.");
-  }
-  if (new Date() > otp.expireLe) {
-    throw new ErreurValidation("Ce code a expiré. Demandez un nouveau code.");
-  }
-  if (otp.code !== input.code) {
-    await prisma.otp.update({ where: { id: otp.id }, data: { tentatives: { increment: 1 } } });
-    throw new ErreurValidation("Code de vérification incorrect");
-  }
+  const otp = await verifierEtConsommerOtp(utilisateur.id, input.code, "DEUX_FA");
 
   await prisma.otp.update({ where: { id: otp.id }, data: { utilise: true } });
   await prisma.utilisateur.update({ where: { id: utilisateur.id }, data: { tentativesPin: 0, bloqueJusquA: null } });

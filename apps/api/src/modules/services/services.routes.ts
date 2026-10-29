@@ -9,11 +9,10 @@ export const routesServices = Router();
 
 // Recherche publique (US-003, US-004, US-005 du cahier des charges)
 routesServices.get("/", valider(schemaRechercheServices, "query"), servicesController.rechercher);
-routesServices.get("/:serviceId", servicesController.detail);
+// Routes statiques AVANT /:serviceId (sinon « prestataires » / « recommander » matchent comme UUID)
 routesServices.get("/prestataires/:prestataireId/avis", servicesController.avisPrestataire);
-
-// Recommandations personnalisées (authentifié requis)
 routesServices.get("/recommander/recommandations", authentifier, servicesController.recommandations);
+routesServices.get("/:serviceId", servicesController.detail);
 
 // Gestion des créneaux par le prestataire (US-008 du cahier des charges)
 routesServices.post(

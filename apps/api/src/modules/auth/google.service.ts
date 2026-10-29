@@ -24,8 +24,12 @@ export function telephoneSynthetiqueGoogle(googleId: string): string {
 }
 
 export async function verifierIdTokenGoogle(idToken: string): Promise<ProfilGoogle> {
-  // Mode démo local : SIM-GOOGLE:email:Nom Complet
-  if (env.MODE_GOOGLE === "simulation" && idToken.startsWith("SIM-GOOGLE:")) {
+  // Mode démo local uniquement (jamais en NODE_ENV=production)
+  if (
+    env.NODE_ENV !== "production" &&
+    env.MODE_GOOGLE === "simulation" &&
+    idToken.startsWith("SIM-GOOGLE:")
+  ) {
     const parts = idToken.split(":");
     const email = parts[1] || "demo.google@reserva.cd";
     const nom = parts.slice(2).join(":") || "Utilisateur Google";

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../app_flavor.dart';
 import '../../services/api_auth.dart';
 import '../../services/api_client.dart';
+import '../../services/apple_auth_service.dart';
+import '../../services/google_auth_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/models.dart';
 import '../../theme.dart';
@@ -21,6 +24,8 @@ class ReinitialiserPinScreen extends StatefulWidget {
 class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
   String _etape = 'TELEPHONE';
   bool _chargement = false;
+  bool _chargementGoogle = false;
+  bool _chargementApple = false;
   final _telephoneCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
   final _nouveauPinCtrl = TextEditingController();
@@ -100,6 +105,13 @@ class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
       );
       final token = data['token'] as String;
       final utilisateur = Utilisateur.fromJson(data['utilisateur'] as Map<String, dynamic>);
+      if (!AppFlavorConfig.roleCompatible(utilisateur.role)) {
+        throw Exception(
+          AppFlavorConfig.estPrestataire
+              ? 'Compte client détecté. Utilisez l\'app RESERVA (Client).'
+              : 'Compte prestataire détecté. Utilisez l\'app RESERVA Pro.',
+        );
+      }
       await auth.connecterStore(token, utilisateur);
       if (mounted) {
         ToastWidget.show(context, 'Code PIN réinitialisé avec succès !', type: 'succes');
@@ -110,6 +122,135 @@ class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
     } finally {
       if (mounted) setState(() => _chargement = false);
     }
+  }
+
+  Future<void> _apresOAuth(Map<String, dynamic> data) async {
+    final auth = context.read<AuthProvider>();
+    final token = data['token'] as String;
+    final utilisateur = Utilisateur.fromJson(data['utilisateur'] as Map<String, dynamic>);
+    if (!AppFlavorConfig.roleCompatible(utilisateur.role)) {
+      throw Exception(
+        AppFlavorConfig.estPrestataire
+            ? 'Compte client détecté. Utilisez l\'app RESERVA (Client).'
+            : 'Compte prestataire détecté. Utilisez l\'app RESERVA Pro.',
+      );
+    }
+    await auth.connecterStore(token, utilisateur);
+    if (!mounted) return;
+    final pinRequis = data['pinRequis'] == true;
+    if (pinRequis) {
+      ToastWidget.show(context, 'Créez votre PIN pour les prochaines connexions', type: 'succes');
+      context.go('/inscription', extra: {
+        'etape': 'PIN',
+        'telephone': utilisateur.telephone,
+        'depuisGoogle': true,
+      });
+    } else {
+      ToastWidget.show(context, 'Bienvenue ${utilisateur.nom}', type: 'succes');
+      context.go('/accueil');
+    }
+  }
+
+  Future<void> _continuerAvecGoogle() async {
+    setState(() => _chargementGoogle = true);
+    try {
+      final idToken = await GoogleAuthService.obtenirIdToken();
+      if (idToken == null) {
+        if (mounted) ToastWidget.show(context, 'Connexion Google annulée');
+        return;
+      }
+      final data = await ApiAuth.connexionGoogle(idToken, role: AppFlavorConfig.roleApi);
+      await _apresOAuth(data);
+    } catch (e) {
+      if (mounted) {
+        ToastWidget.show(context, GoogleAuthService.messageErreur(e), type: 'erreur');
+      }
+    } finally {
+      if (mounted) setState(() => _chargementGoogle = false);
+    }
+  }
+
+  Future<void> _continuerAvecApple() async {
+    setState(() => _chargementApple = true);
+    try {
+      final cred = await AppleAuthService.obtenirCredentials();
+      if (cred == null) {
+        if (mounted) ToastWidget.show(context, 'Connexion Apple annulée');
+        return;
+      }
+      final data = await ApiAuth.connexionApple(
+        cred.identityToken,
+        nom: cred.nom,
+        role: AppFlavorConfig.roleApi,
+      );
+      await _apresOAuth(data);
+    } catch (e) {
+      if (mounted) {
+        ToastWidget.show(context, AppleAuthService.messageErreur(e), type: 'erreur');
+      }
+    } finally {
+      if (mounted) setState(() => _chargementApple = false);
+    }
+  }
+
+  Widget _boutonsOAuth() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: OutlinedButton(
+            onPressed: (_chargement || _chargementGoogle || _chargementApple) ? null : _continuerAvecGoogle,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppCouleurs.primaire,
+              backgroundColor: AppCouleurs.blanc,
+              side: BorderSide(color: AppCouleurs.bordure),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: _chargementGoogle
+                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _LogoGoogle(),
+                      SizedBox(width: 10),
+                      Text('Continuer avec Google', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+          ),
+        ),
+        if (AppleAuthService.estDisponible) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: (_chargement || _chargementGoogle || _chargementApple) ? null : _continuerAvecApple,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.black54,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: _chargementApple
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.apple, size: 22),
+                        SizedBox(width: 10),
+                        Text('Continuer avec Apple', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   @override
@@ -130,6 +271,29 @@ class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
               Champ(libelle: 'Numéro de téléphone', controller: _telephoneCtrl, placeholder: 'Ex: 0991234567', keyboardType: TextInputType.phone),
               const SizedBox(height: 8),
               Bouton(titre: 'Envoyer le code', onPressed: _demander, chargement: _chargement),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('ou se reconnecter avec', style: TextStyle(color: AppCouleurs.texteSecondaire, fontWeight: FontWeight.w600)),
+                  ),
+                  const Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _boutonsOAuth(),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: () => context.go('/connexion'),
+                  child: Text(
+                    'Retour à la connexion PIN',
+                    style: TextStyle(color: AppCouleurs.primaire, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
             ],
             if (_etape == 'OTP') ...[
               Text('Entrez le code reçu par SMS.', style: TextStyle(fontSize: 14, color: AppCouleurs.texteSecondaire)),
@@ -148,6 +312,33 @@ class _ReinitialiserPinScreenState extends State<ReinitialiserPinScreen> {
               Bouton(titre: 'Réinitialiser', onPressed: _reinitialiser, chargement: _chargement),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoGoogle extends StatelessWidget {
+  const _LogoGoogle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 22,
+      height: 22,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: AppCouleurs.bordure),
+        color: Colors.white,
+      ),
+      child: const Text(
+        'G',
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF4285F4),
+          height: 1,
         ),
       ),
     );
