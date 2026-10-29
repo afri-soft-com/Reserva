@@ -8,6 +8,18 @@ export interface FiltresStatistiques {
   categorie?: string;
 }
 
+/** Exclut soft-supprimés + comptes techniques CI des agrégats / files admin. */
+const FILTRE_PRESTA_VISIBLE = {
+  NOT: {
+    OR: [
+      { nomEntreprise: { startsWith: "[supprimé]" } },
+      { nomEntreprise: { startsWith: "Smoke " } },
+      { utilisateur: { nom: "Compte supprimé" } },
+      { utilisateur: { nom: { startsWith: "Smoke " } } },
+    ],
+  },
+};
+
 function construireFiltres(filtres?: FiltresStatistiques) {
   const maintenant = new Date();
   const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
@@ -61,13 +73,21 @@ export async function obtenirStatistiquesPlateforme(filtres?: FiltresStatistique
     reservationsParStatut,
     utilisateursMois,
   ] = await Promise.all([
-    prisma.utilisateur.count(),
-    prisma.prestataire.count({ where: filtrePrestataire }),
+    prisma.utilisateur.count({
+      where: {
+        AND: [{ NOT: { nom: "Compte supprimé" } }, { NOT: { nom: { startsWith: "Smoke " } } }],
+      },
+    }),
+    prisma.prestataire.count({ where: { AND: [filtrePrestataire, FILTRE_PRESTA_VISIBLE] } }),
     prisma.reservation.count({ where: baseWhere }),
     prisma.reservation.count({ where: { ...baseWhere, creeLe: { gte: debutMois } } }),
     prisma.reservation.count({ where: { ...baseWhere, creeLe: { gte: debutSemaine } } }),
-    prisma.prestataire.count({ where: { ...filtrePrestataire, statut: "EN_ATTENTE_VALIDATION" } }),
-    prisma.prestataire.count({ where: { ...filtrePrestataire, statut: "APPROUVE" } }),
+    prisma.prestataire.count({
+      where: { AND: [filtrePrestataire, FILTRE_PRESTA_VISIBLE, { statut: "EN_ATTENTE_VALIDATION" }] },
+    }),
+    prisma.prestataire.count({
+      where: { AND: [filtrePrestataire, FILTRE_PRESTA_VISIBLE, { statut: "APPROUVE" }] },
+    }),
     prisma.reservation.aggregate({
       where: { ...baseWhere, statutPaiement: { in: ["PAYE", "PARTIEL"] } },
       _sum: { montantPaye: true, montantCommission: true, montantFraisService: true },
@@ -366,7 +386,7 @@ export async function supprimerUtilisateurAdmin(utilisateurId: string) {
     if (nbAdmins <= 1) throw new Error("Impossible de supprimer le dernier administrateur");
   }
   const suffix = utilisateurId.slice(0, 8);
-  return prisma.utilisateur.update({
+  const maj = await prisma.utilisateur.update({
     where: { id: utilisateurId },
     data: {
       nom: `Compte supprimé`,
@@ -381,6 +401,15 @@ export async function supprimerUtilisateurAdmin(utilisateurId: string) {
     },
     select: { id: true, nom: true, telephone: true, bloqueJusquA: true },
   });
+  // Masque aussi le profil prestataire pour stats / pilotage / catalogue admin
+  await prisma.prestataire.updateMany({
+    where: { utilisateurId },
+    data: {
+      statut: "SUSPENDU",
+      nomEntreprise: `[supprimé] ${String(u.nom || "").slice(0, 40)}`.trim(),
+    },
+  });
+  return maj;
 }
 
 /** Bloque un utilisateur (connexion refusée jusqu'à la date). */
@@ -474,9 +503,14 @@ export async function obtenirPilotageAdmin() {
     obtenirStatistiquesPlateforme({ periode: "mois" }),
     prisma.prestataire.findMany({
       where: {
-        OR: [
-          { statut: "EN_ATTENTE_VALIDATION" },
-          { kycStatut: { in: ["EN_REVUE", "INFO_MANQUANTE"] } },
+        AND: [
+          FILTRE_PRESTA_VISIBLE,
+          {
+            OR: [
+              { statut: "EN_ATTENTE_VALIDATION" },
+              { kycStatut: { in: ["EN_REVUE", "INFO_MANQUANTE"] } },
+            ],
+          },
         ],
       },
       take: 8,

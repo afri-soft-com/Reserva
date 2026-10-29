@@ -1,0 +1,53 @@
+name: Activer paiement production (Render)
+
+# Passe MODE_PAIEMENT=production sur reserva-core + secrets hub AfriSoft, puis redeploy.
+# Actions → Activer paiement production → Run workflow
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: enable-paiement-prod-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  enable-paiement:
+    name: MODE_PAIEMENT=production sur Render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Sync env Render + redeploy core
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
+          AFRISOFT_HUB_APP_ID: ${{ secrets.AFRISOFT_HUB_APP_ID }}
+          AFRISOFT_HUB_API_KEY: ${{ secrets.AFRISOFT_HUB_API_KEY }}
+          AFRISOFT_PAY_HUB_URL: ${{ secrets.AFRISOFT_PAY_HUB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RENDER_API_KEY:-}" ] || [ -z "${RENDER_SERVICE_CORE:-}" ]; then
+            echo "RENDER_API_KEY / RENDER_SERVICE_CORE requis"
+            exit 1
+          fi
+          if [ -z "${AFRISOFT_HUB_APP_ID:-}" ] || [ -z "${AFRISOFT_HUB_API_KEY:-}" ]; then
+            echo "AFRISOFT_HUB_APP_ID / AFRISOFT_HUB_API_KEY requis"
+            exit 1
+          fi
+          node scripts/render-enable-paiement-prod.mjs
+      - name: Attendre core live
+        run: npm ci --ignore-scripts && npm run wait:render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_CORE: ${{ secrets.RENDER_SERVICE_CORE }}
+          RENDER_WAIT_MS: "600000"
+      - name: Hub pay readiness
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
+          AFRISOFT_HUB_APP_ID: ${{ secrets.AFRISOFT_HUB_APP_ID }}
+          AFRISOFT_HUB_API_KEY: ${{ secrets.AFRISOFT_HUB_API_KEY }}
+          AFRISOFT_PAY_HUB_URL: ${{ secrets.AFRISOFT_PAY_HUB_URL }}
+          HUB_READINESS_REQUIRE: "1"
+        run: node scripts/hub-readiness.mjs
