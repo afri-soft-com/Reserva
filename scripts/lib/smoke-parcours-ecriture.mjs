@@ -167,21 +167,37 @@ export async function executerParcoursEcriture(opts) {
     service.prix ||
     15000;
 
-  console.log("→ Paiement simulation MPESA", montant);
+  // En MODE_PAIEMENT=production le hub exige un préfixe Vodacom 81/82/83.
+  // On utilise un numéro "forme M-Pesa" pour l'initiation CI (pas le téléphone smoke 99…).
+  const telPaiement =
+    process.env.SMOKE_MPESA_PHONE ||
+    (String(clientPhone || "").match(/^\+2438[123]/) ? clientPhone : "+243810000099");
+  console.log("→ Paiement MPESA", montant, "via", telPaiement);
   const paiement = await post(
     gateway,
     "/paiements",
     {
       reservationId,
       operateur: "MPESA",
-      telephonePaiement: clientPhone,
+      telephonePaiement: telPaiement,
       montant: Number(montant),
       acompteUniquement: true,
       idempotencyKey: `${uid}-pay-resa`,
     },
     client.token
   );
-  console.log("  paiement", paiement.statut || paiement.transaction?.statut || "ok");
+  const statutPay = paiement.statut || paiement.transaction?.statut || paiement.statutOperateur;
+  const refExt = paiement.transaction?.referenceExterne || paiement.referenceExterne || "";
+  console.log("  paiement", statutPay, refExt ? `ref=${refExt}` : "");
+  // Simulation → PAYE ; hub réel → EN_ATTENTE / ECHOUE acceptable (pas de USSD CI)
+  const okPay =
+    statutPay === "PAYE" ||
+    String(refExt).startsWith("SIM-") ||
+    statutPay === "EN_ATTENTE" ||
+    statutPay === "ECHOUE";
+  if (!okPay) {
+    throw new Error(`Paiement inattendu: ${JSON.stringify(paiement).slice(0, 240)}`);
+  }
 
   console.log("→ Annulation client");
   const annulee = await post(
