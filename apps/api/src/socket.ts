@@ -40,6 +40,10 @@ export function initialiserSocket(serveur: HttpServer) {
   io.on("connection", (socket) => {
     const user = (socket as any).utilisateur as PayloadToken;
     console.log(`Socket connecté: ${user.telephone} (${user.role})`);
+    // Salon perso : alertes réservation / push temps réel
+    if (user.utilisateurId) {
+      socket.join(`user:${user.utilisateurId}`);
+    }
 
     socket.on("rejoindre-conversation", (payload: unknown) => {
       const conversationId = idConversation(payload);

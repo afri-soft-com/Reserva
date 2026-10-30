@@ -156,13 +156,27 @@ export async function creerReservation(clientId: string, input: CreerReservation
     type: "CONFIRMATION",
   });
 
-  await creerNotification({
+  const notifPresta = {
     utilisateurId: reservation.prestataire.utilisateurId,
     reservationId: reservation.id,
     titre: "Nouvelle réservation",
     message: `${reservation.client.nom} a réservé ${reservation.service.nom} le ${reservation.creneau.debut.toLocaleDateString("fr-FR")} à ${reservation.creneau.debut.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} (${reservation.numero}).`,
-    type: "CONFIRMATION",
-  });
+    type: "CONFIRMATION" as const,
+  };
+  await creerNotification(notifPresta);
+
+  // Alerte temps réel Pro (son in-app + bannière locale)
+  try {
+    const { obtenirIo } = await import("../../socket");
+    obtenirIo().to(`user:${reservation.prestataire.utilisateurId}`).emit("nouvelle-reservation", {
+      reservationId: reservation.id,
+      numero: reservation.numero,
+      titre: notifPresta.titre,
+      message: notifPresta.message,
+    });
+  } catch {
+    /* socket non initialisé en tests */
+  }
 
   return reservation;
 }

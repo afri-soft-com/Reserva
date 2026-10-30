@@ -167,6 +167,16 @@ class ProfilScreen extends StatelessWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/notifications'),
                   ),
+                  if (auth.estPrestataire) ...[
+                    const Divider(height: 1, indent: 56),
+                    ListTile(
+                      leading: const Icon(Icons.notifications_active_outlined, color: AppCouleurs.accent),
+                      title: const Text('Son des nouvelles réservations', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Sirène, Impulsion ou Balise Reserva'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/parametres/son-alerte'),
+                    ),
+                  ],
                   const Divider(height: 1, indent: 56),
                   ListTile(
                     leading: const Icon(Icons.favorite_outline, color: AppCouleurs.alerte),

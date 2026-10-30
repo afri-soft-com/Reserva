@@ -45,6 +45,7 @@ import 'screens/voyages/voyages_hub_screen.dart';
 import 'screens/famille/beneficiaires_screen.dart';
 import 'screens/innovations/corridors_screen.dart';
 import 'screens/prestataire/kyc_screen.dart';
+import 'screens/parametres/son_alerte_screen.dart';
 
 GoRouter createRouter(AuthProvider auth) {
   return GoRouter(
@@ -69,7 +70,8 @@ GoRouter createRouter(AuthProvider auth) {
       ];
       final estRoutePublique = routesPubliques.any((r) => path == r || path.startsWith('$r?'));
 
-      if (!estConnecte && !estRoutePublique) return '/bienvenue';
+      // Après déconnexion (ou session expirée) → écran PIN, pas la page d'accueil marketing.
+      if (!estConnecte && !estRoutePublique) return '/connexion';
       if (estConnecte && (path == '/bienvenue' || path == '/connexion' || path == '/inscription')) {
         return '/accueil';
       }
@@ -140,6 +142,10 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(
         path: '/notifications',
         builder: (ctx, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/parametres/son-alerte',
+        builder: (ctx, state) => const SonAlerteScreen(),
       ),
       GoRoute(
         path: '/modifier-profil',

@@ -7,6 +7,8 @@ import '../services/biometrie_service.dart';
 import '../services/service_cache.dart';
 import '../services/cache_hors_ligne.dart';
 import '../services/socket_service.dart';
+import '../services/alerte_reservation_watcher.dart';
+import '../app_flavor.dart';
 
 class AuthProvider extends ChangeNotifier {
   Utilisateur? _utilisateur;
@@ -59,12 +61,19 @@ class AuthProvider extends ChangeNotifier {
         _prestataire = Prestataire.fromJson(data['prestataire'] as Map<String, dynamic>);
       }
       _estConnecte = true;
+      SocketService().connecter();
+      await _demarrerAlertesSiPro();
     } catch (e) {
       await ApiClient.deleteToken();
     }
 
     _chargementInitial = false;
     notifyListeners();
+  }
+
+  Future<void> _demarrerAlertesSiPro() async {
+    if (!AppFlavorConfig.estPrestataire && !estPrestataire) return;
+    await AlerteReservationWatcher().demarrer();
   }
 
   Future<bool> authentifierParBiometrie() async {
@@ -108,6 +117,7 @@ class AuthProvider extends ChangeNotifier {
     _estConnecte = true;
     _erreur = null;
     SocketService().connecter();
+    await _demarrerAlertesSiPro();
     notifyListeners();
   }
 
@@ -159,6 +169,7 @@ class AuthProvider extends ChangeNotifier {
     await ServiceCache.vider();
     await CacheHorsLigne.vider();
     SocketService().deconnecter();
+    await AlerteReservationWatcher().arreter();
     _utilisateur = null;
     _prestataire = null;
     _estConnecte = false;
