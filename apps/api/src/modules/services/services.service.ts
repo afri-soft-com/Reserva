@@ -230,13 +230,13 @@ export async function obtenirDetailService(serviceId: string) {
   if (!service || !service.actif) {
     throw new ErreurNonTrouve("Service non trouvÃ©");
   }
-  // Fiche par UUID : exige presta approuvé. Les services smoke restent
-  // exclus de la recherche publique mais accessibles par id (CI / Pro).
+  // Fiche par UUID : exige presta approuvé (+ activé).
+  // Services smoke exclus de la recherche publique, mais joignables par id (CI / Pro).
   if (
     service.prestataire?.statut !== "APPROUVE" ||
     !service.prestataire?.activationConfirmeeLe
   ) {
-    throw new ErreurNonTrouve("Service non trouvÃ©");
+    throw new ErreurNonTrouve("Service non trouvé");
   }
 
   // N'expose que les créneaux ayant encore de la capacité disponible et hors périodes d'indisponibilité
