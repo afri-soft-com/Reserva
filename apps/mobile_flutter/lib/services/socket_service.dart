@@ -11,11 +11,13 @@ class SocketService {
   final _typingController = StreamController<Map<String, dynamic>>.broadcast();
   final _messagesLusController = StreamController<Map<String, dynamic>>.broadcast();
   final _erreurController = StreamController<String>.broadcast();
+  final _nouvelleReservationController = StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<Map<String, dynamic>> get messages => _messageController.stream;
   Stream<Map<String, dynamic>> get typing => _typingController.stream;
   Stream<Map<String, dynamic>> get messagesLus => _messagesLusController.stream;
   Stream<String> get erreurs => _erreurController.stream;
+  Stream<Map<String, dynamic>> get nouvellesReservations => _nouvelleReservationController.stream;
   bool get connecte => _connecte;
 
   static final SocketService _instance = SocketService._();
@@ -69,6 +71,12 @@ class SocketService {
       _erreurController.add(msg as String);
     });
 
+    _socket!.on('nouvelle-reservation', (data) {
+      if (data is Map) {
+        _nouvelleReservationController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     _socket!.connect();
   }
 
@@ -119,5 +127,6 @@ class SocketService {
     _typingController.close();
     _messagesLusController.close();
     _erreurController.close();
+    _nouvelleReservationController.close();
   }
 }
