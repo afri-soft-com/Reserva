@@ -230,12 +230,9 @@ export async function obtenirDetailService(serviceId: string) {
   if (!service || !service.actif) {
     throw new ErreurNonTrouve("Service non trouvÃ©");
   }
-  // Aligné sur la recherche publique : pas de smoke / presta non approuvé
-  const nomSvc = String(service.nom || "");
-  const nomPresta = String(service.prestataire?.nomEntreprise || "");
+  // Fiche par UUID : exige presta approuvé. Les services smoke restent
+  // exclus de la recherche publique mais accessibles par id (CI / Pro).
   if (
-    nomSvc.startsWith("Consultation smoke") ||
-    nomPresta.startsWith("Smoke ") ||
     service.prestataire?.statut !== "APPROUVE" ||
     !service.prestataire?.activationConfirmeeLe
   ) {
