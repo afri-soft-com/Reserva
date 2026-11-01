@@ -1,5 +1,5 @@
 import { prisma } from "../../config/prisma";
-import { ErreurValidation, ErreurNonTrouve } from "../../utils/erreurs";
+import { ErreurValidation, ErreurNonTrouve, ErreurConflit } from "../../utils/erreurs";
 
 function genererCodeUnique(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -128,25 +128,50 @@ export async function appliquerCodePromo(reservationId: string, code: string, ut
   if (reservation.statut !== "EN_ATTENTE" && reservation.statut !== "CONFIRMEE") {
     throw new ErreurValidation("Impossible d'appliquer un code promo sur cette réservation");
   }
+  if (reservation.codePromoId) {
+    throw new ErreurValidation("Un code promo est déjà appliqué sur cette réservation");
+  }
+  if (reservation.montantPaye > 0) {
+    throw new ErreurValidation("Impossible d'appliquer un code promo après un paiement");
+  }
 
   const validation = await validerCodePromo(code, reservation.montantTotal);
+  if (validation.reduction <= 0) {
+    throw new ErreurValidation("Ce code promo ne réduit pas le montant");
+  }
+  const nouveauTotal = Math.max(0, reservation.montantTotal - validation.reduction);
 
-  await prisma.$transaction([
-    prisma.reservation.update({
-      where: { id: reservationId },
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT id FROM "codes_promo" WHERE id = ${validation.codePromoId} FOR UPDATE`;
+    const promo = await tx.codePromo.findUnique({ where: { id: validation.codePromoId } });
+    if (!promo || !promo.actif) throw new ErreurValidation("Code promo invalide");
+    if (promo.usageMax != null && promo.usageCount >= promo.usageMax) {
+      throw new ErreurValidation("Ce code promo a atteint sa limite d'utilisation");
+    }
+    const maj = await tx.reservation.updateMany({
+      where: {
+        id: reservationId,
+        clientId: utilisateurId,
+        codePromoId: null,
+        montantPaye: 0,
+        montantTotal: reservation.montantTotal,
+      },
       data: {
         codePromoId: validation.codePromoId,
-        montantReduction: validation.reduction,
-        montantTotal: reservation.montantTotal - validation.reduction,
+        montantReduction: { increment: validation.reduction },
+        montantTotal: nouveauTotal,
       },
-    }),
-    prisma.codePromo.update({
+    });
+    if (maj.count === 0) {
+      throw new ErreurConflit("La réservation a changé. Réessayez.");
+    }
+    await tx.codePromo.update({
       where: { id: validation.codePromoId },
       data: { usageCount: { increment: 1 } },
-    }),
-  ]);
+    });
+  });
 
-  return validation;
+  return { ...validation, montantFinal: nouveauTotal };
 }
 
 export async function listerCodesUtilisables() {

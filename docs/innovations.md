@@ -12,7 +12,7 @@
 | Médiation | `/innovations/litiges` | App client + Admin → Litiges |
 | File terrain Pro | `/innovations/terrain/file` + `appeler-prochain` | App Pro → menu → File terrain |
 | Acompte échelonné | `Reservation.acomptePourcent` + paiement `acompteUniquement` | Écran paiement |
-| Canal SMS/USSD | `POST /innovations/canal-sms` `{ telephone, texte }` | Commandes : `AIDE`, `SOLDE`, `MES RDV`, `GARANTIE <numero>` |
+| Canal SMS/USSD | `POST /innovations/canal-sms` + en-tête `X-Cron-Secret` `{ telephone, texte }` | Commandes : `AIDE`, `SOLDE`, `MES RDV`, `GARANTIE <numero>` |
 | Recherche vocale | UI micro (clavier vocal) | Écran recherche services |
 
 ## Comptes mock

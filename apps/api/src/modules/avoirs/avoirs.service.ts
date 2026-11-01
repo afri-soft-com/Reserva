@@ -1,5 +1,5 @@
 import { prisma } from "../../config/prisma";
-import { ErreurNonTrouve, ErreurValidation, ErreurInterdit } from "../../utils/erreurs";
+import { ErreurNonTrouve, ErreurValidation, ErreurInterdit, ErreurConflit } from "../../utils/erreurs";
 
 /** Crée un avoir (crédit en magasin) crédité à un utilisateur, typiquement lors d'une annulation */
 export async function creerAvoir(donnees: {
@@ -72,36 +72,50 @@ export async function appliquerAvoir(utilisateurId: string, reservationId: strin
     throw new ErreurValidation("Aucun avoir disponible");
   }
 
-  const montantBase = reservation.montantTotal + reservation.montantReduction;
-  const montantAPrelever = Math.min(montant ?? avoirsActifs.reduce((s, a) => s + a.montantRestant, 0), montantBase);
-  if (montantAPrelever <= 0) {
+  const soldeRestant = Math.max(0, reservation.montantTotal - reservation.montantPaye);
+  const plafond = Math.min(montant ?? avoirsActifs.reduce((s, a) => s + a.montantRestant, 0), soldeRestant);
+  if (plafond <= 0) {
     throw new ErreurValidation("Le montant à appliquer doit être positif");
   }
 
-  let restantAPrelever = montantAPrelever;
-  await prisma.$transaction(async (tx) => {
+  let restantAPrelever = plafond;
+  const applique = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT id FROM "utilisateurs" WHERE id = ${utilisateurId} FOR UPDATE`;
+    let consomme = 0;
     for (const avoir of avoirsActifs) {
       if (restantAPrelever <= 0) break;
-      const part = Math.min(avoir.montantRestant, restantAPrelever);
+      const frais = await tx.avoir.findUnique({ where: { id: avoir.id } });
+      if (!frais || frais.statut !== "ACTIF" || frais.montantRestant <= 0) continue;
+      const part = Math.min(frais.montantRestant, restantAPrelever);
       restantAPrelever -= part;
-      const nouveauRestant = avoir.montantRestant - part;
-      await tx.avoir.update({
-        where: { id: avoir.id },
+      consomme += part;
+      const nouveauRestant = frais.montantRestant - part;
+      const majAvoir = await tx.avoir.updateMany({
+        where: { id: avoir.id, montantRestant: frais.montantRestant, statut: "ACTIF" },
         data: {
           montantRestant: nouveauRestant,
           statut: nouveauRestant <= 0 ? "UTILISE" : "ACTIF",
         },
       });
+      if (majAvoir.count === 0) throw new ErreurConflit("Avoir modifié entre-temps. Réessayez.");
     }
+    if (consomme <= 0) throw new ErreurValidation("Aucun avoir disponible");
 
-    await tx.reservation.update({
-      where: { id: reservationId },
+    const maj = await tx.reservation.updateMany({
+      where: {
+        id: reservationId,
+        clientId: utilisateurId,
+        montantTotal: reservation.montantTotal,
+        statut: { in: ["EN_ATTENTE", "CONFIRMEE"] },
+      },
       data: {
-        montantReduction: { increment: montantAPrelever },
-        montantTotal: montantBase - montantAPrelever,
-        avoirUtilise: { increment: montantAPrelever },
+        montantReduction: { increment: consomme },
+        montantTotal: reservation.montantTotal - consomme,
+        avoirUtilise: { increment: consomme },
       },
     });
+    if (maj.count === 0) throw new ErreurConflit("La réservation a changé. Réessayez.");
+    return consomme;
   });
 
   await prisma.notification.create({
@@ -109,10 +123,10 @@ export async function appliquerAvoir(utilisateurId: string, reservationId: strin
       utilisateurId,
       reservationId,
       titre: "Avoir appliqué",
-      message: `${montantAPrelever} ${reservation.devise} de crédit ont été appliqués sur la réservation ${reservation.numero}.`,
+      message: `${applique} ${reservation.devise} de crédit ont été appliqués sur la réservation ${reservation.numero}.`,
       type: "PAIEMENT",
     },
   });
 
-  return { montantApplique: montantAPrelever, montantFinal: montantBase - montantAPrelever };
+  return { montantApplique: applique, montantFinal: reservation.montantTotal - applique };
 }

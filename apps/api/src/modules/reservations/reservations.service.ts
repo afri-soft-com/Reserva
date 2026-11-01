@@ -268,13 +268,36 @@ export async function repondreReservation(utilisateurId: string, reservationId: 
   if (reservation.statut !== "EN_ATTENTE") {
     throw new ErreurValidation("Cette réservation a déjà été traitée");
   }
+  if (accepter && prestataire.statut !== "APPROUVE") {
+    throw new ErreurInterdit("Compte prestataire suspendu : impossible d'accepter de nouvelles réservations");
+  }
 
   if (!accepter) {
-    // Refus : libère la capacité du créneau
-    await prisma.$transaction([
-      prisma.reservation.update({ where: { id: reservationId }, data: { statut: "REFUSEE" } }),
-      prisma.creneau.update({ where: { id: reservation.creneauId }, data: { capaciteReservee: { decrement: 1 } } }),
-    ]);
+    // Refus : libère la capacité et recrédite le client s'il a déjà payé
+    await prisma.$transaction(async (tx) => {
+      await tx.reservation.update({
+        where: { id: reservationId },
+        data: {
+          statut: "REFUSEE",
+          ...(reservation.montantPaye > 0 ? { statutPaiement: "REMBOURSE" } : {}),
+        },
+      });
+      await tx.creneau.update({
+        where: { id: reservation.creneauId },
+        data: { capaciteReservee: { decrement: 1 } },
+      });
+      if (reservation.montantPaye > 0) {
+        await enregistrerRemboursement(tx, reservation, reservation.montantPaye);
+      }
+    });
+    if (reservation.montantPaye > 0) {
+      await creerAvoir({
+        utilisateurId: reservation.clientId,
+        montant: reservation.montantPaye,
+        devise: reservation.devise,
+        sourceReservationId: reservation.id,
+      });
+    }
 
     promouvoirCreneau(reservation.serviceId, reservation.creneauId).catch(() => {});
     notifierAlertesService(reservation.serviceId, reservation.creneauId).catch(() => {});
@@ -283,7 +306,9 @@ export async function repondreReservation(utilisateurId: string, reservationId: 
       utilisateurId: reservation.clientId,
       reservationId: reservation.id,
       titre: "Réservation refusée",
-      message: `Votre réservation ${reservation.numero} n'a pas pu être confirmée par ${reservation.prestataire.nomEntreprise}.`,
+      message: reservation.montantPaye > 0
+        ? `Votre réservation ${reservation.numero} n'a pas pu être confirmée. Un avoir de ${reservation.montantPaye} ${reservation.devise} a été crédité.`
+        : `Votre réservation ${reservation.numero} n'a pas pu être confirmée par ${reservation.prestataire.nomEntreprise}.`,
       type: "ANNULATION",
     });
 

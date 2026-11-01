@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authentifier, exigerRole } from "../../middlewares/auth";
+import { verifierSecretCron } from "../../middlewares/cron";
 import * as ctrl from "./innovations.controller";
 
 export const routesInnovations = Router();
@@ -24,8 +25,8 @@ routesInnovations.patch("/agents/:id/commission", authentifier, exigerRole("ADMI
 routesInnovations.post("/agents/:id/desactiver", authentifier, exigerRole("ADMIN"), ctrl.desactiverAgent);
 routesInnovations.get("/agents/moi", authentifier, exigerRole("AGENT", "ADMIN"), ctrl.statsAgent);
 
-// Canal SMS/USSD (simulation — webhook public)
-routesInnovations.post("/canal-sms", ctrl.canalSms);
+// Canal SMS/USSD — réservé à la passerelle (X-Cron-Secret). Pas d'appel anonyme.
+routesInnovations.post("/canal-sms", verifierSecretCron, ctrl.canalSms);
 
 // Mode Pro terrain
 routesInnovations.get("/terrain/file", authentifier, exigerRole("PRESTATAIRE"), ctrl.fileTerrain);

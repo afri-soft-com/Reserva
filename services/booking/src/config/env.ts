@@ -6,9 +6,15 @@ function lire(nom: string, defaut?: string): string {
   return v;
 }
 
+const nodeEnv = lire("NODE_ENV", "development");
+const serviceSecret = lire("SERVICE_SECRET", "reserva-service-dev");
+if (nodeEnv === "production" && serviceSecret === "reserva-service-dev") {
+  throw new Error("SERVICE_SECRET par défaut interdit en production");
+}
+
 export const env = {
   PORT: parseInt(lire("PORT", "4103"), 10),
-  NODE_ENV: lire("NODE_ENV", "development"),
+  NODE_ENV: nodeEnv,
   DATABASE_URL: lire("DATABASE_URL", "postgresql://reserva:reserva@localhost:55432/reserva?schema=booking"),
   REDIS_URL: lire("REDIS_URL", ""),
   JWT_SECRET: lire("JWT_SECRET"),
@@ -16,5 +22,5 @@ export const env = {
   HOTELS_URL: lire("HOTELS_URL", "http://localhost:4102"),
   TRANSPORT_URL: lire("TRANSPORT_URL", "http://localhost:4104"),
   HOLD_MINUTES: parseInt(lire("HOLD_MINUTES", "15"), 10),
-  SERVICE_SECRET: lire("SERVICE_SECRET", "reserva-service-dev"),
+  SERVICE_SECRET: serviceSecret,
 };

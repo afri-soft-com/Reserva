@@ -1,5 +1,5 @@
 import { prisma } from "../../config/prisma";
-import { ErreurValidation, ErreurNonTrouve, ErreurInterdit } from "../../utils/erreurs";
+import { ErreurValidation, ErreurNonTrouve, ErreurInterdit, ErreurConflit } from "../../utils/erreurs";
 import { obtenirConfigTarif } from "../economie/economie.service";
 
 async function paramsFidelite() {
@@ -105,31 +105,51 @@ export async function appliquerPoints(utilisateurId: string, reservationId: stri
   }
 
   const reduction = points * valeurPointCdf;
-  const montantBase = reservation.montantTotal + reservation.montantReduction;
-  if (reduction > montantBase) {
-    throw new ErreurValidation("La réduction dépasse le montant de la réservation");
+  const soldeRestant = reservation.montantTotal - reservation.montantPaye;
+  if (reduction > soldeRestant + 0.001) {
+    throw new ErreurValidation("La réduction dépasse le solde restant de la réservation");
   }
+  const nouveauTotal = Math.max(reservation.montantPaye, reservation.montantTotal - reduction);
 
-  await prisma.$transaction([
-    prisma.reservation.update({
-      where: { id: reservationId },
+  const resultat = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT id FROM "utilisateurs" WHERE id = ${utilisateurId} FOR UPDATE`;
+    const frais = await tx.pointTransaction.aggregate({
+      where: { utilisateurId, type: "GAIN" },
+      _sum: { montantPoints: true },
+    });
+    const depenses = await tx.pointTransaction.aggregate({
+      where: { utilisateurId, type: "DEPENSE" },
+      _sum: { montantPoints: true },
+    });
+    const soldeActuel = (frais._sum.montantPoints ?? 0) - (depenses._sum.montantPoints ?? 0);
+    if (soldeActuel < points) throw new ErreurValidation("Solde de points insuffisant");
+
+    const maj = await tx.reservation.updateMany({
+      where: {
+        id: reservationId,
+        clientId: utilisateurId,
+        montantTotal: reservation.montantTotal,
+        statut: { in: ["EN_ATTENTE", "CONFIRMEE"] },
+      },
       data: {
         montantReduction: { increment: reduction },
-        montantTotal: montantBase - reduction,
+        montantTotal: nouveauTotal,
         pointsUtilises: { increment: points },
       },
-    }),
-    prisma.pointTransaction.create({
+    });
+    if (maj.count === 0) throw new ErreurConflit("La réservation a changé. Réessayez.");
+
+    await tx.pointTransaction.create({
       data: {
         utilisateurId,
         type: "DEPENSE",
         montantPoints: points,
-        soldeApres: solde.solde - points,
+        soldeApres: soldeActuel - points,
         reservationId,
         description: `Points échangés contre une réduction de ${reduction} FC`,
       },
-    }),
-    prisma.notification.create({
+    });
+    await tx.notification.create({
       data: {
         utilisateurId,
         reservationId,
@@ -137,8 +157,9 @@ export async function appliquerPoints(utilisateurId: string, reservationId: stri
         message: `Vous avez échangé ${points} points contre ${reduction} FC de réduction sur la réservation ${reservation.numero}.`,
         type: "PAIEMENT",
       },
-    }),
-  ]);
+    });
+    return { nouveauSolde: soldeActuel - points };
+  });
 
-  return { points, reduction, montantFinal: montantBase - reduction, nouveauSolde: solde.solde - points };
+  return { points, reduction, montantFinal: nouveauTotal, nouveauSolde: resultat.nouveauSolde };
 }

@@ -26,8 +26,8 @@ export function initialiserSocket(serveur: HttpServer) {
   });
 
   io.use((socket, next) => {
-    const token = socket.handshake.auth.token || socket.handshake.query.token;
-    if (!token) return next(new Error("Token d'authentification manquant"));
+    const token = socket.handshake.auth?.token;
+    if (!token || typeof token !== "string") return next(new Error("Token d'authentification manquant"));
     try {
       const payload = jwt.verify(token as string, env.JWT_SECRET) as PayloadToken;
       (socket as any).utilisateur = payload;
@@ -45,9 +45,14 @@ export function initialiserSocket(serveur: HttpServer) {
       socket.join(`user:${user.utilisateurId}`);
     }
 
-    socket.on("rejoindre-conversation", (payload: unknown) => {
+    socket.on("rejoindre-conversation", async (payload: unknown) => {
       const conversationId = idConversation(payload);
-      if (conversationId) socket.join(`conv:${conversationId}`);
+      if (!conversationId) return;
+      const membre = await prisma.conversationParticipant.findUnique({
+        where: { conversationId_utilisateurId: { conversationId, utilisateurId: user.utilisateurId } },
+      });
+      if (!membre) return socket.emit("erreur", "Vous n'êtes pas membre de cette conversation");
+      socket.join(`conv:${conversationId}`);
     });
 
     socket.on("quitter-conversation", (payload: unknown) => {
@@ -93,15 +98,23 @@ export function initialiserSocket(serveur: HttpServer) {
       }
     });
 
-    socket.on("tape", (payload: unknown) => {
+    socket.on("tape", async (payload: unknown) => {
       const conversationId = idConversation(payload);
       if (!conversationId) return;
+      const membre = await prisma.conversationParticipant.findUnique({
+        where: { conversationId_utilisateurId: { conversationId, utilisateurId: user.utilisateurId } },
+      });
+      if (!membre) return;
       socket.to(`conv:${conversationId}`).emit("tape", { conversationId, utilisateurId: user.utilisateurId });
     });
 
     socket.on("marquer-lu", async (payload: unknown) => {
       const conversationId = idConversation(payload);
       if (!conversationId) return;
+      const membre = await prisma.conversationParticipant.findUnique({
+        where: { conversationId_utilisateurId: { conversationId, utilisateurId: user.utilisateurId } },
+      });
+      if (!membre) return;
       await prisma.conversationParticipant.updateMany({
         where: { conversationId, utilisateurId: user.utilisateurId },
         data: { derniereLecture: new Date() },

@@ -9,8 +9,10 @@ import {
 import { prisma } from "../../config/prisma";
 import { ErreurInterdit, ErreurNonTrouve, ErreurValidation } from "../../utils/erreurs";
 import { creerAvoir } from "../avoirs/avoirs.service";
+import { enregistrerRemboursement } from "../economie/economie.service";
 import { envoyerSms } from "../notifications/sms.adapter";
 import { recalculerConfiancePrestataire, recalculerTousLesScores } from "./confiance.service";
+import { motifRefusGarantie } from "./garantie";
 
 // --- Kit famille ---
 
@@ -46,32 +48,49 @@ export async function reclamerGarantie(utilisateurId: string, brut: unknown) {
   const data = schemaReclamerGarantie.parse(brut);
   const reservation = await prisma.reservation.findUnique({
     where: { id: data.reservationId },
-    include: { service: true },
+    include: { service: true, creneau: true },
   });
   if (!reservation) throw new ErreurNonTrouve("Réservation introuvable");
   if (reservation.clientId !== utilisateurId) throw new ErreurInterdit("Réservation non autorisée");
-  if (!reservation.garantieActive) throw new ErreurValidation("Garantie non active sur cette réservation");
-  if (reservation.garantieUtilisee) throw new ErreurValidation("Garantie déjà utilisée");
-  if (!["CONFIRMEE", "EN_COURS", "ABSENCE"].includes(reservation.statut) && reservation.statut !== "TERMINEE") {
-    // Autoriser aussi si payée mais prestataire n'a pas délivré (CONFIRMEE/EN_COURS trop tard sans check-in)
-  }
-  if (reservation.statutPaiement !== "PAYE" && reservation.statutPaiement !== "PARTIEL") {
-    throw new ErreurValidation("La garantie s'applique aux réservations payées");
-  }
-  // Non délivré = CONFIRMEE > 2h après créneau OU ABSENCE côté prestataire faute
-  const montant = reservation.montantPaye > 0 ? reservation.montantPaye : reservation.montantTotal;
+  const refus = motifRefusGarantie({
+    garantieActive: reservation.garantieActive,
+    garantieUtilisee: reservation.garantieUtilisee,
+    statut: reservation.statut,
+    statutPaiement: reservation.statutPaiement,
+    montantPaye: reservation.montantPaye,
+    creneauDebut: reservation.creneau.debut,
+  });
+  if (refus) throw new ErreurValidation(refus);
+
+  const montant = reservation.montantPaye;
+  await prisma.$transaction(async (tx) => {
+    const maj = await tx.reservation.updateMany({
+      where: {
+        id: reservation.id,
+        clientId: utilisateurId,
+        garantieUtilisee: false,
+        statut: { in: ["CONFIRMEE", "EN_ATTENTE"] },
+      },
+      data: {
+        garantieUtilisee: true,
+        statut: "ANNULEE",
+        statutPaiement: "REMBOURSE",
+        motifAnnulation: `Garantie arrivée : ${data.motif}`,
+        notes: `${reservation.notes ?? ""}\n[GARANTIE] ${data.motif}`.trim(),
+      },
+    });
+    if (maj.count === 0) throw new ErreurValidation("Garantie déjà utilisée");
+    await tx.creneau.update({
+      where: { id: reservation.creneauId },
+      data: { capaciteReservee: { decrement: 1 } },
+    });
+    await enregistrerRemboursement(tx, reservation, montant);
+  });
   const avoir = await creerAvoir({
     utilisateurId,
     montant,
     devise: reservation.devise,
     sourceReservationId: reservation.id,
-  });
-  await prisma.reservation.update({
-    where: { id: reservation.id },
-    data: {
-      garantieUtilisee: true,
-      notes: `${reservation.notes ?? ""}\n[GARANTIE] ${data.motif}`.trim(),
-    },
   });
   await recalculerConfiancePrestataire(reservation.prestataireId);
   return {
