@@ -21,7 +21,7 @@ platform :android do
           skip_upload_metadata: true,
           skip_upload_images: true,
           skip_upload_screenshots: true,
-          skip_upload_changelogs: true,
+          skip_upload_changelogs: false,
           # completed = dispo immédiatement aux testeurs du track (internal)
           release_status: ENV.fetch("PLAY_RELEASE_STATUS", "completed"),
           ack_bundle_installation_warning: true,

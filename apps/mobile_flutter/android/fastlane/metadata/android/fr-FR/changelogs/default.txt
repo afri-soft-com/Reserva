@@ -1,0 +1,1 @@
+Correctifs de sécurité et de fiabilité : réservations, paiements, notifications et chat.
