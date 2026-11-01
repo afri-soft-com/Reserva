@@ -1,7 +1,7 @@
 default_platform(:android)
 
 platform :android do
-  desc "Upload AAB Client + Pro sur Google Play (internal, completed)"
+  desc "Upload AAB Client + Pro sur Google Play (production, completed)"
   lane :deploy do
     {
       "com.reserva.client" => File.expand_path("../../build/app/outputs/bundle/clientRelease/app-client-release.aab", __dir__),
@@ -12,10 +12,10 @@ platform :android do
       attempts = 0
       begin
         attempts += 1
-        # internal + completed = dispo aux testeurs ; PLAY_TRACK / PLAY_RELEASE_STATUS pour override
+        # production + completed = rollout public ; PLAY_TRACK pour override (internal)
         upload_to_play_store(
           package_name: package_name,
-          track: ENV.fetch("PLAY_TRACK", "internal"),
+          track: ENV.fetch("PLAY_TRACK", "production"),
           aab: aab,
           json_key: "play-service-account.json",
           skip_upload_metadata: true,

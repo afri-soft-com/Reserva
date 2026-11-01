@@ -539,6 +539,8 @@ jobs:
         working-directory: apps/mobile_flutter/android
         env:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_TRACK: production
+          PLAY_RELEASE_STATUS: completed
         run: |
           echo "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
           gem install fastlane --no-document
@@ -755,6 +757,8 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_SUBMIT_FOR_REVIEW: "true"
+          ASC_AUTOMATIC_RELEASE: "true"
         run: |
           mkdir -p fastlane
           printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > fastlane/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
