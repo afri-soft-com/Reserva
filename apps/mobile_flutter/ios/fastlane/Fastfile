@@ -1,3 +1,5 @@
+require "timeout"
+
 default_platform(:ios)
 
 platform :ios do
@@ -20,18 +22,46 @@ platform :ios do
     submit = ENV.fetch("ASC_SUBMIT_FOR_REVIEW", "true") == "true"
     auto_release = ENV.fetch("ASC_AUTOMATIC_RELEASE", "true") == "true"
 
+    # 1) Envoi des binaires sans attendre le traitement Apple (sinon le job reste bloqué des heures
+    #    si un build n'apparaît pas dans la liste).
     ipas.sort.each do |ipa|
-      UI.message("→ App Store Connect #{File.basename(ipa)} (submit_for_review=#{submit})")
+      UI.message("→ Upload binaire #{File.basename(ipa)}")
       upload_to_app_store(
         api_key: api_key,
         ipa: File.expand_path(ipa),
-        submit_for_review: submit,
-        automatic_release: auto_release,
+        submit_for_review: false,
+        automatic_release: false,
         force: true,
         precheck_include_in_app_purchases: false,
         skip_metadata: true,
         skip_screenshots: true
       )
+    end
+
+    # 2) Soumission review, plafonnée : le binaire est déjà chez Apple même si le build n'est pas encore listé.
+    if submit
+    ipas.sort.each do |ipa|
+      UI.message("→ Soumission review #{File.basename(ipa)}")
+      begin
+        Timeout.timeout(20 * 60) do
+          upload_to_app_store(
+            api_key: api_key,
+            ipa: File.expand_path(ipa),
+            submit_for_review: true,
+            automatic_release: auto_release,
+            skip_binary_upload: true,
+            force: true,
+            precheck_include_in_app_purchases: false,
+            skip_metadata: true,
+            skip_screenshots: true
+          )
+        end
+      rescue Timeout::Error
+        UI.important("Build #{File.basename(ipa)} pas encore listé après 20 min. Binaire déjà envoyé à App Store Connect.")
+      rescue StandardError => e
+        UI.important("Soumission review #{File.basename(ipa)} non terminée (binaire déjà envoyé) : #{e.message}")
+      end
+    end
     end
   end
 end

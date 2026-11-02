@@ -68,6 +68,8 @@
 	<string>RESERVA utilise Face ID pour déverrouiller l'application.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>RESERVA accède à vos photos pour votre profil.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>GIDClientID</key>
 	<string>$(GID_CLIENT_ID)</string>
 	<key>CFBundleURLTypes</key>
