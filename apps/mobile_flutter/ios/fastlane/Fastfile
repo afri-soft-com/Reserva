@@ -25,9 +25,11 @@ platform :ios do
     # 1) Envoi des binaires sans attendre le traitement Apple (sinon le job reste bloqué des heures
     #    si un build n'apparaît pas dans la liste).
     ipas.sort.each do |ipa|
-      UI.message("→ Upload binaire #{File.basename(ipa)}")
+      identifiant = File.basename(ipa).include?("Pro") ? "com.reserva.pro" : "com.reserva.client"
+      UI.message("→ Upload binaire #{File.basename(ipa)} (#{identifiant})")
       upload_to_app_store(
         api_key: api_key,
+        app_identifier: identifiant,
         ipa: File.expand_path(ipa),
         submit_for_review: false,
         automatic_release: false,
@@ -41,11 +43,13 @@ platform :ios do
     # 2) Soumission review, plafonnée : le binaire est déjà chez Apple même si le build n'est pas encore listé.
     if submit
     ipas.sort.each do |ipa|
-      UI.message("→ Soumission review #{File.basename(ipa)}")
+      identifiant = File.basename(ipa).include?("Pro") ? "com.reserva.pro" : "com.reserva.client"
+      UI.message("→ Soumission review #{File.basename(ipa)} (#{identifiant})")
       begin
         Timeout.timeout(20 * 60) do
           upload_to_app_store(
             api_key: api_key,
+            app_identifier: identifiant,
             ipa: File.expand_path(ipa),
             submit_for_review: true,
             automatic_release: auto_release,
