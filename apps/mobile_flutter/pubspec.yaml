@@ -1,7 +1,7 @@
 name: reserva
 description: "RESERVA - Reservez. Sereinement."
 publish_to: 'none'
-version: 1.0.8+54
+version: 1.0.9+54
 
 environment:
   sdk: ^3.8.1
