@@ -41,18 +41,17 @@ routesPrestataires.patch(
 );
 routesPrestataires.post("/moi/kyc/soumettre", authentifier, exigerRole("PRESTATAIRE"), prestatairesController.soumettreKyc);
 
-// Activation espace Pro (code reçu après approbation admin)
+// Activation : le JWT peut encore porter CLIENT après création du profil.
+// Le service vérifie le dossier prestataire approuvé, pas le rôle du token.
 routesPrestataires.post(
   "/moi/activation",
   authentifier,
-  exigerRole("PRESTATAIRE"),
   valider(schemaActiverEspace),
   prestatairesController.activerEspace
 );
 routesPrestataires.post(
   "/moi/activation/renvoyer",
   authentifier,
-  exigerRole("PRESTATAIRE"),
   prestatairesController.renvoyerActivation
 );
 

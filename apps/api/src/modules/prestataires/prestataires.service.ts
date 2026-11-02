@@ -102,7 +102,7 @@ export async function validerPrestataire(input: ValiderPrestataireInput) {
         utilisateurId: prestataire.utilisateurId,
         titre: "Profil approuvé — activation requise",
         message:
-          "Votre dossier est approuvé. Saisissez le code d'activation reçu par SMS (ou e-mail) dans RESERVA Pro pour ouvrir votre espace de travail.",
+          "Votre dossier est approuvé. Saisissez le code d'activation reçu par SMS pour ouvrir votre espace de travail.",
         type: "SYSTEME",
       },
     }).catch(() => {});
@@ -163,7 +163,7 @@ async function exigerPrestataireApprouve(utilisateurId: string) {
   }
   if (!prestataire.activationConfirmeeLe) {
     throw new ErreurInterdit(
-      "Saisissez le code d'activation reçu par SMS (ou e-mail) pour ouvrir votre espace de travail."
+      "Saisissez le code d'activation reçu par SMS pour ouvrir votre espace de travail."
     );
   }
   const config = await obtenirConfigExigenceKyc();

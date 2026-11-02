@@ -50,6 +50,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
   }
 
   bool _activationRequise = false;
+  bool _envoiActivationLance = false;
   final _codeActivationCtrl = TextEditingController();
 
   Future<void> _charger() async {
@@ -71,6 +72,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
       if (activationRequise ||
           _profilStatut == 'EN_ATTENTE_VALIDATION' ||
           _profilStatut == 'REJETE') {
+        if (activationRequise) _demanderCodeActivation();
         return;
       }
       final results = await Future.wait([
@@ -97,6 +99,30 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
       }
     } finally {
       if (mounted) setState(() => _chargement = false);
+    }
+  }
+
+  void _demanderCodeActivation() {
+    if (_envoiActivationLance) return;
+    _envoiActivationLance = true;
+    Future.microtask(() => _renvoyerCode());
+  }
+
+  Future<void> _renvoyerCode() async {
+    try {
+      final res = await ApiPrestataire.renvoyerCodeActivation();
+      final msg = (res['message'] as String?)?.trim();
+      if (mounted) {
+        ToastWidget.show(
+          context,
+          msg != null && msg.isNotEmpty ? msg : 'Code envoyé par SMS',
+          type: 'succes',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastWidget.show(context, e.toString().replaceFirst('Exception: ', ''), type: 'erreur');
+      }
     }
   }
 
@@ -180,7 +206,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Votre dossier est approuvé. Saisissez le code à 6 chiffres reçu par SMS (ou e-mail) pour ouvrir votre espace de travail.',
+                  'Votre dossier est approuvé. Saisissez le code à 6 chiffres reçu par SMS pour ouvrir votre espace de travail.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppCouleurs.texteSecondaire),
                 ),
@@ -207,16 +233,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                   ),
                 ),
                 TextButton(
-                  onPressed: () async {
-                    try {
-                      await ApiPrestataire.renvoyerCodeActivation();
-                      if (mounted) ToastWidget.show(context, 'Nouveau code envoyé', type: 'succes');
-                    } catch (e) {
-                      if (mounted) {
-                        ToastWidget.show(context, e.toString().replaceFirst('Exception: ', ''), type: 'erreur');
-                      }
-                    }
-                  },
+                  onPressed: _renvoyerCode,
                   child: const Text('Renvoyer le code'),
                 ),
               ],
