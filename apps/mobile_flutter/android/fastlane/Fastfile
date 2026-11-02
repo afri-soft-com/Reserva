@@ -15,52 +15,29 @@ platform :android do
 end
 
 def publier_production(package_name, aab)
-  afficher_corps_erreur_play
   statut = ENV.fetch("PLAY_RELEASE_STATUS", "completed")
-  attempts = 0
   begin
-    attempts += 1
-    envoyer_play(package_name, aab, statut, false)
+    envoyer_play(package_name, aab, ENV.fetch("PLAY_TRACK", "production"), statut, false, false)
   rescue StandardError => e
     msg = e.message.to_s
-    raise unless msg.match?(/Precondition|draft app|FAILED_PRECONDITION/i)
-    if attempts < 4
-      attente = 45 * attempts
-      UI.important("Production refusée pour #{package_name} (essai #{attempts}/4) : #{msg}. Nouvel essai dans #{attente}s, le temps que Google finisse de traiter l'AAB.")
-      sleep(attente)
-      retry
-    end
-    raise
+    raise unless msg.match?(/Precondition|Invalid request|FAILED_PRECONDITION/i)
+
+    UI.important("Play refuse le track production pour #{package_name} : #{msg}")
+    UI.important("La console Play bloque encore la production (pays, fiche, classification). Envoi sur internal, qui est accepté.")
+    envoyer_play(package_name, aab, "internal", "completed", false, true)
   end
 end
 
-# Le message Play « Precondition check failed » cache le JSON. On l'affiche tel quel.
-def afficher_corps_erreur_play
-  return if @play_body_patched
-  @play_body_patched = true
-  Supply::Client.class_eval do
-    def call_google_api
-      yield
-    rescue Google::Apis::ClientError => e
-      corps = e.respond_to?(:body) ? e.body.to_s : e.inspect
-      UI.error("PLAY_BODY #{corps}")
-      UI.user_error!("Google Api Error: #{e.message}")
-    end
-  end
-rescue StandardError => e
-  UI.important("Détail API Play non branché: #{e.message}")
-end
-
-def envoyer_play(package_name, aab, release_status, changes_not_sent)
+def envoyer_play(package_name, aab, track, release_status, changes_not_sent, skip_changelogs)
   upload_to_play_store(
     package_name: package_name,
-    track: ENV.fetch("PLAY_TRACK", "production"),
+    track: track,
     aab: aab,
     json_key: "play-service-account.json",
     skip_upload_metadata: true,
     skip_upload_images: true,
     skip_upload_screenshots: true,
-    skip_upload_changelogs: false,
+    skip_upload_changelogs: skip_changelogs,
     release_status: release_status,
     ack_bundle_installation_warning: true,
     timeout: 600,
