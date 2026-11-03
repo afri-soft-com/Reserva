@@ -6,12 +6,17 @@
  * Règle produit :
  * - minSoft := max(minSoft actuel, versionPubliée)
  * - minForce reste < minSoft (abaissé si besoin)
- * → les installs < versionPubliée voient soft ; la dernière build ne voit rien (normal).
+ * - minSoftBuild<Plateforme> := build publiée (monotone) quand minSoft = versionPubliée
+ * → les installs < versionPubliée voient soft ; à version égale, les builds plus
+ *   anciennes que la build publiée voient soft aussi (un redéploiement sans
+ *   changer le nom de version réaffiche donc la bannière) ; la dernière build ne voit rien.
  *
  * Usage:
  *   node scripts/promote-bannieres-apres-store.mjs
  *   node scripts/promote-bannieres-apres-store.mjs --version=1.0.7
- *   node scripts/promote-bannieres-apres-store.mjs --canaux=client,pro
+ *   node scripts/promote-bannieres-apres-store.mjs --canaux=client,pro --plateforme=android --build=171
+ *
+ * --build : défaut GITHUB_RUN_NUMBER (= build injectée dans pubspec par la CI).
  *
  * Env: GATEWAY_URL, SMOKE_ADMIN_PHONE, SMOKE_ADMIN_PIN
  */
@@ -53,6 +58,13 @@ function forceSousSoft(soft) {
   return p.join(".");
 }
 
+function lireBuild(v) {
+  const n = parseInt(String(v ?? "").trim(), 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+const CHAMPS_BUILD = { android: "minSoftBuildAndroid", ios: "minSoftBuildIos" };
+
 function maxVer(a, b) {
   return cmpVer(a, b) >= 0 ? a : b;
 }
@@ -71,8 +83,17 @@ async function main() {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+  const plateforme = String(arg("plateforme", "")).trim().toLowerCase();
+  const champBuild = CHAMPS_BUILD[plateforme] ?? null;
+  const build = lireBuild(arg("build", process.env.GITHUB_RUN_NUMBER || ""));
+  if (plateforme && !champBuild) throw new Error(`--plateforme=${plateforme} inconnue (android | ios)`);
+  if (champBuild && !build) throw new Error("--build (ou GITHUB_RUN_NUMBER) requis avec --plateforme");
 
-  console.log(`→ Promotion bannières après store — version publiée ${publiee} (${canaux.join(", ")})`);
+  console.log(
+    `→ Promotion bannières après store — version publiée ${publiee}` +
+      (champBuild ? ` build ${build} (${plateforme})` : "") +
+      ` (${canaux.join(", ")})`
+  );
 
   const login = await fetch(`${gateway}/auth/connexion`, {
     method: "POST",
@@ -131,11 +152,27 @@ async function main() {
     if (canal === "client" || canal === "pro") {
       body[canal].storeUrlAndroid = body[canal].storeUrlAndroid || "";
       body[canal].storeUrlIos = body[canal].storeUrlIos || "";
+
+      // N'envoyer QUE la build de cette plateforme : Play et App Store tournent en
+      // parallèle, renvoyer la build de l'autre job pourrait l'écraser. L'API garde
+      // un champ absent (et le remet à zéro si minSoft change).
+      for (const champ of Object.values(CHAMPS_BUILD)) {
+        if (champ !== champBuild) delete body[canal][champ];
+      }
+      if (champBuild) {
+        const avantBuild = cmpVer(softFinal, avantSoft) === 0 ? lireBuild(actuel[canal]?.[champBuild]) : 0;
+        if (cmpVer(softFinal, publiee) === 0 && build > avantBuild) {
+          body[canal][champBuild] = String(build);
+          mods.push(`${canal}.${champBuild} ${avantBuild || "-"} → ${build}`);
+        } else {
+          body[canal][champBuild] = String(avantBuild);
+        }
+      }
     }
   }
 
   if (mods.length === 0) {
-    console.log(`✓ Déjà aligné (minSoft ≥ ${publiee} et ≤ publiée). Aucun PUT.`);
+    console.log(`✓ Déjà aligné (minSoft ≥ ${publiee} et ≤ publiée, build ≥ ${build || "-"}). Aucun PUT.`);
     assertConfigBannieres(actuel, { exigerStoreUrls: true });
     return;
   }
@@ -164,6 +201,11 @@ async function main() {
   });
   for (const canal of canaux) {
     if (canal === "web") continue;
+    if (champBuild && cmpVer(apres[canal]?.minSoft, publiee) === 0 && lireBuild(apres[canal]?.[champBuild]) < build) {
+      throw new Error(
+        `bannières MAJ: ${canal}.${champBuild}=${apres[canal]?.[champBuild] || "?"} < build publiée ${build} (pas de bannière pour les anciennes builds)`
+      );
+    }
     const soft = apres[canal]?.minSoft;
     if (cmpVer(soft, publiee) > 0) {
       throw new Error(
@@ -176,7 +218,11 @@ async function main() {
     `client=${apres.client?.minSoft}/${apres.client?.minForce}`,
     `pro=${apres.pro?.minSoft}/${apres.pro?.minForce}`
   );
-  console.log(`  → soft pour installs < ${publiee} ; none sur ${publiee}+`);
+  console.log(
+    `  → soft pour installs < ${publiee}` +
+      (champBuild ? ` et ${publiee} build < ${build} (${plateforme})` : "") +
+      ` ; none sur la dernière build`
+  );
 }
 
 main().catch((e) => {

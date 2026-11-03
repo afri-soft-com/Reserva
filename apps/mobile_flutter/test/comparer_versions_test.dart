@@ -55,5 +55,41 @@ void main() {
         'none',
       );
     });
+
+    test('soft pour une build plus ancienne à version égale', () {
+      expect(
+        decideModeMiseAJour(
+          versionInstallee: '1.0.10',
+          minSoft: '1.0.10',
+          minForce: '1.0.8',
+          buildInstallee: '170',
+          minSoftBuild: '171',
+        ),
+        'soft',
+      );
+      expect(
+        decideModeMiseAJour(
+          versionInstallee: '1.0.10',
+          minSoft: '1.0.10',
+          minForce: '1.0.8',
+          buildInstallee: '171',
+          minSoftBuild: '171',
+        ),
+        'none',
+      );
+    });
+
+    test('build inconnue ignorée', () {
+      expect(
+        decideModeMiseAJour(
+          versionInstallee: '1.0.10',
+          minSoft: '1.0.10',
+          minForce: '1.0.8',
+          buildInstallee: '',
+          minSoftBuild: '171',
+        ),
+        'none',
+      );
+    });
   });
 }

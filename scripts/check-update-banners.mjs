@@ -227,6 +227,56 @@ function assertPromoteStore(rel) {
 assertPromoteStore(".github/workflows/ci-cd.yml");
 assertPromoteStore(".github/workflows/deploy-app-store.yml");
 
+/**
+ * Redéploiement sans changer le nom de version : la bannière doit quand même
+ * apparaître sur les builds plus anciennes. Tout le maillon build doit rester câblé.
+ */
+mustInclude(
+  "packages/shared/src/utils/helpers.ts",
+  ["buildInstallee", "minSoftBuild", "lireBuild"],
+  "build-shared"
+);
+mustInclude(
+  "apps/mobile_flutter/lib/utils/comparer_versions.dart",
+  ["buildInstallee", "minSoftBuild", "lireBuild"],
+  "build-mobile-compare"
+);
+mustInclude(
+  "apps/mobile_flutter/lib/widgets/mise_a_jour_gate.dart",
+  ["info.buildNumber", "minSoftBuildIos", "minSoftBuildAndroid", "nouvellePublication"],
+  "build-mobile-gate"
+);
+mustInclude(
+  "apps/api/src/modules/app-versions/app-versions.service.ts",
+  ["minSoftBuildAndroid", "minSoftBuildIos", "CHAMPS_BUILD"],
+  "build-api"
+);
+mustInclude(
+  "apps/api/src/modules/app-versions/app-versions.schema.ts",
+  ["minSoftBuildAndroid", "minSoftBuildIos"],
+  "build-api-schema"
+);
+mustInclude(
+  "scripts/promote-bannieres-apres-store.mjs",
+  ["--plateforme", "champBuild", "build publiée"],
+  "build-promote"
+);
+{
+  const ci = read(".github/workflows/ci-cd.yml");
+  for (const plateforme of ["android", "ios"]) {
+    const attendu = `promote:bannieres-store -- --canaux=client,pro --plateforme=${plateforme} --build=\${{ github.run_number }}`;
+    if (!ci.includes(attendu)) {
+      throw new Error(`[build-ci] ci-cd.yml doit lancer « ${attendu} » après l'upload store`);
+    }
+  }
+  // La build promue doit être celle injectée dans le binaire.
+  const injections = ci.match(/version: \\\\1\+\$\{\{ github\.run_number \}\}/g) || [];
+  if (injections.length < 2) {
+    throw new Error("[build-ci] ci-cd.yml doit injecter github.run_number comme build Android ET iOS");
+  }
+  console.log("  ✓ build-ci: promotion build android + ios = github.run_number");
+}
+
 mustMatch("apps/mobile_flutter/pubspec.yaml", /^version:\s*\d+\.\d+\.\d+/m, "pubspec-version");
 mustMatch("apps/web/package.json", /"version":\s*"\d+\.\d+\.\d+"/, "web-package-version");
 

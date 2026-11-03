@@ -12,13 +12,30 @@ int comparerVersions(String a, String b) {
   return 0;
 }
 
+/// Numéro de build entier (> 0), sinon 0 = inconnu.
+int lireBuild(Object? valeur) {
+  final n = int.tryParse('${valeur ?? ''}'.trim());
+  return n != null && n > 0 ? n : 0;
+}
+
 /// soft | force | none — aligné sur @reserva/shared decideModeMiseAJour.
+///
+/// Chaque déploiement store publie une nouvelle build sans forcément changer
+/// le nom de version : à version égale à minSoft, une build plus ancienne
+/// que [minSoftBuild] reçoit aussi la bannière soft.
 String decideModeMiseAJour({
   required String versionInstallee,
   required String minSoft,
   required String minForce,
+  Object? buildInstallee,
+  Object? minSoftBuild,
 }) {
   if (comparerVersions(versionInstallee, minForce) < 0) return 'force';
   if (comparerVersions(versionInstallee, minSoft) < 0) return 'soft';
+  if (comparerVersions(versionInstallee, minSoft) == 0) {
+    final installee = lireBuild(buildInstallee);
+    final minimum = lireBuild(minSoftBuild);
+    if (installee > 0 && minimum > 0 && installee < minimum) return 'soft';
+  }
   return 'none';
 }

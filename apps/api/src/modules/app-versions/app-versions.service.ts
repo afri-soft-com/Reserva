@@ -1,4 +1,4 @@
-import { comparerVersions } from "@reserva/shared";
+import { comparerVersions, lireBuild } from "@reserva/shared";
 import { prisma } from "../../config/prisma";
 import { ErreurInterdit } from "../../utils/erreurs";
 
@@ -11,7 +11,12 @@ export type ConfigVersionCanal = {
   minForce: string;
   storeUrlAndroid?: string;
   storeUrlIos?: string;
+  /** Build store minimale à version = minSoft (une par plateforme : les stores publient séparément). */
+  minSoftBuildAndroid?: string;
+  minSoftBuildIos?: string;
 };
+
+const CHAMPS_BUILD = ["minSoftBuildAndroid", "minSoftBuildIos"] as const;
 
 export type ConfigVersions = Record<CanalVersion, ConfigVersionCanal>;
 
@@ -79,7 +84,7 @@ function cle(canal: CanalVersion, champ: string) {
 export async function lireVersions(): Promise<ConfigVersions> {
   const cles = Object.keys(DEFAUTS).flatMap((canal) => {
     const c = canal as CanalVersion;
-    const champs = ["minSoft", "minForce", "storeUrlAndroid", "storeUrlIos"];
+    const champs = ["minSoft", "minForce", "storeUrlAndroid", "storeUrlIos", ...CHAMPS_BUILD];
     return champs.map((ch) => cle(c, ch));
   });
   const lignes = await prisma.configurationTarification.findMany({
@@ -97,6 +102,10 @@ export async function lireVersions(): Promise<ConfigVersions> {
     if (force) out[canal].minForce = force;
     if (and) out[canal].storeUrlAndroid = and;
     if (ios) out[canal].storeUrlIos = ios;
+    for (const champ of CHAMPS_BUILD) {
+      const build = lireBuild(map[cle(canal, champ)]);
+      if (build > 0) out[canal][champ] = String(build);
+    }
   }
   return out;
 }
@@ -145,6 +154,15 @@ export async function ecrireVersions(
     if (canal !== "web") {
       if (android) await upsertChamp(canal, "storeUrlAndroid", android, `Store Android ${canal}`);
       if (ios) await upsertChamp(canal, "storeUrlIos", ios, `Store iOS ${canal}`);
+      // Build absente du payload (ex. page admin) : conservée tant que minSoft ne change pas,
+      // remise à zéro si minSoft change (elle ne concernait que l'ancienne version).
+      const minSoftChange = comparerVersions(cfg.minSoft, actuel[canal].minSoft) !== 0;
+      for (const champ of CHAMPS_BUILD) {
+        const demande = (cfg as ConfigVersionCanal)[champ];
+        const valeur =
+          demande !== undefined ? lireBuild(demande) : minSoftChange ? 0 : lireBuild(actuel[canal][champ]);
+        await upsertChamp(canal, champ, String(valeur), `Build soft ${champ.endsWith("Ios") ? "iOS" : "Android"} ${canal}`);
+      }
     }
   }
   return lireVersions();

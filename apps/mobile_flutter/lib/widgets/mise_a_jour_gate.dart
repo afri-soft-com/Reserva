@@ -22,7 +22,9 @@ class MiseAJourGate extends StatefulWidget {
 
 class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserver {
   String? _installee;
+  String? _buildInstallee;
   String? _minSoft;
+  String? _minSoftBuild;
   String? _minForce;
   String? _storeUrl;
   bool _dismissSoft = false;
@@ -56,18 +58,25 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
 
   void _appliquerConfig({
     required String installee,
+    required String buildInstallee,
     required Map<String, dynamic> cfg,
   }) {
     final android = cfg['storeUrlAndroid']?.toString();
     final ios = cfg['storeUrlIos']?.toString();
     final minSoft = cfg['minSoft']?.toString() ?? '1.0.1';
     final minForce = cfg['minForce']?.toString() ?? '1.0.0';
+    // Build publiée par la CI pour CETTE plateforme (les stores publient séparément).
+    final minSoftBuild =
+        cfg[Platform.isIOS ? 'minSoftBuildIos' : 'minSoftBuildAndroid']?.toString();
     final precedentSoft = _minSoft;
+    final precedentBuild = lireBuild(_minSoftBuild);
 
     if (!mounted) return;
     setState(() {
       _installee = installee;
+      _buildInstallee = buildInstallee;
       _minSoft = minSoft;
+      _minSoftBuild = minSoftBuild;
       _minForce = minForce;
       _storeUrl = Platform.isIOS ? ios : android;
       _pret = true;
@@ -75,10 +84,16 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
         versionInstallee: installee,
         minSoft: minSoft,
         minForce: minForce,
+        buildInstallee: buildInstallee,
+        minSoftBuild: minSoftBuild,
       );
-      if (mode == 'none' ||
-          mode == 'force' ||
-          (precedentSoft != null && comparerVersions(minSoft, precedentSoft) > 0)) {
+      // « Plus tard » ne vaut que pour la publication vue : une nouvelle
+      // version OU une nouvelle build publiée réaffiche la bannière.
+      final nouvellePublication = precedentSoft != null &&
+          (comparerVersions(minSoft, precedentSoft) > 0 ||
+              (comparerVersions(minSoft, precedentSoft) == 0 &&
+                  lireBuild(minSoftBuild) > precedentBuild));
+      if (mode == 'none' || mode == 'force' || nouvellePublication) {
         _dismissSoft = false;
       }
     });
@@ -97,6 +112,7 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
       }
       _appliquerConfig(
         installee: info.version,
+        buildInstallee: info.buildNumber,
         cfg: Map<String, dynamic>.from(raw),
       );
     } catch (_) {
@@ -111,6 +127,7 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
           if (raw is Map) {
             _appliquerConfig(
               installee: info.version,
+              buildInstallee: info.buildNumber,
               cfg: Map<String, dynamic>.from(raw),
             );
           }
@@ -131,12 +148,22 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
       versionInstallee: _installee!,
       minSoft: _minSoft!,
       minForce: _minForce!,
+      buildInstallee: _buildInstallee,
+      minSoftBuild: _minSoftBuild,
     );
   }
 
   bool get _force => _mode == 'force';
 
   bool get _soft => !_dismissSoft && _mode == 'soft';
+
+  String get _libelleSoft {
+    // Même nom de version : on annonce la nouvelle build, pas « v1.0.10 → 1.0.10 ».
+    if (_installee != null && _minSoft != null && comparerVersions(_installee!, _minSoft!) == 0) {
+      return "Nouvelle version de l'app disponible";
+    }
+    return 'Mise à jour disponible (v$_installee → $_minSoft)';
+  }
 
   Future<void> _ouvrirStore() async {
     final url = _storeUrl;
@@ -161,7 +188,7 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Mise à jour disponible (v$_installee → $_minSoft)',
+                  _libelleSoft,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,

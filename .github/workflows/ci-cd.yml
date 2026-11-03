@@ -550,7 +550,7 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run db:generate
-          npm run promote:bannieres-store -- --canaux=client,pro
+          npm run promote:bannieres-store -- --canaux=client,pro --plateforme=android --build=${{ github.run_number }}
           npm run sync:app-versions -- --canaux=mobile --verify-only
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
@@ -770,7 +770,7 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run db:generate
-          npm run promote:bannieres-store -- --canaux=client,pro
+          npm run promote:bannieres-store -- --canaux=client,pro --plateforme=ios --build=${{ github.run_number }}
           npm run sync:app-versions -- --canaux=mobile --verify-only
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}

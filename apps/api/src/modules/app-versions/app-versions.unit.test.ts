@@ -56,4 +56,21 @@ describe("seuils de mise à jour (contrat bannières)", () => {
       })
     ).toBe("soft");
   });
+
+  it("à version égale, une build plus ancienne que la dernière publiée voit la bannière", () => {
+    const base = { versionInstallee: "1.0.10", minSoft: "1.0.10", minForce: "1.0.8" };
+    expect(decideModeMiseAJour({ ...base, buildInstallee: "170", minSoftBuild: "171" })).toBe("soft");
+    expect(decideModeMiseAJour({ ...base, buildInstallee: "171", minSoftBuild: "171" })).toBe("none");
+    expect(decideModeMiseAJour({ ...base, buildInstallee: 172, minSoftBuild: "171" })).toBe("none");
+  });
+
+  it("ignore la build quand elle est inconnue ou que la version diffère", () => {
+    const base = { versionInstallee: "1.0.10", minSoft: "1.0.10", minForce: "1.0.8" };
+    expect(decideModeMiseAJour({ ...base, buildInstallee: "", minSoftBuild: "171" })).toBe("none");
+    expect(decideModeMiseAJour({ ...base, buildInstallee: "170", minSoftBuild: "0" })).toBe("none");
+    expect(decideModeMiseAJour({ ...base })).toBe("none");
+    expect(
+      decideModeMiseAJour({ versionInstallee: "1.0.11", minSoft: "1.0.10", minForce: "1.0.8", buildInstallee: "1", minSoftBuild: "171" }),
+    ).toBe("none");
+  });
 });

@@ -115,13 +115,31 @@ export function comparerVersions(a: string, b: string): number {
 /** Mode d'affichage bannière de mise à jour (soft / force / none). */
 export type ModeMiseAJour = "none" | "soft" | "force";
 
+/** Numéro de build entier (> 0), sinon 0 = inconnu. */
+export function lireBuild(valeur: unknown): number {
+  const n = parseInt(String(valeur ?? "").trim(), 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Chaque déploiement store publie une nouvelle build sans forcément changer
+ * le nom de version : à version égale à minSoft, une build plus ancienne
+ * que `minSoftBuild` reçoit aussi la bannière soft.
+ */
 export function decideModeMiseAJour(params: {
   versionInstallee: string;
   minSoft: string;
   minForce: string;
+  buildInstallee?: string | number;
+  minSoftBuild?: string | number;
 }): ModeMiseAJour {
   const { versionInstallee, minSoft, minForce } = params;
   if (comparerVersions(versionInstallee, minForce) < 0) return "force";
   if (comparerVersions(versionInstallee, minSoft) < 0) return "soft";
+  if (comparerVersions(versionInstallee, minSoft) === 0) {
+    const installee = lireBuild(params.buildInstallee);
+    const minimum = lireBuild(params.minSoftBuild);
+    if (installee > 0 && minimum > 0 && installee < minimum) return "soft";
+  }
   return "none";
 }
