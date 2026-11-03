@@ -95,13 +95,17 @@ export type FinancesAdmin = {
   ecrituresRecentes?: any[];
 };
 
-export async function obtenirFinancesAdmin(periode = "mois") {
-  const { data } = await clientApi.get("/economie/admin/finances", { params: { periode } });
+export async function obtenirFinancesAdmin(filtres: { periode?: string; debut?: string; fin?: string } = { periode: "mois" }) {
+  const { data } = await clientApi.get("/economie/admin/finances", { params: filtres });
   return data.donnees as FinancesAdmin;
 }
 
-export async function listerVersementsAdmin(page = 1, statut?: string) {
-  const { data } = await clientApi.get("/economie/admin/versements", { params: { page, statut } });
+export async function listerVersementsAdmin(
+  page = 1,
+  statut?: string,
+  temps?: { periode?: string; debut?: string; fin?: string },
+) {
+  const { data } = await clientApi.get("/economie/admin/versements", { params: { page, statut, ...temps } });
   return data.donnees as { items: any[]; total: number; page: number; totalPages: number };
 }
 
@@ -115,6 +119,9 @@ export async function listerEcrituresAdmin(params: {
   type?: string;
   compte?: string;
   devise?: string;
+  periode?: string;
+  debut?: string;
+  fin?: string;
 } = {}) {
   const { data } = await clientApi.get("/economie/admin/ecritures", { params });
   return data.donnees as { items: any[]; total: number; page: number; totalPages: number };

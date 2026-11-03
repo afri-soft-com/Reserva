@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { creerLeDepuisQuery } from "../../utils/bornes-temps";
 
 export async function enregistrerAuditAdmin(input: {
   adminId: string;
@@ -25,10 +26,12 @@ export async function enregistrerAuditAdmin(input: {
 export async function listerAuditsAdmin(
   page = 1,
   parPage = 30,
-  filtres?: { recherche?: string; action?: string }
+  filtres?: { recherche?: string; action?: string; periode?: string; debut?: string; fin?: string }
 ) {
   const skip = (page - 1) * parPage;
   const where: Record<string, unknown> = {};
+  const creeLe = creerLeDepuisQuery(filtres);
+  if (creeLe) where.creeLe = creeLe;
   if (filtres?.action?.trim()) {
     where.action = { contains: filtres.action.trim(), mode: "insensitive" };
   }

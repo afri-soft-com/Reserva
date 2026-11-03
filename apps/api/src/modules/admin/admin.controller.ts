@@ -10,6 +10,8 @@ export const statistiques = asyncHandler(async (req: Request, res: Response) => 
     periode: req.query.periode as string | undefined,
     ville: req.query.ville as string | undefined,
     categorie: req.query.categorie as string | undefined,
+    debut: req.query.debut as string | undefined,
+    fin: req.query.fin as string | undefined,
   });
   envoyerSucces(res, resultat);
 });
@@ -20,6 +22,8 @@ export const statistiquesPdf = asyncHandler(async (req: Request, res: Response) 
     periode: req.query.periode as string | undefined,
     ville: req.query.ville as string | undefined,
     categorie: req.query.categorie as string | undefined,
+    debut: req.query.debut as string | undefined,
+    fin: req.query.fin as string | undefined,
   });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="rapport-statistiques-${new Date().toISOString().slice(0, 10)}.pdf"`);
@@ -143,6 +147,9 @@ export const listerAudits = asyncHandler(async (req: Request, res: Response) => 
   const resultat = await listerAuditsAdmin(page, parPage, {
     recherche: req.query.recherche as string | undefined,
     action: req.query.action as string | undefined,
+    periode: req.query.periode as string | undefined,
+    debut: req.query.debut as string | undefined,
+    fin: req.query.fin as string | undefined,
   });
   envoyerSucces(res, resultat);
 });
@@ -156,6 +163,9 @@ export const listerReservations = asyncHandler(async (req: Request, res: Respons
     statut: req.query.statut as string | undefined,
     statutPaiement: req.query.statutPaiement as string | undefined,
     recherche: req.query.recherche as string | undefined,
+    periode: req.query.periode as string | undefined,
+    debut: req.query.debut as string | undefined,
+    fin: req.query.fin as string | undefined,
   });
   envoyerSucces(res, resultat);
 });

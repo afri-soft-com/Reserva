@@ -314,12 +314,12 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                       reservationId: widget.reservationId,
                       motif: 'Prestation non délivrée / problème sur place',
                     );
-                    if (mounted) {
+                    if (context.mounted) {
                       ToastWidget.show(context, data['message']?.toString() ?? 'Garantie OK', type: 'succes');
                       _charger();
                     }
                   } catch (e) {
-                    if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+                    if (context.mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
                   }
                 },
                 icone: Icons.verified_user,
@@ -335,9 +335,9 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                       motif: 'NON_DELIVRE',
                       description: 'Demande de médiation RESERVA avec preuves à joindre.',
                     );
-                    if (mounted) ToastWidget.show(context, 'Litige ouvert — un admin tranche', type: 'succes');
+                    if (context.mounted) ToastWidget.show(context, 'Litige ouvert — un admin tranche', type: 'succes');
                   } catch (e) {
-                    if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
+                    if (context.mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
                   }
                 },
                 icone: Icons.gavel,

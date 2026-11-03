@@ -8,6 +8,7 @@ import { toastErreur } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { listerEcrituresAdmin } from "../../../lib/api-economie";
 import { formaterMontant } from "@reserva/shared";
+import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
 const TYPES = ["", "COMMISSION", "FRAIS_SERVICE", "NET_PRESTATAIRE", "ABONNEMENT", "VERSEMENT", "REMBOURSEMENT"];
 const COMPTES = ["", "PLATEFORME", "PRESTATAIRE"];
@@ -20,9 +21,10 @@ export default function PageAdminLedger() {
   const [type, setType] = useState("");
   const [compte, setCompte] = useState("");
   const [devise, setDevise] = useState("");
+  const [temps, setTemps] = useState<ValeurTemps>({ periode: "tout", debut: "", fin: "" });
   const [chargement, setChargement] = useState(true);
 
-  useEffect(() => { charger(); }, [page, type, compte, devise]);
+  useEffect(() => { charger(); }, [page, type, compte, devise, temps]);
 
   async function charger() {
     setChargement(true);
@@ -32,6 +34,7 @@ export default function PageAdminLedger() {
         type: type || undefined,
         compte: compte || undefined,
         devise: devise || undefined,
+        ...paramsTemps(temps),
       });
       setItems(r.items);
       setTotalPages(r.totalPages);
@@ -52,7 +55,12 @@ export default function PageAdminLedger() {
         <p className="text-sm text-gray-500">{total} écriture(s) — double entrée plateforme / prestataire.</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-end gap-2">
+        <FiltreTemps
+          variante="liste"
+          valeur={temps}
+          onChange={(valeur) => { setPage(1); setTemps(valeur); }}
+        />
         <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={type} onChange={(e) => { setPage(1); setType(e.target.value); }}>
           <option value="">Tous les types</option>
           {TYPES.filter(Boolean).map((t) => <option key={t} value={t}>{t}</option>)}

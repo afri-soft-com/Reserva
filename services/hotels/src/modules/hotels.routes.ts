@@ -50,6 +50,14 @@ routesHotels.get("/villes", asyncHandler(async (_req, res) => {
   envoyerSucces(res, await hotels.listerVilles());
 }));
 
+routesHotels.get("/admin/catalogue", authentifier, exigerRole("ADMIN"), asyncHandler(async (req, res) => {
+  envoyerSucces(res, await hotels.listerCatalogueAdmin(req.query.ville as string | undefined));
+}));
+
+routesHotels.post("/admin/catalogue", authentifier, exigerRole("ADMIN"), asyncHandler(async (req, res) => {
+  envoyerSucces(res, await hotels.creerHotelAdmin(req.body), 201);
+}));
+
 routesHotels.get("/", asyncHandler(async (req, res) => {
   const parsed = schemaRecherche.safeParse(req.query);
   if (!parsed.success) {
@@ -180,4 +188,12 @@ routesHotels.post("/", authentifier, exigerRole("ADMIN", "PRESTATAIRE"), asyncHa
     },
   });
   envoyerSucces(res, hotel, 201);
+}));
+
+routesHotels.patch("/:hotelId", authentifier, exigerRole("ADMIN"), asyncHandler(async (req, res) => {
+  envoyerSucces(res, await hotels.modifierHotelAdmin(req.params.hotelId, req.body));
+}));
+
+routesHotels.delete("/:hotelId", authentifier, exigerRole("ADMIN"), asyncHandler(async (req, res) => {
+  envoyerSucces(res, await hotels.retirerHotelAdmin(req.params.hotelId));
 }));

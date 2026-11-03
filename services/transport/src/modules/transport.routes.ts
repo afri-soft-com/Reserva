@@ -49,6 +49,18 @@ routesTransport.get("/trajets", authentifier, exigerRole("ADMIN"), asyncHandler(
   envoyerSucces(res, await transport.listerTrajetsAdmin(req.query.date as string | undefined));
 }));
 
+routesTransport.post("/trajets", authentifier, exigerRole("ADMIN"), asyncHandler(async (req, res) => {
+  envoyerSucces(res, await transport.creerTrajetAdmin(req.body), 201);
+}));
+
+routesTransport.patch("/trajets/:id", authentifier, exigerRole("ADMIN"), asyncHandler(async (req, res) => {
+  envoyerSucces(res, await transport.modifierTrajetAdmin(req.params.id, req.body));
+}));
+
+routesTransport.delete("/trajets/:id", authentifier, exigerRole("ADMIN"), asyncHandler(async (req, res) => {
+  envoyerSucces(res, await transport.retirerTrajetAdmin(req.params.id));
+}));
+
 routesTransport.get("/trajets/:id", asyncHandler(async (req, res) => {
   envoyerSucces(res, await transport.detailTrajet(req.params.id, req.query.places ? Number(req.query.places) : 1));
 }));

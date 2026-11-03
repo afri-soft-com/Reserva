@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { bornesTemps, clipFenetre, creerLeDepuisQuery, filtreCreeLe, pointsPeriode } from "../../utils/bornes-temps";
 import { env } from "../../config/env";
 import { ErreurNonTrouve, ErreurValidation, ErreurInterdit } from "../../utils/erreurs";
 import {
@@ -820,9 +821,17 @@ export async function listerVersementsPrestataire(utilisateurId: string) {
   });
 }
 
-export async function listerVersementsAdmin(page = 1, parPage = 20, statut?: string) {
+export async function listerVersementsAdmin(
+  page = 1,
+  parPage = 20,
+  statut?: string,
+  dates?: { periode?: string; debut?: string; fin?: string },
+) {
   const skip = (page - 1) * parPage;
-  const where = statut ? { statut } : {};
+  const where: Record<string, unknown> = {};
+  if (statut) where.statut = statut;
+  const creeLe = creerLeDepuisQuery(dates);
+  if (creeLe) where.creeLe = creeLe;
   const [items, total] = await Promise.all([
     prisma.versementPrestataire.findMany({
       where,
@@ -890,22 +899,16 @@ async function totaliserEnCdf(
   );
 }
 
-export async function obtenirFinancesPlateforme(periode = "mois") {
+export async function obtenirFinancesPlateforme(
+  periode = "mois",
+  dates?: { debut?: string; fin?: string },
+) {
   const config = await obtenirConfigTarif();
   const maintenant = new Date();
-  const debut = new Date(maintenant);
-  if (periode === "semaine") {
-    debut.setDate(debut.getDate() - debut.getDay());
-    debut.setHours(0, 0, 0, 0);
-  } else if (periode === "annee") {
-    debut.setMonth(0, 1);
-    debut.setHours(0, 0, 0, 0);
-  } else {
-    debut.setDate(1);
-    debut.setHours(0, 0, 0, 0);
-  }
-
-  const filtreDates = { creeLe: { gte: debut } };
+  const bornes = bornesTemps({ periode, debut: dates?.debut, fin: dates?.fin, maintenant });
+  const creeLe = filtreCreeLe(bornes);
+  const filtreDates = creeLe ? { creeLe } : {};
+  const personnalisee = periode === "personnalisee" || Boolean(dates?.debut?.trim() || dates?.fin?.trim());
 
   const [
     reservationsPayees,
@@ -983,6 +986,7 @@ export async function obtenirFinancesPlateforme(periode = "mois") {
       },
     }),
     prisma.ecritureComptable.findMany({
+      where: filtreDates,
       take: 8,
       orderBy: { creeLe: "desc" },
       include: { prestataire: { select: { nomEntreprise: true } } },
@@ -1031,21 +1035,21 @@ export async function obtenirFinancesPlateforme(periode = "mois") {
   }));
 
   const evolution = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1);
-    const fin = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  for (const point of pointsPeriode(bornes, { personnalisee, mois: 6, maintenant })) {
+    const fenetre = clipFenetre(point, bornes, personnalisee);
+    if (!fenetre) continue;
     const [resaMois, recetteMois] = await Promise.all([
       prisma.reservation.findMany({
-        where: { statutPaiement: { in: ["PAYE", "PARTIEL"] }, creeLe: { gte: d, lt: fin } },
+        where: { statutPaiement: { in: ["PAYE", "PARTIEL"] }, creeLe: { gte: fenetre.gte, lt: fenetre.lt } },
         select: { montantPaye: true, devise: true },
       }),
       totaliserEnCdf(
-        { compte: "PLATEFORME", sens: "CREDIT", creeLe: { gte: d, lt: fin } },
+        { compte: "PLATEFORME", sens: "CREDIT", creeLe: { gte: fenetre.gte, lt: fenetre.lt } },
         config.tauxUsdCdf
       ),
     ]);
     evolution.push({
-      mois: d.toLocaleDateString("fr-FR", { month: "short", year: "numeric" }),
+      mois: point.libelle,
       gmv: resaMois.reduce(
         (somme, r) => somme + (r.devise === "USD" ? r.montantPaye * config.tauxUsdCdf : r.montantPaye),
         0
@@ -1055,7 +1059,7 @@ export async function obtenirFinancesPlateforme(periode = "mois") {
   }
 
   return {
-    periode,
+    periode: bornes.libelle,
     gmv: gmvValeur,
     recetteBrute,
     recetteNette,
@@ -1089,6 +1093,9 @@ export async function listerEcrituresAdmin(params: {
   compte?: string;
   devise?: string;
   prestataireId?: string;
+  periode?: string;
+  debut?: string;
+  fin?: string;
 }) {
   const page = params.page ?? 1;
   const parPage = params.parPage ?? 30;
@@ -1098,6 +1105,8 @@ export async function listerEcrituresAdmin(params: {
   if (params.compte) where.compte = params.compte;
   if (params.devise) where.devise = params.devise;
   if (params.prestataireId) where.prestataireId = params.prestataireId;
+  const creeLe = creerLeDepuisQuery(params);
+  if (creeLe) where.creeLe = creeLe;
 
   const [items, total] = await Promise.all([
     prisma.ecritureComptable.findMany({

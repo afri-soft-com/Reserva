@@ -9,6 +9,7 @@ import { extraireMessageErreur } from "../../../lib/api-client";
 import { listerReservationsAdmin, telechargerExportAdmin } from "../../../lib/api-admin";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 import { formaterMontant } from "@reserva/shared";
+import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
 export default function PageAdminReservations() {
   const [items, setItems] = useState<any[]>([]);
@@ -19,6 +20,7 @@ export default function PageAdminReservations() {
   const [statutPaiement, setStatutPaiement] = useState("");
   const [recherche, setRecherche] = useState("");
   const [q, setQ] = useState("");
+  const [temps, setTemps] = useState<ValeurTemps>({ periode: "tout", debut: "", fin: "" });
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function PageAdminReservations() {
       statut: statut || undefined,
       statutPaiement: statutPaiement || undefined,
       recherche: q || undefined,
+      ...paramsTemps(temps),
     })
       .then((r) => {
         setItems(r.items);
@@ -36,7 +39,7 @@ export default function PageAdminReservations() {
       })
       .catch((e) => toastErreur(extraireMessageErreur(e)))
       .finally(() => setChargement(false));
-  }, [page, statut, statutPaiement, q]);
+  }, [page, statut, statutPaiement, q, temps]);
 
   return (
     <div className="space-y-6">
@@ -93,6 +96,11 @@ export default function PageAdminReservations() {
           />
         </div>
         <Bouton taille="sm" onClick={() => { setPage(1); setQ(recherche.trim()); }}>Rechercher</Bouton>
+        <FiltreTemps
+          variante="liste"
+          valeur={temps}
+          onChange={(valeur) => { setPage(1); setTemps(valeur); }}
+        />
         <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={statut} onChange={(e) => { setPage(1); setStatut(e.target.value); }}>
           <option value="">Tous statuts</option>
           <option value="EN_ATTENTE">En attente</option>

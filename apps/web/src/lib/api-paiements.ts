@@ -62,7 +62,13 @@ export async function telechargerRapportReservationsPdf(periode: "jour" | "semai
   URL.revokeObjectURL(url);
 }
 
-export async function obtenirStatistiquesAdmin(filtres?: { periode?: string; ville?: string; categorie?: string }) {
+export async function obtenirStatistiquesAdmin(filtres?: {
+  periode?: string;
+  ville?: string;
+  categorie?: string;
+  debut?: string;
+  fin?: string;
+}) {
   const { data } = await clientApi.get("/admin/statistiques", { params: filtres });
   return data.donnees as {
     periode: string;
@@ -74,7 +80,13 @@ export async function obtenirStatistiquesAdmin(filtres?: { periode?: string; vil
   };
 }
 
-export async function telechargerStatistiquesAdminPdf(filtres?: { periode?: string; ville?: string; categorie?: string }): Promise<void> {
+export async function telechargerStatistiquesAdminPdf(filtres?: {
+  periode?: string;
+  ville?: string;
+  categorie?: string;
+  debut?: string;
+  fin?: string;
+}): Promise<void> {
   const { default: axios } = await import("axios");
   const token = localStorage.getItem("reserva_token");
   const response = await axios.get(`${API_URL}/admin/statistiques/pdf`, {

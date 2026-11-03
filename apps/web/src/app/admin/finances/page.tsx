@@ -18,11 +18,12 @@ import { extraireMessageErreur } from "../../../lib/api-client";
 import { FinancesAdmin, obtenirFinancesAdmin, simulerTarification } from "../../../lib/api-economie";
 import { formaterMontant } from "@reserva/shared";
 import { Bouton } from "../../../components/Bouton";
+import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
 const COULEURS = ["#1A56DB", "#F5A623", "#10B981", "#8B5CF6", "#EF4444"];
 
 export default function PageAdminFinances() {
-  const [periode, setPeriode] = useState("mois");
+  const [temps, setTemps] = useState<ValeurTemps>({ periode: "mois", debut: "", fin: "" });
   const [stats, setStats] = useState<FinancesAdmin | null>(null);
   const [chargement, setChargement] = useState(true);
   const [simPrix, setSimPrix] = useState("100");
@@ -31,11 +32,11 @@ export default function PageAdminFinances() {
 
   useEffect(() => {
     setChargement(true);
-    obtenirFinancesAdmin(periode)
+    obtenirFinancesAdmin(paramsTemps(temps))
       .then(setStats)
       .catch((e) => toastErreur(extraireMessageErreur(e)))
       .finally(() => setChargement(false));
-  }, [periode]);
+  }, [temps]);
 
   async function lancerSimulation() {
     try {
@@ -63,15 +64,7 @@ export default function PageAdminFinances() {
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/admin/ledger" className="text-sm text-primaire hover:underline">Journal</Link>
           <Link href="/admin/versements" className="text-sm text-primaire hover:underline">Versements</Link>
-          <select
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            value={periode}
-            onChange={(e) => setPeriode(e.target.value)}
-          >
-            <option value="semaine">Cette semaine</option>
-            <option value="mois">Ce mois</option>
-            <option value="annee">Cette année</option>
-          </select>
+          <FiltreTemps variante="finances" valeur={temps} onChange={setTemps} />
         </div>
       </div>
 

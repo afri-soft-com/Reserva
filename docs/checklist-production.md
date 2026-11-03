@@ -1,4 +1,4 @@
-﻿# Checklist production marketplace RESERVA
+# Checklist production marketplace RESERVA
 
 ## Fait (robustesse Vague 1+)
 

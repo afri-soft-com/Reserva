@@ -47,7 +47,10 @@ export const mesVersements = asyncHandler(async (req: Request, res: Response) =>
 
 export const financesAdmin = asyncHandler(async (req: Request, res: Response) => {
   const periode = (req.query.periode as string) || "mois";
-  const resultat = await economieService.obtenirFinancesPlateforme(periode);
+  const resultat = await economieService.obtenirFinancesPlateforme(periode, {
+    debut: req.query.debut as string | undefined,
+    fin: req.query.fin as string | undefined,
+  });
   envoyerSucces(res, resultat);
 });
 
@@ -55,7 +58,11 @@ export const listerVersementsAdmin = asyncHandler(async (req: Request, res: Resp
   const page = parseInt(req.query.page as string) || 1;
   const parPage = bornerParPage(parseInt(req.query.parPage as string) || 20);
   const statut = req.query.statut as string | undefined;
-  const resultat = await economieService.listerVersementsAdmin(page, parPage, statut);
+  const resultat = await economieService.listerVersementsAdmin(page, parPage, statut, {
+    periode: req.query.periode as string | undefined,
+    debut: req.query.debut as string | undefined,
+    fin: req.query.fin as string | undefined,
+  });
   envoyerSucces(res, resultat);
 });
 
@@ -84,6 +91,9 @@ export const listerEcrituresAdmin = asyncHandler(async (req: Request, res: Respo
     compte: req.query.compte as string | undefined,
     devise: req.query.devise as string | undefined,
     prestataireId: req.query.prestataireId as string | undefined,
+    periode: req.query.periode as string | undefined,
+    debut: req.query.debut as string | undefined,
+    fin: req.query.fin as string | undefined,
   });
   envoyerSucces(res, resultat);
 });

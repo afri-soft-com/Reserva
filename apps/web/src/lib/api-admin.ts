@@ -4,6 +4,8 @@ export async function obtenirStatistiquesAdmin(filtres?: {
   periode?: string;
   ville?: string;
   categorie?: string;
+  debut?: string;
+  fin?: string;
 }) {
   const { data } = await clientApi.get("/admin/statistiques", { params: filtres });
   return data.donnees as {
@@ -40,6 +42,9 @@ export async function listerReservationsAdmin(params: {
   statut?: string;
   statutPaiement?: string;
   recherche?: string;
+  periode?: string;
+  debut?: string;
+  fin?: string;
 } = {}) {
   const { data } = await clientApi.get("/admin/reservations", { params });
   return data.donnees as { items: any[]; total: number; page: number; totalPages: number };

@@ -4,9 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { Star, MapPin, Hotel, Printer } from "lucide-react";
 import { Carte } from "../../../components/Carte";
 import { Bouton } from "../../../components/Bouton";
-import { toastErreur } from "../../../components/Toast";
+import { toastErreur, toastSucces } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
-import { HotelResume, listerHotelsAdmin, listerVillesHotels } from "../../../lib/api-hotels";
+import { listerVillesAdmin } from "../../../lib/api-admin";
+import {
+  HotelResume,
+  creerHotelAdmin,
+  listerHotelsAdmin,
+  listerVillesHotels,
+  modifierHotelAdmin,
+  retirerHotelAdmin,
+} from "../../../lib/api-hotels";
 import { formaterMontant } from "@reserva/shared";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
@@ -16,9 +24,24 @@ export default function PageAdminHotels() {
   const [ville, setVille] = useState("");
   const [recherche, setRecherche] = useState("");
   const [chargement, setChargement] = useState(true);
+  const [villesForm, setVillesForm] = useState<string[]>([]);
+  const [editionId, setEditionId] = useState<string | null>(null);
+  const [enregistrement, setEnregistrement] = useState(false);
+  const [form, setForm] = useState({
+    nom: "",
+    ville: "",
+    quartier: "",
+    adresse: "",
+    telephone: "",
+    description: "",
+    etoiles: "3",
+    prixParNuit: "",
+    devise: "USD",
+  });
 
   useEffect(() => {
     listerVillesHotels().then(setVilles).catch(() => undefined);
+    listerVillesAdmin().then(setVillesForm).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -52,6 +75,84 @@ export default function PageAdminHotels() {
       noteMoy,
     };
   }, [hotels]);
+
+  function champ(cle: keyof typeof form, valeur: string) {
+    setForm((actuel) => ({ ...actuel, [cle]: valeur }));
+  }
+
+  function editer(hotel: HotelResume) {
+    setEditionId(hotel.id);
+    setForm({
+      nom: hotel.nom,
+      ville: hotel.ville,
+      quartier: hotel.quartier,
+      adresse: hotel.adresse ?? "",
+      telephone: hotel.telephone ?? "",
+      description: hotel.description ?? "",
+      etoiles: String(hotel.etoiles || 3),
+      prixParNuit: hotel.prixDepuis != null ? String(hotel.prixDepuis) : "",
+      devise: hotel.devise === "CDF" ? "CDF" : "USD",
+    });
+  }
+
+  function reinitialiser() {
+    setEditionId(null);
+    setForm({
+      nom: "",
+      ville: "",
+      quartier: "",
+      adresse: "",
+      telephone: "",
+      description: "",
+      etoiles: "3",
+      prixParNuit: "",
+      devise: "USD",
+    });
+  }
+
+  async function enregistrer() {
+    const prix = Number(form.prixParNuit);
+    const saisie = {
+      nom: form.nom.trim(),
+      ville: form.ville.trim(),
+      quartier: form.quartier.trim(),
+      adresse: form.adresse.trim(),
+      telephone: form.telephone.trim(),
+      description: form.description.trim(),
+      etoiles: Number(form.etoiles) || 3,
+      devise: form.devise,
+      ...(Number.isFinite(prix) && prix > 0 ? { prixParNuit: prix } : {}),
+    };
+    setEnregistrement(true);
+    try {
+      if (editionId) await modifierHotelAdmin(editionId, saisie);
+      else await creerHotelAdmin(saisie);
+      toastSucces(editionId ? "Hôtel mis à jour" : "Hôtel créé");
+      reinitialiser();
+      const r = await listerHotelsAdmin(ville || undefined);
+      setHotels(r.items);
+    } catch (e) {
+      toastErreur(extraireMessageErreur(e));
+    } finally {
+      setEnregistrement(false);
+    }
+  }
+
+  async function retirer(hotel: HotelResume) {
+    const message = hotel.actif === false
+      ? `Réactiver ${hotel.nom} ?`
+      : `Retirer ${hotel.nom} du catalogue ? Les séjours déjà réservés restent en historique.`;
+    if (!window.confirm(message)) return;
+    try {
+      if (hotel.actif === false) await modifierHotelAdmin(hotel.id, { actif: true });
+      else await retirerHotelAdmin(hotel.id);
+      toastSucces(hotel.actif === false ? "Hôtel réactivé" : "Hôtel retiré du catalogue");
+      const r = await listerHotelsAdmin(ville || undefined);
+      setHotels(r.items);
+    } catch (e) {
+      toastErreur(extraireMessageErreur(e));
+    }
+  }
 
   function imprimer() {
     imprimerElement(
@@ -95,6 +196,35 @@ export default function PageAdminHotels() {
         <Carte><p className="text-xs text-gray-500">Note moy.</p><p className="text-xl font-bold">{stats.noteMoy.toFixed(1)}</p></Carte>
       </div>
 
+      <Carte>
+        <p className="mb-3 font-semibold text-gray-900">{editionId ? "Modifier l'hôtel" : "Nouvel hôtel"}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input value={form.nom} onChange={(e) => champ("nom", e.target.value)} placeholder="Nom" className="h-11 rounded-champ border border-gray-300 px-3 text-sm" />
+          <select value={form.ville} onChange={(e) => champ("ville", e.target.value)} className="h-11 rounded-champ border border-gray-300 bg-white px-3 text-sm">
+            <option value="">Ville</option>
+            {[...new Set([...(villesForm.length > 0 ? villesForm : villes), form.ville].filter(Boolean))].map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <input value={form.quartier} onChange={(e) => champ("quartier", e.target.value)} placeholder="Quartier" className="h-11 rounded-champ border border-gray-300 px-3 text-sm" />
+          <input value={form.adresse} onChange={(e) => champ("adresse", e.target.value)} placeholder="Adresse" className="h-11 rounded-champ border border-gray-300 px-3 text-sm" />
+          <input value={form.telephone} onChange={(e) => champ("telephone", e.target.value)} placeholder="Téléphone" className="h-11 rounded-champ border border-gray-300 px-3 text-sm" />
+          <div className="flex gap-2">
+            <select value={form.etoiles} onChange={(e) => champ("etoiles", e.target.value)} className="h-11 rounded-champ border border-gray-300 bg-white px-3 text-sm">
+              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} étoile{n > 1 ? "s" : ""}</option>)}
+            </select>
+            <input value={form.prixParNuit} onChange={(e) => champ("prixParNuit", e.target.value)} placeholder="Prix / nuit" inputMode="decimal" className="h-11 min-w-0 flex-1 rounded-champ border border-gray-300 px-3 text-sm" />
+            <select value={form.devise} onChange={(e) => champ("devise", e.target.value)} className="h-11 rounded-champ border border-gray-300 bg-white px-3 text-sm">
+              <option value="USD">USD</option>
+              <option value="CDF">CDF</option>
+            </select>
+          </div>
+          <textarea value={form.description} onChange={(e) => champ("description", e.target.value)} placeholder="Description" className="min-h-[44px] rounded-champ border border-gray-300 px-3 py-2 text-sm sm:col-span-2" />
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Bouton onClick={enregistrer} chargement={enregistrement}>{editionId ? "Enregistrer" : "Créer"}</Bouton>
+          {editionId && <Bouton variante="fantome" onClick={reinitialiser}>Annuler</Bouton>}
+        </div>
+      </Carte>
+
       <div className="flex flex-wrap gap-3">
         <select
           value={ville}
@@ -132,6 +262,7 @@ export default function PageAdminHotels() {
                 <Star className="h-4 w-4 fill-accent text-accent" /> {h.noteMoyenne.toFixed(1)}
               </span>
             </div>
+            {h.actif === false && <p className="mt-1 text-xs font-medium text-amber-700">Retiré du catalogue</p>}
             <p className="mt-2 text-xs text-gray-500">
               {"★".repeat(h.etoiles)} · {h.nombreChambresDispo ?? 0} types de chambres · {h.nombreAvis} avis
             </p>
@@ -140,6 +271,10 @@ export default function PageAdminHotels() {
                 Dès {formaterMontant(h.prixDepuis, (h.devise as "USD" | "CDF") || "USD")}
               </p>
             )}
+            <div className="mt-3 flex gap-2">
+              <Bouton variante="fantome" taille="sm" onClick={() => editer(h)}>Modifier</Bouton>
+              <Bouton variante="fantome" taille="sm" onClick={() => retirer(h)}>{h.actif === false ? "Réactiver" : "Retirer"}</Bouton>
+            </div>
           </Carte>
         ))}
       </div>

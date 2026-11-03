@@ -26,6 +26,7 @@ import { toastErreur } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { obtenirPilotageAdmin, obtenirStatistiquesAdmin } from "../../../lib/api-admin";
 import { formaterMontant } from "@reserva/shared";
+import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
 const COULEURS = ["#F5A623", "#10B981", "#DC2626", "#6B7280", "#1A56DB", "#8B5CF6"];
 
@@ -33,7 +34,7 @@ export default function PageAdminPilotage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof obtenirPilotageAdmin>> | null>(null);
   const [evolution, setEvolution] = useState<{ mois: string; revenus: number; reservations: number }[]>([]);
   const [parStatut, setParStatut] = useState<Record<string, number>>({});
-  const [periode, setPeriode] = useState("mois");
+  const [temps, setTemps] = useState<ValeurTemps>({ periode: "mois", debut: "", fin: "" });
   const [moisActif, setMoisActif] = useState<string | null>(null);
   const [statutActif, setStatutActif] = useState<string | null>(null);
   const [chargement, setChargement] = useState(true);
@@ -42,7 +43,7 @@ export default function PageAdminPilotage() {
     setChargement(true);
     Promise.all([
       obtenirPilotageAdmin(),
-      obtenirStatistiquesAdmin({ periode }).catch(() => null),
+      obtenirStatistiquesAdmin(paramsTemps(temps)).catch(() => null),
     ])
       .then(([pilotage, stats]) => {
         setData(pilotage);
@@ -51,7 +52,7 @@ export default function PageAdminPilotage() {
       })
       .catch((e) => toastErreur(extraireMessageErreur(e)))
       .finally(() => setChargement(false));
-  }, [periode]);
+  }, [temps]);
 
   const donut = useMemo(
     () =>
@@ -77,16 +78,7 @@ export default function PageAdminPilotage() {
             Console interactive — cliquez les indicateurs et graphiques pour explorer.
           </p>
         </div>
-        <select
-          className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm"
-          value={periode}
-          onChange={(e) => setPeriode(e.target.value)}
-        >
-          <option value="mois">Ce mois</option>
-          <option value="trimestre">90 jours</option>
-          <option value="annee">Cette année</option>
-          <option value="tout">Tout</option>
-        </select>
+        <FiltreTemps valeur={temps} onChange={setTemps} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

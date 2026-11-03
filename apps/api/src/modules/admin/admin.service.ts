@@ -1,11 +1,14 @@
 import bcrypt from "bcryptjs";
 import { normaliserTelephone, VILLES_RDC } from "@reserva/shared";
 import { prisma } from "../../config/prisma";
+import { bornesTemps, clipFenetre, creerLeDepuisQuery, filtreCreeLe, pointsPeriode, type BornesTemps } from "../../utils/bornes-temps";
 
 export interface FiltresStatistiques {
-  periode?: string; // mois | trimestre | annee | tout
+  periode?: string; // mois | semaine | trimestre | annee | tout | personnalisee
   ville?: string;
   categorie?: string;
+  debut?: string;
+  fin?: string;
 }
 
 /** Exclut soft-supprimés + comptes techniques CI des agrégats / files admin. */
@@ -34,32 +37,64 @@ function construireFiltres(filtres?: FiltresStatistiques) {
   const filtreActif = filtrePrestataire.ville !== undefined || filtrePrestataire.categorie !== undefined;
   const wherePrestataire = filtreActif ? { prestataire: filtrePrestataire } : {};
 
-  let debutPeriode: Date | null = null;
-  const periode = filtres?.periode ?? "mois";
-  if (periode === "semaine") debutPeriode = debutSemaine;
-  else if (periode === "mois") debutPeriode = debutMois;
-  else if (periode === "trimestre") {
-    debutPeriode = new Date(maintenant);
-    debutPeriode.setDate(debutPeriode.getDate() - 90);
-    debutPeriode.setHours(0, 0, 0, 0);
-  } else if (periode === "annee") {
-    debutPeriode = new Date(maintenant.getFullYear(), 0, 1);
-  }
-
-  const filtreDates = debutPeriode ? { creeLe: { gte: debutPeriode } } : {};
+  const bornes = bornesTemps({
+    periode: filtres?.periode ?? "mois",
+    debut: filtres?.debut,
+    fin: filtres?.fin,
+    maintenant,
+  });
+  const creeLe = filtreCreeLe(bornes);
+  const filtreDates = creeLe ? { creeLe } : {};
   const baseWhere = { ...wherePrestataire, ...filtreDates };
-  const libellePeriode =
-    periode === "semaine" ? "Cette semaine"
-    : periode === "mois" ? "Ce mois-ci"
-    : periode === "trimestre" ? "90 derniers jours"
-    : periode === "annee" ? "Cette année"
-    : "Toute la période";
 
-  return { maintenant, debutMois, debutSemaine, filtrePrestataire, wherePrestataire, filtreDates, baseWhere, libellePeriode };
+  return {
+    maintenant,
+    debutMois,
+    debutSemaine,
+    filtrePrestataire,
+    wherePrestataire,
+    filtreDates,
+    baseWhere,
+    libellePeriode: bornes.libelle,
+    bornes,
+  };
+}
+
+async function evolutionReservations(
+  wherePrestataire: Record<string, unknown>,
+  bornes: BornesTemps,
+  periode: string,
+  personnalisee: boolean,
+  maintenant: Date,
+) {
+  const evolution = [];
+  for (const point of pointsPeriode(bornes, {
+    personnalisee,
+    mois: periode === "annee" ? 12 : 6,
+    maintenant,
+  })) {
+    const fenetre = clipFenetre(point, bornes, personnalisee);
+    if (!fenetre) continue;
+    const stats = await prisma.reservation.aggregate({
+      where: { ...wherePrestataire, statutPaiement: "PAYE", creeLe: { gte: fenetre.gte, lt: fenetre.lt } },
+      _sum: { montantPaye: true },
+      _count: true,
+    });
+    const count = await prisma.reservation.count({
+      where: { ...wherePrestataire, creeLe: { gte: fenetre.gte, lt: fenetre.lt } },
+    });
+    evolution.push({
+      mois: point.libelle,
+      revenus: stats._sum.montantPaye ?? 0,
+      reservations: count,
+      reservationsPayees: stats._count,
+    });
+  }
+  return evolution;
 }
 
 export async function obtenirStatistiquesPlateforme(filtres?: FiltresStatistiques) {
-  const { maintenant, debutMois, debutSemaine, filtrePrestataire, wherePrestataire, filtreDates, baseWhere, libellePeriode } = construireFiltres(filtres);
+  const { maintenant, debutMois, debutSemaine, filtrePrestataire, wherePrestataire, filtreDates, baseWhere, libellePeriode, bornes } = construireFiltres(filtres);
 
   const [
     totalUtilisateurs,
@@ -101,28 +136,14 @@ export async function obtenirStatistiquesPlateforme(filtres?: FiltresStatistique
     repartitionStatuts[groupe.statut] = groupe._count;
   }
 
-  const nbMois = (filtres?.periode ?? "mois") === "annee" ? 12 : 6;
-  const evolution = [];
-  for (let i = nbMois - 1; i >= 0; i--) {
-    const d = new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1);
-    d.setHours(0, 0, 0, 0);
-    const fin = new Date(d);
-    fin.setMonth(fin.getMonth() + 1);
-    const stats = await prisma.reservation.aggregate({
-      where: { ...wherePrestataire, statutPaiement: "PAYE", creeLe: { gte: d, lt: fin } },
-      _sum: { montantPaye: true },
-      _count: true,
-    });
-    const count = await prisma.reservation.count({
-      where: { ...wherePrestataire, creeLe: { gte: d, lt: fin } },
-    });
-    evolution.push({
-      mois: d.toLocaleDateString("fr-FR", { month: "short", year: "numeric" }),
-      revenus: stats._sum.montantPaye ?? 0,
-      reservations: count,
-      reservationsPayees: stats._count,
-    });
-  }
+  const periodeChoisie = filtres?.periode ?? "mois";
+  const evolution = await evolutionReservations(
+    wherePrestataire,
+    bornes,
+    periodeChoisie,
+    periodeChoisie === "personnalisee" || Boolean(filtres?.debut?.trim() || filtres?.fin?.trim()),
+    maintenant,
+  );
 
   return {
     periode: libellePeriode,
@@ -465,6 +486,9 @@ export async function listerReservationsAdmin(params: {
   statut?: string;
   statutPaiement?: string;
   recherche?: string;
+  periode?: string;
+  debut?: string;
+  fin?: string;
 }) {
   const page = params.page ?? 1;
   const parPage = params.parPage ?? 20;
@@ -472,6 +496,8 @@ export async function listerReservationsAdmin(params: {
   const where: Record<string, unknown> = {};
   if (params.statut) where.statut = params.statut;
   if (params.statutPaiement) where.statutPaiement = params.statutPaiement;
+  const creeLe = creerLeDepuisQuery(params);
+  if (creeLe) where.creeLe = creeLe;
   if (params.recherche?.trim()) {
     const q = params.recherche.trim();
     where.OR = [

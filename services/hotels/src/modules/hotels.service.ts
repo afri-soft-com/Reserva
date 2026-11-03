@@ -451,3 +451,160 @@ export async function creerAvis(input: {
   });
   return avis;
 }
+
+export type SaisieHotel = {
+  nom?: string;
+  ville?: string;
+  quartier?: string;
+  adresse?: string;
+  description?: string;
+  telephone?: string;
+  etoiles?: number;
+  prixParNuit?: number;
+  devise?: string;
+  actif?: boolean;
+};
+
+function texteHotel(valeur: unknown, max: number): string {
+  return String(valeur ?? "").trim().slice(0, max);
+}
+
+function deviseHotel(valeur: unknown): "USD" | "CDF" {
+  return String(valeur ?? "").toUpperCase() === "CDF" ? "CDF" : "USD";
+}
+
+/** `devise` absente : on conserve celle du tarif existant (USD pour un nouveau tarif). */
+async function appliquerPrixHotel(hotelId: string, prix: number, deviseSaisie?: "USD" | "CDF") {
+  const devise = deviseSaisie ?? "USD";
+  const chambre = await prisma.typeChambre.findFirst({
+    where: { hotelId, actif: true },
+    include: { tarifs: { where: { actif: true }, orderBy: { prixParNuit: "asc" } } },
+  });
+  if (!chambre) {
+    await prisma.typeChambre.create({
+      data: {
+        hotelId,
+        nom: "Chambre standard",
+        capaciteAdultes: 2,
+        tarifs: { create: { nom: "Standard", prixParNuit: prix, devise } },
+      },
+    });
+    return;
+  }
+  const tarif = chambre.tarifs[0];
+  if (!tarif) {
+    await prisma.planTarif.create({
+      data: { typeChambreId: chambre.id, nom: "Standard", prixParNuit: prix, devise },
+    });
+    return;
+  }
+  await prisma.planTarif.update({
+    where: { id: tarif.id },
+    data: { prixParNuit: prix, devise: deviseSaisie ?? tarif.devise },
+  });
+}
+
+export async function listerCatalogueAdmin(ville?: string) {
+  const hotels = await prisma.hotel.findMany({
+    where: ville?.trim() ? { ville: ville.trim() } : undefined,
+    orderBy: [{ actif: "desc" }, { nom: "asc" }],
+    take: 300,
+    include: {
+      chambres: {
+        where: { actif: true },
+        include: { tarifs: { where: { actif: true }, orderBy: { prixParNuit: "asc" }, take: 1 } },
+      },
+    },
+  });
+  const items = hotels.map((hotel) => {
+    const tarifs = hotel.chambres.flatMap((chambre) => chambre.tarifs);
+    return {
+      id: hotel.id,
+      nom: hotel.nom,
+      ville: hotel.ville,
+      quartier: hotel.quartier,
+      adresse: hotel.adresse,
+      description: hotel.description,
+      telephone: hotel.telephone,
+      etoiles: hotel.etoiles,
+      noteMoyenne: hotel.noteMoyenne,
+      nombreAvis: hotel.nombreAvis,
+      actif: hotel.actif,
+      nombreChambresDispo: hotel.chambres.length,
+      prixDepuis: tarifs[0]?.prixParNuit ?? null,
+      devise: tarifs[0]?.devise ?? "USD",
+    };
+  });
+  return { items, total: items.length };
+}
+
+export async function creerHotelAdmin(input: SaisieHotel) {
+  const nom = texteHotel(input.nom, 120);
+  const ville = texteHotel(input.ville, 80);
+  const quartier = texteHotel(input.quartier, 80);
+  if (nom.length < 2 || ville.length < 2 || quartier.length < 2) {
+    throw new ErreurValidation("Nom, ville et quartier sont requis");
+  }
+  const prix = Number(input.prixParNuit);
+  const devise = deviseHotel(input.devise);
+  const hotel = await prisma.hotel.create({
+    data: {
+      nom,
+      ville,
+      quartier,
+      adresse: texteHotel(input.adresse, 200) || null,
+      description: texteHotel(input.description, 2000) || null,
+      telephone: texteHotel(input.telephone, 30) || null,
+      etoiles: Math.min(5, Math.max(1, Math.round(Number(input.etoiles) || 3))),
+    },
+  });
+  if (Number.isFinite(prix) && prix > 0) await appliquerPrixHotel(hotel.id, prix, devise);
+  return hotel;
+}
+
+export async function modifierHotelAdmin(id: string, input: SaisieHotel) {
+  const hotel = await prisma.hotel.findUnique({ where: { id } });
+  if (!hotel) throw new ErreurNonTrouve("Hôtel introuvable");
+  const data: {
+    nom?: string;
+    ville?: string;
+    quartier?: string;
+    adresse?: string | null;
+    description?: string | null;
+    telephone?: string | null;
+    etoiles?: number;
+    actif?: boolean;
+  } = {};
+  if (input.nom != null) {
+    const nom = texteHotel(input.nom, 120);
+    if (nom.length < 2) throw new ErreurValidation("Le nom est trop court");
+    data.nom = nom;
+  }
+  if (input.ville != null) {
+    const ville = texteHotel(input.ville, 80);
+    if (ville.length < 2) throw new ErreurValidation("La ville est requise");
+    data.ville = ville;
+  }
+  if (input.quartier != null) {
+    const quartier = texteHotel(input.quartier, 80);
+    if (quartier.length < 2) throw new ErreurValidation("Le quartier est requis");
+    data.quartier = quartier;
+  }
+  if (input.adresse != null) data.adresse = texteHotel(input.adresse, 200) || null;
+  if (input.description != null) data.description = texteHotel(input.description, 2000) || null;
+  if (input.telephone != null) data.telephone = texteHotel(input.telephone, 30) || null;
+  if (input.etoiles != null) data.etoiles = Math.min(5, Math.max(1, Math.round(Number(input.etoiles) || 3)));
+  if (input.actif != null) data.actif = Boolean(input.actif);
+  const misAJour = await prisma.hotel.update({ where: { id }, data });
+  const prix = Number(input.prixParNuit);
+  if (Number.isFinite(prix) && prix > 0) {
+    await appliquerPrixHotel(id, prix, input.devise != null ? deviseHotel(input.devise) : undefined);
+  }
+  return misAJour;
+}
+
+export async function retirerHotelAdmin(id: string) {
+  const hotel = await prisma.hotel.findUnique({ where: { id } });
+  if (!hotel) throw new ErreurNonTrouve("Hôtel introuvable");
+  return prisma.hotel.update({ where: { id }, data: { actif: false } });
+}

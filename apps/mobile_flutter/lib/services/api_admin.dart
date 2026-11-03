@@ -1,11 +1,19 @@
 import 'api_client.dart';
 
 class ApiAdmin {
-  static Future<Map<String, dynamic>> obtenirStatistiques({String? periode, String? ville, String? categorie}) async {
+  static Future<Map<String, dynamic>> obtenirStatistiques({
+    String? periode,
+    String? ville,
+    String? categorie,
+    String? debut,
+    String? fin,
+  }) async {
     return (await ApiClient.get('/admin/statistiques', params: {
       if (periode != null && periode.isNotEmpty) 'periode': periode,
       if (ville != null && ville.isNotEmpty) 'ville': ville,
       if (categorie != null && categorie.isNotEmpty) 'categorie': categorie,
+      if (debut != null && debut.isNotEmpty) 'debut': debut,
+      if (fin != null && fin.isNotEmpty) 'fin': fin,
     })) as Map<String, dynamic>;
   }
 

@@ -18,6 +18,8 @@ class _StatsScreenState extends State<StatsScreen> {
   Map<String, dynamic>? _stats;
   bool _chargement = true;
   String _periode = 'mois';
+  String _debut = '';
+  String _fin = '';
   String _ville = '';
   String _categorie = '';
   List<String> _villes = const ['Kinshasa', 'Lubumbashi'];
@@ -35,7 +37,13 @@ class _StatsScreenState extends State<StatsScreen> {
   Future<void> _charger() async {
     setState(() => _chargement = true);
     try {
-      final data = await ApiAdmin.obtenirStatistiques(periode: _periode, ville: _ville, categorie: _categorie);
+      final data = await ApiAdmin.obtenirStatistiques(
+        periode: _periode,
+        ville: _ville,
+        categorie: _categorie,
+        debut: _periode == 'personnalisee' ? _debut : null,
+        fin: _periode == 'personnalisee' ? _fin : null,
+      );
       if (mounted) setState(() => _stats = data);
     } catch (_) {
       if (mounted) setState(() => _stats = {});
@@ -79,8 +87,8 @@ class _StatsScreenState extends State<StatsScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _filtreDropdown('Période', _periode, ['mois', 'semaine', 'trimestre', 'annee', 'tout'], {
-                'mois': 'Ce mois', 'semaine': 'Cette semaine', 'trimestre': '90 jours', 'annee': 'Cette année', 'tout': 'Toute la période',
+              Expanded(child: _filtreDropdown('Période', _periode, ['mois', 'semaine', 'trimestre', 'annee', 'tout', 'personnalisee'], {
+                'mois': 'Ce mois', 'semaine': 'Cette semaine', 'trimestre': '90 jours', 'annee': 'Cette année', 'tout': 'Toute la période', 'personnalisee': 'Personnalisée',
               }, (v) {
                 setState(() => _periode = v);
                 _charger();
@@ -95,6 +103,22 @@ class _StatsScreenState extends State<StatsScreen> {
               })),
             ],
           ),
+          if (_periode == 'personnalisee') ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: _champDate('Du', _debut, (v) {
+                  setState(() => _debut = v);
+                  _charger();
+                })),
+                const SizedBox(width: 8),
+                Expanded(child: _champDate('Au', _fin, (v) {
+                  setState(() => _fin = v);
+                  _charger();
+                })),
+              ],
+            ),
+          ],
           const SizedBox(height: 8),
           Row(
             children: [
@@ -263,7 +287,48 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
+  Widget _champDate(String libelle, String valeur, ValueChanged<String> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(libelle, style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () async {
+            final initial = DateTime.tryParse(valeur) ?? DateTime.now();
+            final choisi = await showDatePicker(
+              context: context,
+              initialDate: initial,
+              firstDate: DateTime(2020),
+              lastDate: DateTime(2100),
+            );
+            if (choisi == null) return;
+            final iso = '${choisi.year.toString().padLeft(4, '0')}-${choisi.month.toString().padLeft(2, '0')}-${choisi.day.toString().padLeft(2, '0')}';
+            onChanged(iso);
+          },
+          child: Container(
+            height: 44,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppCouleurs.bordure),
+            ),
+            child: Text(valeur.isEmpty ? 'Choisir' : valeur, style: const TextStyle(fontSize: 13)),
+          ),
+        ),
+      ],
+    );
+  }
+
   String _libellePeriode(String periode) {
+    if (periode == 'personnalisee') {
+      if (_debut.isNotEmpty && _fin.isNotEmpty) return 'Affichage : du $_debut au $_fin';
+      if (_debut.isNotEmpty) return 'Affichage : à partir du $_debut';
+      if (_fin.isNotEmpty) return 'Affichage : jusqu\'au $_fin';
+      return 'Affichage : période personnalisée';
+    }
     return periode == 'mois' ? 'Affichage : ce mois-ci'
       : periode == 'semaine' ? 'Affichage : cette semaine'
       : periode == 'trimestre' ? 'Affichage : 90 derniers jours'

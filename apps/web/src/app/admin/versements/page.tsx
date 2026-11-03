@@ -9,6 +9,7 @@ import { extraireMessageErreur } from "../../../lib/api-client";
 import { listerVersementsAdmin, traiterVersementAdmin } from "../../../lib/api-economie";
 import { formaterMontant } from "@reserva/shared";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
+import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
 export default function PageAdminVersements() {
   const [items, setItems] = useState<any[]>([]);
@@ -22,8 +23,9 @@ export default function PageAdminVersements() {
   const [note, setNote] = useState("");
   const [payerMode, setPayerMode] = useState(true);
   const [recherche, setRecherche] = useState("");
+  const [temps, setTemps] = useState<ValeurTemps>({ periode: "tout", debut: "", fin: "" });
 
-  useEffect(() => { charger(); }, [statut, page]);
+  useEffect(() => { charger(); }, [statut, page, temps]);
 
   const itemsFiltres = useMemo(() => {
     const q = recherche.trim().toLowerCase();
@@ -49,7 +51,7 @@ export default function PageAdminVersements() {
   async function charger() {
     setChargement(true);
     try {
-      const r = await listerVersementsAdmin(page, statut || undefined);
+      const r = await listerVersementsAdmin(page, statut || undefined, paramsTemps(temps));
       setItems(r.items);
       setTotalPages(r.totalPages);
       setTotal(r.total);
@@ -112,6 +114,11 @@ export default function PageAdminVersements() {
           <Bouton variante="fantome" taille="sm" onClick={imprimer} disabled={itemsFiltres.length === 0}>
             <Printer className="h-4 w-4" /> Imprimer
           </Bouton>
+          <FiltreTemps
+            variante="liste"
+            valeur={temps}
+            onChange={(valeur) => { setPage(1); setTemps(valeur); }}
+          />
           <select
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
             value={statut}

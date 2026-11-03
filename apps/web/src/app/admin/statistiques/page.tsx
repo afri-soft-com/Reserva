@@ -12,6 +12,7 @@ import { listerCategoriesAdmin } from "../../../lib/api-categories";
 import { listerVillesAdmin } from "../../../lib/api-admin";
 import { useAuthStore } from "../../../lib/store-auth";
 import { formaterMontant } from "@reserva/shared";
+import { FiltreTemps, paramsTemps } from "../../../components/FiltreTemps";
 
 interface EvolutionData {
   mois: string;
@@ -31,6 +32,8 @@ interface StatistiquesAdmin {
 
 interface FiltresAdmin {
   periode: string;
+  debut: string;
+  fin: string;
   ville: string;
   categorie: string;
 }
@@ -51,7 +54,7 @@ export default function PageAdminStatistiques() {
   const [villes, setVilles] = useState<string[]>([]);
   const [chargement, setChargement] = useState(true);
   const [chargementExport, setChargementExport] = useState(false);
-  const [filtres, setFiltres] = useState<FiltresAdmin>({ periode: "mois", ville: "", categorie: "" });
+  const [filtres, setFiltres] = useState<FiltresAdmin>({ periode: "mois", debut: "", fin: "", ville: "", categorie: "" });
 
   useEffect(() => {
     Promise.all([
@@ -72,7 +75,7 @@ export default function PageAdminStatistiques() {
     setChargement(true);
     try {
       const resultat = await obtenirStatistiquesAdmin({
-        periode: filtres.periode || undefined,
+        ...paramsTemps(filtres),
         ville: filtres.ville || undefined,
         categorie: filtres.categorie || undefined,
       });
@@ -88,7 +91,7 @@ export default function PageAdminStatistiques() {
     setChargementExport(true);
     try {
       await telechargerStatistiquesAdminPdf({
-        periode: filtres.periode || undefined,
+        ...paramsTemps(filtres),
         ville: filtres.ville || undefined,
         categorie: filtres.categorie || undefined,
       });
@@ -124,15 +127,7 @@ export default function PageAdminStatistiques() {
       <h1 className="text-2xl font-bold text-gray-900">Statistiques</h1>
 
       <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">Période</label>
-          <select className={classeSelect} value={filtres.periode} onChange={(e) => setFiltres({ ...filtres, periode: e.target.value })}>
-            <option value="mois">Ce mois-ci</option>
-            <option value="trimestre">90 derniers jours</option>
-            <option value="annee">Cette année</option>
-            <option value="tout">Toute la période</option>
-          </select>
-        </div>
+        <FiltreTemps valeur={filtres} onChange={(temps) => setFiltres({ ...filtres, ...temps })} />
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">Catégorie</label>
           <select className={classeSelect} value={filtres.categorie} onChange={(e) => setFiltres({ ...filtres, categorie: e.target.value })}>

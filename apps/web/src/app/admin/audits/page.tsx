@@ -7,6 +7,7 @@ import { Bouton } from "../../../components/Bouton";
 import { toastErreur } from "../../../components/Toast";
 import { clientApi, extraireMessageErreur } from "../../../lib/api-client";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
+import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
 export default function PageAdminAudits() {
   const [items, setItems] = useState<any[]>([]);
@@ -17,6 +18,7 @@ export default function PageAdminAudits() {
   const [recherche, setRecherche] = useState("");
   const [q, setQ] = useState("");
   const [action, setAction] = useState("");
+  const [temps, setTemps] = useState<ValeurTemps>({ periode: "tout", debut: "", fin: "" });
 
   useEffect(() => {
     setChargement(true);
@@ -26,6 +28,7 @@ export default function PageAdminAudits() {
           page,
           recherche: q || undefined,
           action: action || undefined,
+          ...paramsTemps(temps),
         },
       })
       .then(({ data }) => {
@@ -35,7 +38,7 @@ export default function PageAdminAudits() {
       })
       .catch((e) => toastErreur(extraireMessageErreur(e)))
       .finally(() => setChargement(false));
-  }, [page, q, action]);
+  }, [page, q, action, temps]);
 
   function imprimer() {
     imprimerElement(
@@ -94,6 +97,11 @@ export default function PageAdminAudits() {
         >
           Rechercher
         </Bouton>
+        <FiltreTemps
+          variante="liste"
+          valeur={temps}
+          onChange={(valeur) => { setPage(1); setTemps(valeur); }}
+        />
         <select
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
           value={action}
