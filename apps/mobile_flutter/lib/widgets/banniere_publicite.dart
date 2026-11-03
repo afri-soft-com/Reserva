@@ -5,6 +5,7 @@ import 'package:reserva/services/api_publicite.dart';
 import 'package:reserva/providers/auth_provider.dart';
 import 'package:reserva/config.dart';
 import 'package:provider/provider.dart';
+import 'image_reseau.dart';
 
 final _apiOrigin = Uri.parse(AppConfig.apiUrl).origin;
 
@@ -127,8 +128,8 @@ class _BannierePubliciteState extends State<BannierePublicite> {
               if (imageUrl != null && imageUrl.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(_resoudreImage(imageUrl), width: double.infinity, height: 120, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(height: 80,
+                child: ImageReseau(_resoudreImage(imageUrl), hauteur: 120,
+                  erreur: (_) => Container(height: 80,
                     decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
                     child: const Icon(Icons.campaign, size: 40, color: Colors.grey)),
                 ),
@@ -195,12 +196,11 @@ class _BannierePubliciteState extends State<BannierePublicite> {
                             padding: const EdgeInsets.only(right: 10),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(6),
-                              child: Image.network(
+                              child: ImageReseau(
                                 _resoudreImage(imageUrl),
-                                width: 48,
-                                height: 36,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
+                                largeur: 48,
+                                hauteur: 36,
+                                erreur: (_) => Container(
                                   width: 48, height: 36,
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.2),

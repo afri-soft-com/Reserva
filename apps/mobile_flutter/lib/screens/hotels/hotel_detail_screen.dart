@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../theme.dart';
 import '../../services/api_hotels.dart';
 import '../../widgets/toast.dart';
+import '../../widgets/image_reseau.dart';
 
 class HotelDetailScreen extends StatefulWidget {
   final String hotelId;
@@ -104,8 +105,8 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (_, i) => ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network('${photos[i]}', width: 240, height: 160, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(width: 240, color: AppCouleurs.primaireClair)),
+                  child: ImageReseau('${photos[i]}', largeur: 240, hauteur: 160,
+                    erreur: (_) => Container(width: 240, color: AppCouleurs.primaireClair)),
                 ),
               ),
             ),

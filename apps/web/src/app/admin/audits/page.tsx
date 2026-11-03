@@ -9,6 +9,7 @@ import { clientApi, extraireMessageErreur } from "../../../lib/api-client";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
+import { SqueletteListe } from "../../../components/Squelette";
 export default function PageAdminAudits() {
   const [items, setItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -119,7 +120,7 @@ export default function PageAdminAudits() {
         </select>
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement…</p>}
+      {chargement && <SqueletteListe />}
       {!chargement && items.length === 0 && (
         <Carte><p className="text-center text-gray-500">Aucune entrée d&apos;audit.</p></Carte>
       )}

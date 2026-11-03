@@ -14,6 +14,7 @@ import { useAuthStore } from "../../../lib/store-auth";
 import { LIBELLES_CATEGORIE } from "@reserva/shared";
 import { listerCategoriesAdmin } from "../../../lib/api-categories";
 
+import { SqueletteListe } from "../../../components/Squelette";
 export default function PageDocumentsKyc() {
   const { utilisateur } = useAuthStore();
   const [chargement, setChargement] = useState(true);
@@ -91,7 +92,7 @@ export default function PageDocumentsKyc() {
     return <Carte><p className="text-center text-gray-500">Accès non autorisé.</p></Carte>;
   }
 
-  if (chargement) return <p className="text-gray-500">Chargement…</p>;
+  if (chargement) return <SqueletteListe />;
 
   const selection = new Set(parCategorie[categorieActive] || []);
 

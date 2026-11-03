@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../../theme.dart';
 import '../../services/api_hotels.dart';
 import '../../widgets/toast.dart';
+import '../../widgets/image_reseau.dart';
 
 class HotelsRechercheScreen extends StatefulWidget {
   const HotelsRechercheScreen({super.key});
@@ -224,7 +225,7 @@ class _HotelsRechercheScreenState extends State<HotelsRechercheScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: photos.isNotEmpty
-                  ? Image.network('${photos.first}', width: 72, height: 72, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholder())
+                  ? ImageReseau('${photos.first}', largeur: 72, hauteur: 72, erreur: (_) => _placeholder())
                   : _placeholder(),
             ),
             const SizedBox(width: 10),

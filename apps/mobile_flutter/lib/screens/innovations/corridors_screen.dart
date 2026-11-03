@@ -21,7 +21,8 @@ class _CorridorsScreenState extends State<CorridorsScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // Spinner plein écran au premier chargement seulement : un rechargement garde la liste.
+    if (_items.isEmpty) setState(() => _chargement = true);
     try {
       final items = await ApiInnovations.packagesCorridors();
       if (mounted) setState(() => _items = items);
@@ -39,34 +40,39 @@ class _CorridorsScreenState extends State<CorridorsScreen> {
       body: _chargement
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'Aucun pack corridor pour l’instant.\nEx. Mbuji-Mayi → Kinshasa (bus + hôtel + RDV).',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _items.length,
-                  itemBuilder: (_, i) {
-                    final p = _items[i] as Map<String, dynamic>;
-                    final origine = p['corridorOrigine'] ?? '?';
-                    final dest = p['corridorDestination'] ?? '?';
-                    final conf = p['prestataire']?['scoreConfiance'];
-                    return Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.route),
-                        title: Text(p['nom']?.toString() ?? 'Corridor'),
-                        subtitle: Text('$origine → $dest · ${p['prix']} ${p['devise']}${conf != null ? ' · confiance $conf' : ''}'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.push('/package/${p['id']}'),
-                      ),
-                    );
-                  },
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Aucun pack corridor pour l’instant.\nEx. Mbuji-Mayi → Kinshasa (bus + hôtel + RDV).',
+                  textAlign: TextAlign.center,
                 ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _charger,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _items.length,
+                itemBuilder: (_, i) {
+                  final p = _items[i] as Map<String, dynamic>;
+                  final origine = p['corridorOrigine'] ?? '?';
+                  final dest = p['corridorDestination'] ?? '?';
+                  final conf = p['prestataire']?['scoreConfiance'];
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.route),
+                      title: Text(p['nom']?.toString() ?? 'Corridor'),
+                      subtitle: Text(
+                        '$origine → $dest · ${p['prix']} ${p['devise']}${conf != null ? ' · confiance $conf' : ''}',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/package/${p['id']}'),
+                    ),
+                  );
+                },
+              ),
+            ),
     );
   }
 }

@@ -8,6 +8,7 @@ import { toastErreur, toastSucces } from "../../../components/Toast";
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { listerConfigsTarifAdmin, creerOuModifierConfigTarifAdmin, supprimerConfigTarifAdmin } from "../../../lib/api-admin";
 
+import { SqueletteListe } from "../../../components/Squelette";
 const TYPE_LABEL: Record<string, string> = { TEXTE: "Texte", NOMBRE: "Nombre", POURCENT: "Pourcentage", MONTANT: "Montant" };
 
 const PRESETS = [
@@ -101,7 +102,7 @@ export default function PageAdminTarifications() {
         </div>
       </Carte>
 
-      {chargement && <p className="text-gray-500">Chargement...</p>}
+      {chargement && <SqueletteListe />}
 
       {!chargement && configs.length === 0 && (
         <Carte><p className="text-center text-gray-500">Aucune configuration de tarification.</p></Carte>

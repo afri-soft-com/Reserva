@@ -16,6 +16,7 @@ import {
 import { formaterMontant } from "@reserva/shared";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
+import { SqueletteListe } from "../../../components/Squelette";
 export default function PageAdminAbonnements() {
   const [onglet, setOnglet] = useState<"plans" | "souscriptions">("plans");
   const [plans, setPlans] = useState<any[]>([]);
@@ -201,7 +202,7 @@ export default function PageAdminAbonnements() {
         </button>
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement...</p>}
+      {chargement && <SqueletteListe />}
 
       {onglet === "souscriptions" && !chargement && (
         <>

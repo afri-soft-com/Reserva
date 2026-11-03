@@ -29,6 +29,7 @@ import {
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 import { useAuthStore } from "../../../lib/store-auth";
 
+import { SqueletteListe } from "../../../components/Squelette";
 const ROLE_LABEL: Record<string, string> = {
   CLIENT: "Client",
   PRESTATAIRE: "Prestataire",
@@ -291,7 +292,7 @@ export default function PageAdminUtilisateurs() {
         </select>
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement...</p>}
+      {chargement && <SqueletteListe />}
 
       {!chargement && utilisateurs.length === 0 && (
         <Carte className="text-center text-gray-500">Aucun utilisateur trouvé.</Carte>

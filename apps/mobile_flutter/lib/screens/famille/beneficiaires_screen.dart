@@ -21,7 +21,8 @@ class _BeneficiairesScreenState extends State<BeneficiairesScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // Spinner plein écran au premier chargement seulement : un rechargement garde la liste.
+    if (_items.isEmpty) setState(() => _chargement = true);
     try {
       final items = await ApiInnovations.listerBeneficiaires();
       if (mounted) setState(() => _items = items);
@@ -43,8 +44,15 @@ class _BeneficiairesScreenState extends State<BeneficiairesScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nomCtrl, decoration: const InputDecoration(labelText: 'Nom')),
-            TextField(controller: telCtrl, decoration: const InputDecoration(labelText: 'Téléphone'), keyboardType: TextInputType.phone),
+            TextField(
+              controller: nomCtrl,
+              decoration: const InputDecoration(labelText: 'Nom'),
+            ),
+            TextField(
+              controller: telCtrl,
+              decoration: const InputDecoration(labelText: 'Téléphone'),
+              keyboardType: TextInputType.phone,
+            ),
             DropdownButtonFormField<String>(
               value: lien,
               items: const [
@@ -60,8 +68,14 @@ class _BeneficiairesScreenState extends State<BeneficiairesScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ajouter')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ajouter'),
+          ),
         ],
       ),
     );
@@ -90,27 +104,40 @@ class _BeneficiairesScreenState extends State<BeneficiairesScreen> {
       body: _chargement
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-              ? const Center(child: Text('Ajoutez les membres de votre foyer pour réserver pour eux.'))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final b = _items[i] as Map<String, dynamic>;
-                    return ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.family_restroom)),
-                      title: Text(b['nom']?.toString() ?? ''),
-                      subtitle: Text('${b['lienParente'] ?? ''} · ${b['telephone'] ?? 'sans tél.'}'),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () async {
-                          await ApiInnovations.supprimerBeneficiaire(b['id'] as String);
-                          _charger();
-                        },
-                      ),
-                    );
-                  },
-                ),
+          ? const Center(
+              child: Text(
+                'Ajoutez les membres de votre foyer pour réserver pour eux.',
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _charger,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _items.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, i) {
+                  final b = _items[i] as Map<String, dynamic>;
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.family_restroom),
+                    ),
+                    title: Text(b['nom']?.toString() ?? ''),
+                    subtitle: Text(
+                      '${b['lienParente'] ?? ''} · ${b['telephone'] ?? 'sans tél.'}',
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        await ApiInnovations.supprimerBeneficiaire(
+                          b['id'] as String,
+                        );
+                        _charger();
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
     );
   }
 }

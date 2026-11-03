@@ -14,6 +14,7 @@ import {
   retirerTrajetAdmin,
 } from "../../../lib/api-transport";
 
+import { SqueletteListe } from "../../../components/Squelette";
 function aujourdhuiPlus(jours: number) {
   const d = new Date();
   d.setDate(d.getDate() + jours);
@@ -219,7 +220,7 @@ export default function PageAdminTransport() {
         </select>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-champ border px-3 text-sm" />
       </div>
-      {chargement && <p className="text-gray-500">Chargement…</p>}
+      {chargement && <SqueletteListe />}
       <div className="space-y-2">
         {visibles.map((t) => (
           <Carte key={t.id}>

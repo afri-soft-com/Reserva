@@ -22,7 +22,8 @@ class _FileTerrainScreenState extends State<FileTerrainScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // Spinner plein écran au premier chargement seulement : un rechargement garde la liste.
+    if (_data == null) setState(() => _chargement = true);
     try {
       final data = await ApiInnovations.fileTerrain();
       if (mounted) setState(() => _data = data);
@@ -37,7 +38,11 @@ class _FileTerrainScreenState extends State<FileTerrainScreen> {
     try {
       final r = await ApiInnovations.appelerProchain();
       if (mounted) {
-        ToastWidget.show(context, r['message']?.toString() ?? 'Appelé', type: 'succes');
+        ToastWidget.show(
+          context,
+          r['message']?.toString() ?? 'Appelé',
+          type: 'succes',
+        );
         _charger();
       }
     } catch (e) {
@@ -51,7 +56,9 @@ class _FileTerrainScreenState extends State<FileTerrainScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('File terrain'),
-        actions: [IconButton(onPressed: _charger, icon: const Icon(Icons.refresh))],
+        actions: [
+          IconButton(onPressed: _charger, icon: const Icon(Icons.refresh)),
+        ],
       ),
       body: _chargement
           ? const Center(child: CircularProgressIndicator())
@@ -83,16 +90,23 @@ class _FileTerrainScreenState extends State<FileTerrainScreen> {
                   ),
                 ),
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: file.length,
-                    itemBuilder: (_, i) {
-                      final r = file[i] as Map<String, dynamic>;
-                      return ListTile(
-                        leading: CircleAvatar(child: Text('${r['position']}')),
-                        title: Text('${r['client']} · ${r['service']}'),
-                        subtitle: Text('${r['numero']} · ${r['statut']} · offline ✓'),
-                      );
-                    },
+                  child: RefreshIndicator(
+                    onRefresh: _charger,
+                    child: ListView.builder(
+                      itemCount: file.length,
+                      itemBuilder: (_, i) {
+                        final r = file[i] as Map<String, dynamic>;
+                        return ListTile(
+                          leading: CircleAvatar(
+                            child: Text('${r['position']}'),
+                          ),
+                          title: Text('${r['client']} · ${r['service']}'),
+                          subtitle: Text(
+                            '${r['numero']} · ${r['statut']} · offline ✓',
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],

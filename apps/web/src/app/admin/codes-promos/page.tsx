@@ -15,6 +15,7 @@ import {
 } from "../../../lib/api-codes-promos";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
+import { SqueletteListe } from "../../../components/Squelette";
 type Formulaire = {
   code: string;
   description: string;
@@ -211,7 +212,7 @@ export default function PageAdminCodesPromos() {
         </select>
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement...</p>}
+      {chargement && <SqueletteListe />}
 
       {!chargement && codesFiltres.length === 0 && (
         <Carte className="text-center text-gray-500">Aucun code promo créé.</Carte>

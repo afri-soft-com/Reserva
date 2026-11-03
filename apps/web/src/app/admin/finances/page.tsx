@@ -20,6 +20,7 @@ import { formaterMontant } from "@reserva/shared";
 import { Bouton } from "../../../components/Bouton";
 import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
+import { SqueletteTableauDeBord } from "../../../components/Squelette";
 const COULEURS = ["#1A56DB", "#F5A623", "#10B981", "#8B5CF6", "#EF4444"];
 
 export default function PageAdminFinances() {
@@ -47,7 +48,7 @@ export default function PageAdminFinances() {
     }
   }
 
-  if (chargement) return <p className="text-gray-500">Chargement…</p>;
+  if (chargement) return <SqueletteTableauDeBord />;
   if (!stats) return <p className="text-gray-500">Aucune donnée financière.</p>;
 
   const pieData = Object.entries(stats.parType || {})

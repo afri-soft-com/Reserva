@@ -10,6 +10,7 @@ import {
 import { extraireMessageErreur } from "../../../lib/api-client";
 import { toastErreur, toastSucces } from "../../../components/Toast";
 
+import { SqueletteListe } from "../../../components/Squelette";
 const SUPERADMIN_PHONES = (process.env.NEXT_PUBLIC_SUPERADMIN_PHONES || "+243900000001")
   .split(",")
   .map((s) => s.trim())
@@ -54,7 +55,7 @@ export default function PageAdminConfidentialite() {
   }
 
   if (chargement || !form) {
-    return <p className="text-sm text-gray-500">Chargement…</p>;
+    return <SqueletteListe />;
   }
 
   async function onSubmit(e: FormEvent) {

@@ -14,6 +14,7 @@ import {
 } from "../../../lib/api-agents";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
+import { SqueletteListe } from "../../../components/Squelette";
 export default function PageAdminAgents() {
   const [agents, setAgents] = useState<any[]>([]);
   const [chargement, setChargement] = useState(true);
@@ -139,7 +140,7 @@ export default function PageAdminAgents() {
       </div>
 
       {chargement ? (
-        <p>Chargement…</p>
+        <SqueletteListe />
       ) : agentsFiltres.length === 0 ? (
         <Carte>
           <p className="p-4 text-sm">

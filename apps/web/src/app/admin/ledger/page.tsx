@@ -10,6 +10,7 @@ import { listerEcrituresAdmin } from "../../../lib/api-economie";
 import { formaterMontant } from "@reserva/shared";
 import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
+import { SqueletteListe } from "../../../components/Squelette";
 const TYPES = ["", "COMMISSION", "FRAIS_SERVICE", "NET_PRESTATAIRE", "ABONNEMENT", "VERSEMENT", "REMBOURSEMENT"];
 const COMPTES = ["", "PLATEFORME", "PRESTATAIRE"];
 
@@ -76,7 +77,7 @@ export default function PageAdminLedger() {
         </select>
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement…</p>}
+      {chargement && <SqueletteListe />}
       {!chargement && items.length === 0 && (
         <Carte><p className="text-center text-gray-500">Aucune écriture.</p></Carte>
       )}

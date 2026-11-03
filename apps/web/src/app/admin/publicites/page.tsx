@@ -16,6 +16,7 @@ import {
 } from "../../../lib/api-publicites";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
+import { SqueletteListe } from "../../../components/Squelette";
 type Formulaire = {
   titre: string;
   imageUrl: string;
@@ -240,7 +241,7 @@ export default function PageAdminPublicites() {
         </select>
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement...</p>}
+      {chargement && <SqueletteListe />}
 
       {!chargement && publicitesFiltrees.length === 0 && (
         <Carte className="text-center text-gray-500">Aucune publicité créée.</Carte>

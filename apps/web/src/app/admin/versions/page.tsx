@@ -11,6 +11,7 @@ import { extraireMessageErreur } from "../../../lib/api-client";
 import { toastErreur, toastSucces } from "../../../components/Toast";
 import { EVENT_VERSIONS_MAJ } from "../../../components/BanniereMiseAJour";
 
+import { SqueletteListe } from "../../../components/Squelette";
 const VERSION_WEB = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
 
 const VIDE: ConfigVersions = {
@@ -81,7 +82,7 @@ export default function PageVersions() {
     );
   }
 
-  if (chargement) return <p className="text-gray-500">Chargement…</p>;
+  if (chargement) return <SqueletteListe />;
 
   return (
     <div className="space-y-6">

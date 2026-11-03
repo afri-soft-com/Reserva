@@ -11,6 +11,7 @@ import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 import { formaterMontant } from "@reserva/shared";
 import { FiltreTemps, paramsTemps, type ValeurTemps } from "../../../components/FiltreTemps";
 
+import { SqueletteListe } from "../../../components/Squelette";
 export default function PageAdminReservations() {
   const [items, setItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -118,7 +119,7 @@ export default function PageAdminReservations() {
         </select>
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement…</p>}
+      {chargement && <SqueletteListe />}
       {!chargement && items.length === 0 && (
         <Carte><p className="text-center text-gray-500">Aucune réservation.</p></Carte>
       )}

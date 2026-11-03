@@ -16,6 +16,7 @@ import {
 } from "../../../lib/api-categories";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
+import { SqueletteListe } from "../../../components/Squelette";
 type Formulaire = {
   code: string;
   libelle: string;
@@ -204,7 +205,7 @@ export default function PageAdminCategories() {
         </select>
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement...</p>}
+      {chargement && <SqueletteListe />}
 
       {!chargement && categoriesFiltrees.length === 0 && (
         <Carte className="text-center text-gray-500">Aucune catégorie.</Carte>

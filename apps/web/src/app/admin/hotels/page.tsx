@@ -18,6 +18,7 @@ import {
 import { formaterMontant } from "@reserva/shared";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
+import { SqueletteListe } from "../../../components/Squelette";
 export default function PageAdminHotels() {
   const [hotels, setHotels] = useState<HotelResume[]>([]);
   const [villes, setVilles] = useState<string[]>([]);
@@ -244,7 +245,7 @@ export default function PageAdminHotels() {
         />
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement…</p>}
+      {chargement && <SqueletteListe />}
       {!chargement && filtres.length === 0 && (
         <Carte><p className="text-center text-gray-500">Aucun hôtel.</p></Carte>
       )}

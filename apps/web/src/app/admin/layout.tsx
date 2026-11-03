@@ -140,7 +140,7 @@ export default function LayoutAdmin({ children }: { children: ReactNode }) {
           ))}
         </nav>
       </aside>
-      <main className="min-w-0 flex-1">{children}</main>
+      <main key={chemin} className="min-w-0 flex-1 animate-fade-in">{children}</main>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { listerSoldesPrestatairesAdmin } from "../../../lib/api-economie";
 import { formaterMontant, LIBELLES_CATEGORIE } from "@reserva/shared";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
+import { SqueletteListe } from "../../../components/Squelette";
 export default function PageAdminSoldes() {
   const [items, setItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -85,7 +86,7 @@ export default function PageAdminSoldes() {
         />
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement…</p>}
+      {chargement && <SqueletteListe />}
       {!chargement && itemsFiltres.length === 0 && (
         <Carte><p className="text-center text-gray-500">Aucun prestataire approuvé.</p></Carte>
       )}

@@ -14,6 +14,7 @@ import { useAuthStore } from "../../../lib/store-auth";
 import { formaterMontant } from "@reserva/shared";
 import { FiltreTemps, paramsTemps } from "../../../components/FiltreTemps";
 
+import { SqueletteTableauDeBord } from "../../../components/Squelette";
 interface EvolutionData {
   mois: string;
   revenus: number;
@@ -111,7 +112,7 @@ export default function PageAdminStatistiques() {
     );
   }
 
-  if (chargement) return <p className="text-gray-500">Chargement...</p>;
+  if (chargement) return <SqueletteTableauDeBord />;
   if (!stats) return <p className="text-gray-500">Impossible de charger les statistiques.</p>;
 
   const donneesDonut = Object.entries(stats.reservations.parStatut).map(([statut, nombre], i) => ({

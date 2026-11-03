@@ -9,6 +9,7 @@ import { extraireMessageErreur } from "../../../lib/api-client";
 import { listerLitiges, trancheLitige, recalculerConfiance } from "../../../lib/api-innovations";
 import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 
+import { SqueletteListe } from "../../../components/Squelette";
 export default function PageAdminLitiges() {
   const [litiges, setLitiges] = useState<any[]>([]);
   const [chargement, setChargement] = useState(true);
@@ -133,7 +134,7 @@ export default function PageAdminLitiges() {
       </div>
 
       {chargement ? (
-        <p>Chargement…</p>
+        <SqueletteListe />
       ) : filtres.length === 0 ? (
         <Carte>
           <p className="p-4 text-sm">

@@ -20,6 +20,7 @@ import { imprimerElement, tableVersHtml } from "../../../lib/impression";
 import { useAuthStore } from "../../../lib/store-auth";
 import { LIBELLES_CATEGORIE, LIBELLES_STATUT_KYC } from "@reserva/shared";
 
+import { SqueletteListe } from "../../../components/Squelette";
 const STATUT_LABEL: Record<string, string> = {
   EN_ATTENTE_VALIDATION: "En attente",
   APPROUVE: "Approuvé",
@@ -364,7 +365,7 @@ export default function PageAdminPrestataires() {
         </select>
       </div>
 
-      {chargement && <p className="text-gray-500">Chargement...</p>}
+      {chargement && <SqueletteListe />}
 
       {!chargement && prestataires.length === 0 && (
         <Carte className="text-center text-gray-500">Aucun prestataire trouvé.</Carte>
