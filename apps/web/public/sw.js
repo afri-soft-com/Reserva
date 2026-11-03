@@ -1,10 +1,16 @@
 /* RESERVA admin — service worker (cache shell + mise à jour contrôlée) */
-const CACHE = "reserva-admin-v3";
+const CACHE = "reserva-admin-v4";
 const PRECACHE = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/logo.svg"];
 
 self.addEventListener("install", (event) => {
   // Ne pas skipWaiting ici : la page affiche la bannière puis envoie SKIP_WAITING.
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
+  // Un asset manquant ne doit pas bloquer l'activation, sinon le rechargement
+  // reste sur l'ancienne page et la bannière revient.
+  event.waitUntil(
+    caches.open(CACHE).then((cache) =>
+      Promise.all(PRECACHE.map((url) => cache.add(url).catch(() => undefined)))
+    )
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -28,7 +34,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api") || request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: "no-store" })
         .then((res) => {
           const copy = res.clone();
           if (request.mode === "navigate" && res.ok) {
