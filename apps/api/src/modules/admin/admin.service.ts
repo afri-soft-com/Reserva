@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { normaliserTelephone } from "@reserva/shared";
+import { normaliserTelephone, VILLES_RDC } from "@reserva/shared";
 import { prisma } from "../../config/prisma";
 
 export interface FiltresStatistiques {
@@ -436,15 +436,27 @@ export async function debloquerUtilisateur(utilisateurId: string) {
   });
 }
 
-/** Villes distinctes présentes chez les prestataires (filtres admin). */
+/** Référentiel RDC complet, plus les villes déjà saisies sur un prestataire. */
+export function fusionnerVillesReferentiel(enBase: string[], referentiel: readonly string[] = VILLES_RDC): string[] {
+  const villes = new Set<string>();
+  for (const nom of referentiel) {
+    const ville = nom.trim();
+    if (ville) villes.add(ville);
+  }
+  for (const nom of enBase) {
+    const ville = nom.trim();
+    if (ville) villes.add(ville);
+  }
+  return [...villes].sort((a, b) => a.localeCompare(b, "fr"));
+}
+
 export async function listerVillesReferentiel() {
   const rows = await prisma.prestataire.findMany({
     where: { ville: { not: "" } },
     select: { ville: true },
     distinct: ["ville"],
-    orderBy: { ville: "asc" },
   });
-  return rows.map((r) => r.ville);
+  return fusionnerVillesReferentiel(rows.map((r) => r.ville));
 }
 
 export async function listerReservationsAdmin(params: {

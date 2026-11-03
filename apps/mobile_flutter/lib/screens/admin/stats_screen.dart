@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../theme.dart';
 import '../../services/api_admin.dart';
+import '../../services/api_referentiel.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/squelette.dart';
 import '../../widgets/toast.dart';
@@ -19,12 +20,15 @@ class _StatsScreenState extends State<StatsScreen> {
   String _periode = 'mois';
   String _ville = '';
   String _categorie = '';
-  final List<String> _villes = ['Kinshasa', 'Lubumbashi'];
+  List<String> _villes = const ['Kinshasa', 'Lubumbashi'];
   final List<String> _categories = ['HOTELLERIE', 'RESTAURATION', 'SANTE', 'TRANSPORT'];
 
   @override
   void initState() {
     super.initState();
+    ApiReferentiel.listerVilles().then((v) {
+      if (mounted && v.isNotEmpty) setState(() => _villes = v);
+    }).catchError((_) {});
     _charger();
   }
 
@@ -83,7 +87,8 @@ class _StatsScreenState extends State<StatsScreen> {
               })),
               const SizedBox(width: 8),
               Expanded(child: _filtreDropdown('Ville', _ville, ['', ..._villes], {
-                '': 'Toutes', 'Kinshasa': 'Kinshasa', 'Lubumbashi': 'Lubumbashi',
+                '': 'Toutes',
+                for (final ville in _villes) ville: ville,
               }, (v) {
                 setState(() => _ville = v);
                 _charger();
