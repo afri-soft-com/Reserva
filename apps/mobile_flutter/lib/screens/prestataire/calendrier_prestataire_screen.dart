@@ -27,7 +27,7 @@ class _CalendrierPrestataireScreenState extends State<CalendrierPrestataireScree
       '${_moisCourant.year}-${_moisCourant.month.toString().padLeft(2, '0')}';
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       final donnees = await ApiPrestataire.obtenirCalendrier(mois: _cleMois);
       if (mounted) setState(() => _donnees = donnees);

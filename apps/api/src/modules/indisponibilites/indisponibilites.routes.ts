@@ -8,7 +8,7 @@ export const routesIndisponibilites = Router();
 
 const schemaCreer = z
   .object({
-    serviceId: z.string().uuid("Identifiant de service invalide").optional(),
+    serviceId: z.string().guid("Identifiant de service invalide").optional(),
     dateDebut: z.string().min(1, "Date de début requise"),
     dateFin: z.string().min(1, "Date de fin requise"),
     motif: z.string().max(200, "Motif trop long").optional(),

@@ -33,7 +33,7 @@ class _FinancesPrestataireScreenState extends State<FinancesPrestataireScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       final data = await ApiPrestataire.obtenirFinances();
       if (mounted) setState(() => _data = data);

@@ -26,7 +26,7 @@ class _ParrainageScreenState extends State<ParrainageScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       final results = await Future.wait([
         ApiAuth.monCodeParrainage(),

@@ -19,7 +19,7 @@ export const schemaMettreAJourKyc = z.object({
 export type MettreAJourKycInput = z.infer<typeof schemaMettreAJourKyc>;
 
 export const schemaReviserKyc = z.object({
-  prestataireId: z.string().uuid(),
+  prestataireId: z.string().guid(),
   decision: z.enum(["VALIDER", "INFO_MANQUANTE", "REFUSER"]),
   motif: z.string().trim().max(500).optional(),
   /** Si true (défaut), VALIDER approuve aussi le profil prestataire */

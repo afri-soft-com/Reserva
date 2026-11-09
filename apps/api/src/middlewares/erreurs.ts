@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { ErreurApplication } from "../utils/erreurs";
 import { envoyerErreur } from "../utils/reponse";
 import { env } from "../config/env";
+import { signalerErreur } from "../config/surveillance";
 
 /** Middleware global de gestion d'erreurs — doit être enregistré en dernier dans la chaîne Express */
 export function gestionnaireErreurs(
@@ -23,6 +24,7 @@ export function gestionnaireErreurs(
 
   // Erreur non prévue : on log côté serveur, on masque les détails en production
   console.error("[ERREUR NON GÉRÉE]", err);
+  signalerErreur(err, { methode: req.method, route: req.route?.path ?? req.path });
   const message = env.NODE_ENV === "production"
     ? "Une erreur interne est survenue. Veuillez réessayer plus tard."
     : err.message;

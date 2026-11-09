@@ -7,7 +7,7 @@ import { authentifier, exigerRole } from "../../middlewares/auth";
 export const routesAlertes = Router();
 
 const schemaCreerAlerte = z.object({
-  serviceId: z.string().uuid("Identifiant de service invalide"),
+  serviceId: z.string().guid("Identifiant de service invalide"),
 });
 
 routesAlertes.get("/moi", authentifier, alertesController.mesAlertes);

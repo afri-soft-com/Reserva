@@ -5,7 +5,7 @@ export const schemaCreerPackage = z.object({
   description: z.string().trim().max(500).optional(),
   prix: z.coerce.number().positive("Le prix doit être positif"),
   devise: z.enum(["CDF", "USD"]).default("CDF"),
-  serviceIds: z.array(z.string().uuid("Identifiant de service invalide")).min(1, "Un package doit contenir au moins un service"),
+  serviceIds: z.array(z.string().guid("Identifiant de service invalide")).min(1, "Un package doit contenir au moins un service"),
   estCorridor: z.boolean().default(false),
   corridorOrigine: z.string().trim().min(2).max(80).optional(),
   corridorDestination: z.string().trim().min(2).max(80).optional(),
@@ -18,7 +18,7 @@ export const schemaModifierPackage = z.object({
   prix: z.coerce.number().positive().optional(),
   devise: z.enum(["CDF", "USD"]).optional(),
   actif: z.boolean().optional(),
-  serviceIds: z.array(z.string().uuid("Identifiant de service invalide")).min(1).optional(),
+  serviceIds: z.array(z.string().guid("Identifiant de service invalide")).min(1).optional(),
   estCorridor: z.boolean().optional(),
   corridorOrigine: z.string().trim().min(2).max(80).optional(),
   corridorDestination: z.string().trim().min(2).max(80).optional(),
@@ -26,12 +26,12 @@ export const schemaModifierPackage = z.object({
 export type ModifierPackageInput = z.infer<typeof schemaModifierPackage>;
 
 export const schemaReserverPackage = z.object({
-  packageId: z.string().uuid("Identifiant de package invalide"),
+  packageId: z.string().guid("Identifiant de package invalide"),
   items: z
     .array(
       z.object({
-        serviceId: z.string().uuid("Identifiant de service invalide"),
-        creneauId: z.string().uuid("Identifiant de créneau invalide"),
+        serviceId: z.string().guid("Identifiant de service invalide"),
+        creneauId: z.string().guid("Identifiant de créneau invalide"),
         notes: z.string().trim().max(500).optional(),
       })
     )

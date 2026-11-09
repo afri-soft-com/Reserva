@@ -24,7 +24,7 @@ class _PrestatairesListScreenState extends State<PrestatairesListScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       _prestataires = await ApiAdmin.listerPrestataires(parPage: 50);
     } catch (_) {

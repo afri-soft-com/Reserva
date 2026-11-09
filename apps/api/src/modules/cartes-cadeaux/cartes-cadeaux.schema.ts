@@ -13,7 +13,7 @@ export type AcheterCarteCadeauInput = z.infer<typeof schemaAcheterCarteCadeau>;
 
 export const schemaUtiliserCarteCadeau = z.object({
   code: z.string().trim().min(1).max(30),
-  reservationId: z.string().uuid(),
+  reservationId: z.string().guid(),
 });
 export type UtiliserCarteCadeauInput = z.infer<typeof schemaUtiliserCarteCadeau>;
 

@@ -8,7 +8,7 @@ export const schemaCreerBeneficiaire = z.object({
 export type CreerBeneficiaireInput = z.infer<typeof schemaCreerBeneficiaire>;
 
 export const schemaOuvrirLitige = z.object({
-  reservationId: z.string().uuid(),
+  reservationId: z.string().guid(),
   motif: z.enum([
     "NON_DELIVRE",
     "QUALITE",
@@ -22,7 +22,7 @@ export const schemaOuvrirLitige = z.object({
 export type OuvrirLitigeInput = z.infer<typeof schemaOuvrirLitige>;
 
 export const schemaTrancheLitige = z.object({
-  litigeId: z.string().uuid(),
+  litigeId: z.string().guid(),
   decision: z.enum(["AVOIR_TOTAL", "AVOIR_PARTIEL", "REJET", "REBOOK"]),
   montantAvoir: z.coerce.number().positive().optional(),
   commentaire: z.string().trim().max(500).optional(),
@@ -30,7 +30,7 @@ export const schemaTrancheLitige = z.object({
 export type TrancheLitigeInput = z.infer<typeof schemaTrancheLitige>;
 
 export const schemaReclamerGarantie = z.object({
-  reservationId: z.string().uuid(),
+  reservationId: z.string().guid(),
   motif: z.string().trim().min(5).max(500),
 });
 export type ReclamerGarantieInput = z.infer<typeof schemaReclamerGarantie>;
@@ -42,7 +42,7 @@ export const schemaCanalSmsInbound = z.object({
 export type CanalSmsInboundInput = z.infer<typeof schemaCanalSmsInbound>;
 
 export const schemaActiverAgent = z.object({
-  utilisateurId: z.string().uuid(),
+  utilisateurId: z.string().guid(),
   /** Si omis, utilise COMMISSION_AGENT (tarification admin) */
   commissionPourcent: z.coerce.number().min(0.5).max(10).optional(),
 });

@@ -46,8 +46,8 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -71,8 +71,8 @@ jobs:
     name: Sécurité
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -134,8 +134,8 @@ jobs:
       SMOKE_WRITE: "1"
       STRICT_OPENAPI: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -227,7 +227,7 @@ jobs:
       run:
         working-directory: apps/mobile_flutter
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -251,7 +251,7 @@ jobs:
     outputs:
       skip_render: ${{ steps.detect.outputs.skip_render }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Détecter si Render est nécessaire
@@ -333,9 +333,9 @@ jobs:
       - name: Skip wait (pas de redeploy)
         if: needs.deploy-render.outputs.skip_render == 'true'
         run: echo "✓ Skip wait Render"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: needs.deploy-render.outputs.skip_render != 'true'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         if: needs.deploy-render.outputs.skip_render != 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -365,8 +365,8 @@ jobs:
       group: deploy-prod
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -440,8 +440,8 @@ jobs:
       run:
         working-directory: apps/mobile_flutter
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -504,6 +504,8 @@ jobs:
         env:
           API_URL: ${{ secrets.API_URL_PROD }}
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+          # Suivi des plantages (optionnel) : secret vide = désactivé.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN_MOBILE }}
         run: |
           # Refuse un API_URL qui pointe vers le front (sinon OTP → FormatException HTML)
           node scripts/check-api-url-prod.mjs
@@ -518,10 +520,12 @@ jobs:
           echo "GOOGLE_SERVER_CLIENT_ID pour AAB: ${WEB_GID:0:20}…"
           flutter build appbundle --flavor client -t lib/main.dart --release \
             --dart-define=API_URL="$API_URL" \
-            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID"
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
+            --dart-define=SENTRY_DSN="${SENTRY_DSN:-}"
           flutter build appbundle --flavor pro -t lib/main_pro.dart --release \
             --dart-define=API_URL="$API_URL" \
-            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID"
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
+            --dart-define=SENTRY_DSN="${SENTRY_DSN:-}"
       - name: Setup Ruby / Fastlane
         uses: ruby/setup-ruby@v1
         with:
@@ -573,7 +577,7 @@ jobs:
       run:
         working-directory: apps/mobile_flutter
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Select Xcode 26
         run: sudo xcode-select -s /Applications/Xcode_26.6.app && xcodebuild -version
       - uses: subosito/flutter-action@v2
@@ -727,6 +731,8 @@ jobs:
         env:
           API_URL: ${{ secrets.API_URL_PROD }}
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+          # Suivi des plantages (optionnel) : secret vide = désactivé.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN_MOBILE }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           (cd "$GITHUB_WORKSPACE" && node scripts/check-api-url-prod.mjs)
@@ -741,10 +747,12 @@ jobs:
           flutter build ipa --flavor client -t lib/main.dart --release \
             --dart-define=API_URL="$API_URL" \
             --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
+            --dart-define=SENTRY_DSN="${SENTRY_DSN:-}" \
             --export-options-plist=ios/ExportOptions.client.plist
           flutter build ipa --flavor pro -t lib/main_pro.dart --release \
             --dart-define=API_URL="$API_URL" \
             --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
+            --dart-define=SENTRY_DSN="${SENTRY_DSN:-}" \
             --export-options-plist=ios/ExportOptions.pro.plist
       - name: Setup Ruby / Fastlane
         uses: ruby/setup-ruby@v1

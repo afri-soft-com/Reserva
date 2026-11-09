@@ -35,7 +35,7 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       final data = await ApiAdmin.obtenirStatistiques(
         periode: _periode,

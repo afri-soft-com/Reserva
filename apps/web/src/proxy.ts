@@ -16,7 +16,7 @@ const BLOQUEES_PREFIXES = [
   "/inscription",
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (BLOQUEES_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {

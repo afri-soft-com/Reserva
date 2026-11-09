@@ -25,7 +25,7 @@ export const schemaModifierPrestataire = schemaCreerPrestataire.partial().extend
 export type ModifierPrestataireInput = z.infer<typeof schemaModifierPrestataire>;
 
 export const schemaValiderPrestataire = z.object({
-  prestataireId: z.string().uuid(),
+  prestataireId: z.string().guid(),
   approuver: z.boolean(),
   motifRejet: z.string().trim().max(500).optional(),
 });

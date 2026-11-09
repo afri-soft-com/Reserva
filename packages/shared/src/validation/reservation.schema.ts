@@ -31,8 +31,8 @@ const schemaBeneficiaireReservation = z.object({
 
 export const schemaCreerReservation = z
   .object({
-    serviceId: z.string().uuid("Identifiant de service invalide"),
-    creneauId: z.string().uuid("Identifiant de créneau invalide"),
+    serviceId: z.string().guid("Identifiant de service invalide"),
+    creneauId: z.string().guid("Identifiant de créneau invalide"),
     notes: z.string().trim().max(500).optional(),
     reservePourTiers: z.boolean().default(false),
     nomTiers: z.string().trim().min(2).max(100).optional(),
@@ -42,7 +42,7 @@ export const schemaCreerReservation = z
     garantieActive: z.boolean().default(true),
     /** 0 = paiement intégral uniquement ; >0 = acompte optionnel au % indiqué */
     acomptePourcent: z.coerce.number().int().min(0).max(100).default(0),
-    agentId: z.string().uuid().optional(),
+    agentId: z.string().guid().optional(),
   })
   .refine(
     (data) =>
@@ -57,15 +57,15 @@ export const schemaCreerReservation = z
 export type CreerReservationInput = z.infer<typeof schemaCreerReservation>;
 
 export const schemaAnnulerReservation = z.object({
-  reservationId: z.string().uuid(),
+  reservationId: z.string().guid(),
   motif: z.string().trim().max(300).optional(),
   modeRemboursement: z.enum(["AVOIR", "MOBILE_MONEY"]).optional().default("AVOIR"),
 });
 export type AnnulerReservationInput = z.infer<typeof schemaAnnulerReservation>;
 
 export const schemaModifierReservation = z.object({
-  reservationId: z.string().uuid(),
-  nouveauCreneauId: z.string().uuid("Identifiant de créneau invalide"),
+  reservationId: z.string().guid(),
+  nouveauCreneauId: z.string().guid("Identifiant de créneau invalide"),
 }).refine(
   (data) => data.reservationId !== data.nouveauCreneauId,
   { message: "Le nouveau créneau doit être différent de l'ancien", path: ["nouveauCreneauId"] }
@@ -73,7 +73,7 @@ export const schemaModifierReservation = z.object({
 export type ModifierReservationInput = z.infer<typeof schemaModifierReservation>;
 
 export const schemaCreerCreneau = z.object({
-  serviceId: z.string().uuid(),
+  serviceId: z.string().guid(),
   debut: z.string().datetime({ message: "Date de début invalide (format ISO requis)" }),
   fin: z.string().datetime({ message: "Date de fin invalide (format ISO requis)" }),
   capaciteTotale: z.coerce.number().int().min(1).default(1),
@@ -90,7 +90,7 @@ export const schemaModifierCreneau = z.object({
 export type ModifierCreneauInput = z.infer<typeof schemaModifierCreneau>;
 
 export const schemaInitierPaiement = z.object({
-  reservationId: z.string().uuid(),
+  reservationId: z.string().guid(),
   operateur: z.enum(["MPESA", "AIRTEL_MONEY", "ORANGE_MONEY", "ESPECES"]),
   telephonePaiement: z.string().trim().optional(),
   montant: z.coerce.number().positive(),
@@ -100,7 +100,7 @@ export const schemaInitierPaiement = z.object({
 export type InitierPaiementInput = z.infer<typeof schemaInitierPaiement>;
 
 export const schemaCreerAvis = z.object({
-  reservationId: z.string().uuid(),
+  reservationId: z.string().guid(),
   note: z.coerce.number().int().min(1, "La note minimale est 1").max(5, "La note maximale est 5"),
   commentaire: z.string().trim().max(1000).optional(),
   photosUrl: z.array(z.string().url("URL de photo invalide").or(z.string().startsWith("data:image"))).max(5).optional(),
@@ -108,7 +108,7 @@ export const schemaCreerAvis = z.object({
 export type CreerAvisInput = z.infer<typeof schemaCreerAvis>;
 
 export const schemaReponseAvis = z.object({
-  avisId: z.string().uuid(),
+  avisId: z.string().guid(),
   reponse: z.string().trim().min(1).max(500),
 });
 export type ReponseAvisInput = z.infer<typeof schemaReponseAvis>;

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export const schemaCreerConversation = z.object({
-  participantId: z.string().uuid("ID du participant invalide"),
+  participantId: z.string().guid("ID du participant invalide"),
   sujet: z.string().max(200).optional(),
-  reservationId: z.string().uuid().optional(),
+  reservationId: z.string().guid().optional(),
 });
 
 export const schemaEnvoyerMessage = z

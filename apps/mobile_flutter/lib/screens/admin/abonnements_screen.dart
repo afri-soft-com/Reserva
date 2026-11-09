@@ -22,7 +22,7 @@ class _AbonnementsScreenState extends State<AbonnementsScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       _abonnements = await ApiAdmin.listerAbonnements(parPage: 50);
     } catch (_) {

@@ -9,15 +9,15 @@ export const routesReservations = Router();
 
 // Réservation récurrente (série) — créée en une seule opération
 const schemaReservationRecurrente = z.object({
-  serviceId: z.string().uuid("Identifiant de service invalide"),
-  creneauId: z.string().uuid("Identifiant de créneau invalide"),
+  serviceId: z.string().guid("Identifiant de service invalide"),
+  creneauId: z.string().guid("Identifiant de créneau invalide"),
   nombreOccurrences: z.coerce.number().int().min(2).max(12).default(4),
   notes: z.string().trim().max(500).optional(),
   acomptePourcent: z.coerce.number().int().min(0).max(100).default(0),
 });
 
 const schemaReproduireReservation = z.object({
-  reservationId: z.string().uuid("Identifiant de réservation invalide"),
+  reservationId: z.string().guid("Identifiant de réservation invalide"),
 });
 
 routesReservations.post("/recurrentes", authentifier, exigerRole("CLIENT", "AGENT", "ADMIN"), valider(schemaReservationRecurrente), reservationsController.creerRecurrentes);

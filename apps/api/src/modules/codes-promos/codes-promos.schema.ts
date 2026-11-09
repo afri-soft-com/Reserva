@@ -30,6 +30,6 @@ export type ValiderCodePromoInput = z.infer<typeof schemaValiderCodePromo>;
 
 export const schemaAppliquerCodePromo = z.object({
   code: z.string().trim().min(1).max(30),
-  reservationId: z.string().uuid(),
+  reservationId: z.string().guid(),
 });
 export type AppliquerCodePromoInput = z.infer<typeof schemaAppliquerCodePromo>;

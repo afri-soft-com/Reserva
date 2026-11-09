@@ -7,7 +7,7 @@ import { authentifier, exigerRole } from "../../middlewares/auth";
 export const routesAvoirs = Router();
 
 const schemaAppliquerAvoir = z.object({
-  reservationId: z.string().uuid("Identifiant de réservation invalide"),
+  reservationId: z.string().guid("Identifiant de réservation invalide"),
   montant: z.coerce.number().positive().optional(),
 });
 

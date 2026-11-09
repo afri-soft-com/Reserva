@@ -24,7 +24,7 @@ routesServices.post(
 );
 
 const schemaCreneauxRecurrents = z.object({
-  serviceId: z.string().uuid(),
+  serviceId: z.string().guid(),
   dateDebut: z.string(),
   dateFin: z.string(),
   heuresCreneaux: z.array(z.string().regex(/^\d{2}:\d{2}$/)).min(1),

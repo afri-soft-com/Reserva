@@ -116,9 +116,9 @@ routesHotels.post("/:hotelId/avis", authentifier, asyncHandler(async (req, res) 
 }));
 
 const schemaHold = z.object({
-  hotelId: z.string().uuid(),
-  typeChambreId: z.string().uuid(),
-  planTarifId: z.string().uuid(),
+  hotelId: z.string().guid(),
+  typeChambreId: z.string().guid(),
+  planTarifId: z.string().guid(),
   arrivee: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   depart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   adultes: z.coerce.number().int().min(1).max(8),
@@ -127,7 +127,7 @@ const schemaHold = z.object({
 });
 
 const schemaInventaireMutation = z.object({
-  typeChambreId: z.string().uuid(),
+  typeChambreId: z.string().guid(),
   arrivee: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   depart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   quantite: z.coerce.number().int().min(1).max(5).optional(),
@@ -153,7 +153,7 @@ routesHotels.post("/inventaire/confirmer", exigerSecretService, asyncHandler(asy
 
 routesHotels.post("/inventaire/liberer", exigerSecretService, asyncHandler(async (req, res) => {
   const parsed = z.object({
-    typeChambreId: z.string().uuid(),
+    typeChambreId: z.string().guid(),
     arrivee: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     depart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     quantite: z.coerce.number().int().min(1).max(5).optional(),

@@ -35,7 +35,7 @@ class _FavorisScreenState extends State<FavorisScreen> with AutomaticKeepAliveCl
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       final resultat = await ApiFavoris.listerFavorisPage(page: 1, parPage: _parPage);
       if (mounted) {

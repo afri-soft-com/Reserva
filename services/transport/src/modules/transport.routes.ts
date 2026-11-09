@@ -66,7 +66,7 @@ routesTransport.get("/trajets/:id", asyncHandler(async (req, res) => {
 }));
 
 const schemaPlaces = z.object({
-  trajetId: z.string().uuid(),
+  trajetId: z.string().guid(),
   places: z.coerce.number().int().min(1).max(8),
 });
 
@@ -90,7 +90,7 @@ routesTransport.post("/inventaire/confirmer", exigerSecretService, asyncHandler(
 
 routesTransport.post("/inventaire/liberer", exigerSecretService, asyncHandler(async (req, res) => {
   const parsed = z.object({
-    trajetId: z.string().uuid(),
+    trajetId: z.string().guid(),
     places: z.coerce.number().int().min(1).max(8),
     etaitConfirme: z.boolean().optional(),
   }).safeParse(req.body);

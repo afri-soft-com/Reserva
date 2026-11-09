@@ -26,7 +26,7 @@ class _PortefeuilleScreenState extends State<PortefeuilleScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       final donnees = await ApiPortefeuille.obtenirPortefeuille();
       if (mounted) setState(() => _donnees = donnees);

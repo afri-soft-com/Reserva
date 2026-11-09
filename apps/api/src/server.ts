@@ -1,3 +1,5 @@
+// Doit être chargé en premier pour capturer aussi les erreurs de démarrage.
+import "./config/surveillance";
 import dns from "node:dns";
 import { createServer } from "http";
 import { app } from "./app";

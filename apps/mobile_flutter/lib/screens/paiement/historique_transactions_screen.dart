@@ -26,7 +26,7 @@ class _HistoriqueTransactionsScreenState extends State<HistoriqueTransactionsScr
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       final results = await Future.wait([
         ApiPaiements.listerTransactions(widget.reservationId),

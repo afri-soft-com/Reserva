@@ -29,7 +29,7 @@ class _DetailCarteCadeauScreenState extends State<DetailCarteCadeauScreen> {
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       final carte = await ApiCartesCadeaux.detailParCode(widget.code);
       if (mounted) setState(() => _carte = carte);

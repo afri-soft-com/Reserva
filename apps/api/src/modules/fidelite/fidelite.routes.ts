@@ -7,7 +7,7 @@ import { z } from "zod";
 export const routesFidelite = Router();
 
 const schemaAppliquerPoints = z.object({
-  reservationId: z.string().uuid("Identifiant de réservation invalide"),
+  reservationId: z.string().guid("Identifiant de réservation invalide"),
   points: z.coerce.number().int().min(1, "Le nombre de points doit être positif"),
 });
 

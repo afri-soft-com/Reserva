@@ -18,6 +18,6 @@ export const schemaCreerPublicite = z.object({
 export const schemaModifierPublicite = schemaCreerPublicite.partial();
 
 export const schemaCompteurPublicite = z.object({
-  publiciteId: z.string().uuid(),
+  publiciteId: z.string().guid(),
   type: z.enum(["IMPRESSION", "CLIC"]),
 });

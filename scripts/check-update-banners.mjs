@@ -247,6 +247,16 @@ mustInclude(
   "build-mobile-gate"
 );
 mustInclude(
+  "apps/mobile_flutter/lib/widgets/mise_a_jour_gate.dart",
+  ["AppStoreLive", "_storeProposeMaj"],
+  "ios-store-dispo"
+);
+mustInclude(
+  "apps/mobile_flutter/lib/services/app_store_live.dart",
+  ["itunes.apple.com", "return null"],
+  "ios-store-lookup"
+);
+mustInclude(
   "apps/api/src/modules/app-versions/app-versions.service.ts",
   ["minSoftBuildAndroid", "minSoftBuildIos", "CHAMPS_BUILD"],
   "build-api"

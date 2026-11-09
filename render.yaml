@@ -74,6 +74,9 @@ services:
         value: /var/data/backups
       - key: WEB_URL
         value: https://reserva-web-b9au.onrender.com
+      # Suivi des erreurs (optionnel) : DSN du projet Sentry, à saisir dans le Dashboard.
+      - key: SENTRY_DSN
+        sync: false
 
   - type: web
     name: reserva-hotels

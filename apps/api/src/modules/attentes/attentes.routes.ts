@@ -7,8 +7,8 @@ import { authentifier, exigerRole } from "../../middlewares/auth";
 export const routesAttentes = Router();
 
 const schemaInscriptionAttente = z.object({
-  serviceId: z.string().uuid("Identifiant de service invalide"),
-  creneauId: z.string().uuid("Identifiant de créneau invalide"),
+  serviceId: z.string().guid("Identifiant de service invalide"),
+  creneauId: z.string().guid("Identifiant de créneau invalide"),
 });
 
 routesAttentes.post(

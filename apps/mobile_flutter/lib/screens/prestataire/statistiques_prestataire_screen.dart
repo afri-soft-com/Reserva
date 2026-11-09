@@ -23,7 +23,7 @@ class _StatistiquesPrestataireScreenState extends State<StatistiquesPrestataireS
   }
 
   Future<void> _charger() async {
-    setState(() => _chargement = true);
+    // _chargement démarre à true : un rafraîchissement garde le contenu affiché.
     try {
       final donnees = await ApiPrestataire.obtenirStatistiques();
       if (mounted) {

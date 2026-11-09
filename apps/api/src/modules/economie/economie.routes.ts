@@ -5,7 +5,7 @@ import { authentifier, exigerRole } from "../../middlewares/auth";
 import { valider } from "../../middlewares/valider";
 
 const schemaSouscrire = z.object({
-  planId: z.string().uuid(),
+  planId: z.string().guid(),
   operateur: z.enum(["MPESA", "AIRTEL_MONEY", "ORANGE_MONEY", "ESPECES"]).optional(),
   telephonePaiement: z.string().trim().optional(),
 });

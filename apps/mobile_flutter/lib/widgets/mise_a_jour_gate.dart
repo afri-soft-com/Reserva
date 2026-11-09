@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_flavor.dart';
 import '../services/api_app_versions.dart';
+import '../services/app_store_live.dart';
 import '../theme.dart';
 import '../utils/comparer_versions.dart';
 
@@ -27,6 +28,8 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
   String? _minSoftBuild;
   String? _minForce;
   String? _storeUrl;
+  /// iOS : version téléchargeable sur l'App Store (null = inconnue).
+  String? _versionStoreIos;
   bool _dismissSoft = false;
   bool _pret = false;
   bool _chargementEnCours = false;
@@ -115,6 +118,10 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
         buildInstallee: info.buildNumber,
         cfg: Map<String, dynamic>.from(raw),
       );
+      if (Platform.isIOS && _mode == 'soft') {
+        final live = await AppStoreLive.version(info.packageName);
+        if (mounted && live != _versionStoreIos) setState(() => _versionStoreIos = live);
+      }
     } catch (_) {
       if (!silencieux) {
         await Future<void>.delayed(const Duration(seconds: 2));
@@ -155,7 +162,16 @@ class _MiseAJourGateState extends State<MiseAJourGate> with WidgetsBindingObserv
 
   bool get _force => _mode == 'force';
 
-  bool get _soft => !_dismissSoft && _mode == 'soft';
+  /// iOS : la CI publie le seuil dès l'envoi à Apple, mais la build n'est
+  /// téléchargeable qu'après la revue. Tant que l'App Store ne propose rien de
+  /// plus récent que la version installée, la bannière renverrait vers une fiche
+  /// sans mise à jour : on attend. Version store inconnue → comportement normal.
+  bool get _storeProposeMaj {
+    if (!Platform.isIOS || _versionStoreIos == null || _installee == null) return true;
+    return comparerVersions(_versionStoreIos!, _installee!) > 0;
+  }
+
+  bool get _soft => !_dismissSoft && _mode == 'soft' && _storeProposeMaj;
 
   String get _libelleSoft {
     // Même nom de version : on annonce la nouvelle build, pas « v1.0.10 → 1.0.10 ».
