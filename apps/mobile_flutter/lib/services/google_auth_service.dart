@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../config.dart';
@@ -75,9 +77,13 @@ class GoogleAuthService {
 
     if (idToken == null || idToken.isEmpty) {
       throw Exception(
-        'Impossible d\'obtenir le token Google (idToken vide). '
-        'Désinstallez RESERVA puis réinstallez depuis Play Internal testing. '
-        'Vérifiez aussi le client OAuth Android com.reserva.client + SHA-1 Play.',
+        // L'app iOS ne doit pas mentionner une autre plateforme (règle 2.3.10).
+        Platform.isIOS
+            ? 'Impossible d\'obtenir le token Google. Réessayez, ou utilisez '
+                'la connexion avec Apple ou par numéro de téléphone.'
+            : 'Impossible d\'obtenir le token Google (idToken vide). '
+                'Désinstallez RESERVA puis réinstallez depuis Play Internal testing. '
+                'Vérifiez aussi le client OAuth Android com.reserva.client + SHA-1 Play.',
       );
     }
     return idToken;

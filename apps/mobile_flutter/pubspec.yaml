@@ -53,6 +53,15 @@ flutter_launcher_icons:
   min_sdk_android: 21
 
 
+# App Store : flutter_webrtc 1.3.0 (imposé par livekit_client 2.6.x) appelle le
+# sélecteur privé `buttonPressed:` -> refus automatique Apple (nov. 2026).
+# Copie locale identique avec le correctif de flutter_webrtc 1.6.0 (#2121).
+# À retirer dès que le projet passe à Flutter >= 3.38 + livekit_client >= 2.12.
+# Voir third_party/flutter_webrtc/RESERVA_PATCH.md
+dependency_overrides:
+  flutter_webrtc:
+    path: third_party/flutter_webrtc
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

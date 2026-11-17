@@ -5,6 +5,19 @@ name: Deploy App Store (manuel)
 
 on:
   workflow_dispatch:
+    inputs:
+      build_number:
+        description: "CFBundleVersion forcé (vide = auto depuis le dernier run CI/CD). Utile si on lance depuis un autre dépôt."
+        required: false
+        default: ""
+      submit_for_review:
+        description: "Soumettre à l'App Review après l'envoi"
+        type: boolean
+        default: true
+      promote_banners:
+        description: "Promouvoir les bannières de mise à jour (production) après l'envoi"
+        type: boolean
+        default: true
 
 concurrency:
   group: deploy-ios
@@ -35,10 +48,15 @@ jobs:
         # supérieur à N, inférieur à la prochaine build CI/CD (N+1).
         env:
           GH_TOKEN: ${{ github.token }}
+          FORCED_BUILD: ${{ inputs.build_number }}
         run: |
-          BASE=$(gh api "repos/${{ github.repository }}/actions/workflows/ci-cd.yml/runs?per_page=1" --jq '.workflow_runs[0].run_number')
-          if [ -z "$BASE" ]; then echo "Dernier run CI/CD introuvable"; exit 1; fi
-          export BUILD="$BASE.${{ github.run_number }}"
+          if [ -n "${FORCED_BUILD:-}" ]; then
+            export BUILD="$FORCED_BUILD"
+          else
+            BASE=$(gh api "repos/${{ github.repository }}/actions/workflows/ci-cd.yml/runs?per_page=1" --jq '.workflow_runs[0].run_number')
+            if [ -z "$BASE" ]; then echo "Dernier run CI/CD introuvable"; exit 1; fi
+            export BUILD="$BASE.${{ github.run_number }}"
+          fi
           echo "→ CFBundleVersion $BUILD"
           ruby -e "
             path='pubspec.yaml'
@@ -205,6 +223,21 @@ jobs:
             --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
             --dart-define=SENTRY_DSN="${SENTRY_DSN:-}" \
             --export-options-plist=ios/ExportOptions.pro.plist
+      - name: Vérifier l'absence d'API privée (refus Apple 17/11/2026)
+        run: |
+          set -euo pipefail
+          found=0
+          for ipa in build/ios/ipa/*.ipa; do
+            dir=$(mktemp -d)
+            unzip -q "$ipa" -d "$dir"
+            if grep -rqa "buttonPressed:" "$dir/Payload"; then
+              echo "✗ $ipa contient encore le sélecteur privé buttonPressed:"
+              found=1
+            else
+              echo "✓ $ipa : aucun buttonPressed:"
+            fi
+          done
+          exit $found
       - name: Setup Ruby / Fastlane
         uses: ruby/setup-ruby@v1
         with:
@@ -217,12 +250,14 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review && 'true' || 'false' }}
         run: |
           mkdir -p fastlane
           printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > fastlane/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
           gem install fastlane --no-document
           fastlane deploy
       - name: Promouvoir bannières MAJ (minSoft = version publiée)
+        if: ${{ inputs.promote_banners }}
         working-directory: .
         run: |
           npm ci --ignore-scripts
