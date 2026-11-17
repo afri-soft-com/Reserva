@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import '../../services/son_alerte_reserva.dart';
 import '../../theme.dart';
@@ -159,7 +161,11 @@ class _SonAlerteScreenState extends State<SonAlerteScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Si le test est silencieux : Réglages Android → Apps → RESERVA Pro → Notifications → activez « Nouvelles réservations » et le son. Sur iOS : Réglages → RESERVA Pro → Notifications → Sons.',
+                  // Texte propre à chaque système : l'app iOS ne doit pas
+                  // mentionner une autre plateforme (règle App Store 2.3.10).
+                  Platform.isIOS
+                      ? 'Si le test est silencieux : Réglages → RESERVA Pro → Notifications → activez les notifications et les sons.'
+                      : 'Si le test est silencieux : Réglages → Apps → RESERVA Pro → Notifications → activez « Nouvelles réservations » et le son.',
                   style: TextStyle(fontSize: 12, height: 1.4, color: AppCouleurs.texteSecondaire),
                 ),
               ],
