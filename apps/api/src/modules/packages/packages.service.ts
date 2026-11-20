@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { attribuerTable } from "../ressources/ressources.service";
 import { ErreurNonTrouve, ErreurValidation, ErreurInterdit, ErreurConflit } from "../../utils/erreurs";
 import { genererNumeroReservation } from "@reserva/shared";
 import { CreerPackageInput, ModifierPackageInput, ReserverPackageInput } from "./packages.schema";
@@ -222,6 +223,7 @@ export async function reserverPackage(clientId: string, input: ReserverPackageIn
         throw new ErreurConflit(`Le créneau du service "${creneau.service.nom}" vient d'être complet`);
       }
 
+      const table = await attribuerTable(tx, { service: creneau.service, creneau, nombrePersonnes: 1 });
       await tx.creneau.update({
         where: { id: item.creneauId },
         data: { capaciteReservee: { increment: 1 } },
@@ -235,6 +237,7 @@ export async function reserverPackage(clientId: string, input: ReserverPackageIn
             prestataireId: creneau.service.prestataireId,
             serviceId: item.serviceId,
             creneauId: item.creneauId,
+            ressourceId: table?.id ?? null,
             packageId: pack.id,
             statut: "EN_ATTENTE",
             statutPaiement: "EN_ATTENTE",

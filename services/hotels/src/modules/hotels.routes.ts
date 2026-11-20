@@ -171,8 +171,9 @@ routesHotels.post("/", authentifier, exigerRole("ADMIN", "PRESTATAIRE"), asyncHa
   let prestataireId = req.body.prestataireId as string | undefined;
   if (req.utilisateur?.role === "PRESTATAIRE") {
     // Le profil prestataire vit dans core ; on stocke l'utilisateurId comme propriétaire marketplace
-    // jusqu'à synchro cross-service. Préférer body.prestataireId si fourni par l'admin.
-    prestataireId = req.body.prestataireId || req.utilisateur.utilisateurId;
+    // jusqu'à synchro cross-service. Seul l'admin peut fixer body.prestataireId :
+    // un prestataire ne crée que pour lui-même (sinon il perdrait l'accès à /api/hotels/pro).
+    prestataireId = req.utilisateur.utilisateurId;
   }
   const hotel = await prisma.hotel.create({
     data: {

@@ -15,6 +15,8 @@ import '../prestataire/packages_screen.dart';
 import '../prestataire/calendrier_prestataire_screen.dart';
 import '../prestataire/statistiques_prestataire_screen.dart';
 import '../prestataire/indisponibilites_prestataire_screen.dart';
+import '../prestataire/tables_prestataire_screen.dart';
+import '../prestataire/hotels_prestataire_screen.dart';
 import '../prestataire/politique_annulation_screen.dart';
 import '../prestataire/file_terrain_screen.dart';
 import '../prestataire/kyc_screen.dart';
@@ -337,6 +339,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 child: ListTile(
                   leading: Icon(Icons.groups),
                   title: Text('File terrain'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'hotels',
+                child: ListTile(
+                  leading: Icon(Icons.hotel),
+                  title: Text('Mes hôtels'),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
@@ -701,6 +712,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 6),
                 Text(r.service.nom, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                if (r.libelleTable.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(children: [
+                      const Icon(Icons.table_restaurant, size: 14, color: AppCouleurs.primaire),
+                      const SizedBox(width: 4),
+                      Text(r.libelleTable, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.primaire)),
+                    ]),
+                  ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -841,6 +861,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 6),
                 Text(r.service.nom, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                if (r.libelleTable.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(children: [
+                      const Icon(Icons.table_restaurant, size: 14, color: AppCouleurs.primaire),
+                      const SizedBox(width: 4),
+                      Text(r.libelleTable, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.primaire)),
+                    ]),
+                  ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -1142,16 +1171,19 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                         onSelected: (v) {
                           if (v == 'modifier') _showModifierServiceDialog(s);
                           if (v == 'creneaux') _showGestionCreneaux(s);
+                          if (v == 'tables') _ouvrirTables(s);
                         },
                         itemBuilder: (_) => [
                           const PopupMenuItem(value: 'modifier', child: Text('Modifier')),
                           const PopupMenuItem(value: 'creneaux', child: Text('Gérer les créneaux')),
+                          if (s['modeReservation'] == 'TABLE')
+                            const PopupMenuItem(value: 'tables', child: Text('Gérer les tables')),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('${s['prix']?.toString() ?? "0"} ${s['devise'] ?? "CDF"} • ${_formaterDuree(s['dureeMinutes'] as int? ?? 0)}',
+                  Text('${s['prix']?.toString() ?? "0"} ${s['devise'] ?? "CDF"}${s['prixParPersonne'] == true ? ' / pers.' : ''} • ${_formaterDuree(s['dureeMinutes'] as int? ?? 0)}${s['modeReservation'] == 'TABLE' ? ' • Tables' : ''}',
                     style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                   if (s['description'] != null && (s['description'] as String).isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -1341,6 +1373,8 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     String devise = 'CDF';
     String categorie = CategorieService.sante;
     String uniteDuree = 'heures';
+    bool modeTable = false;
+    bool parPersonne = false;
 
     showDialog(
       context: context,
@@ -1424,6 +1458,23 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 8),
                 TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: modeTable,
+                  onChanged: (v) => setDialogState(() => modeTable = v),
+                  title: const Text('Réservation de tables', style: TextStyle(fontSize: 14)),
+                  subtitle: const Text('Restaurant : le client indique le nombre de personnes, une table lui est attribuée.',
+                    style: TextStyle(fontSize: 12)),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: parPersonne,
+                  onChanged: (v) => setDialogState(() => parPersonne = v),
+                  title: const Text('Prix par personne', style: TextStyle(fontSize: 14)),
+                  subtitle: const Text('Le prix est multiplié par le nombre de personnes (menu, buffet).',
+                    style: TextStyle(fontSize: 12)),
+                ),
               ],
             ),
           ),
@@ -1433,17 +1484,22 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
               onPressed: () async {
                 if (nomCtrl.text.isEmpty || prixCtrl.text.isEmpty) return;
                 try {
-                  await ApiPrestataire.creerService({
+                  final cree = await ApiPrestataire.creerService({
                     'nom': nomCtrl.text,
                     'prix': double.parse(prixCtrl.text),
                     'devise': devise,
                     'dureeMinutes': calculerMinutes(),
                     'categorie': categorie,
                     'description': descCtrl.text,
+                    'modeReservation': modeTable ? 'TABLE' : 'CRENEAU',
+                    'prixParPersonne': parPersonne,
                   });
                   if (ctx.mounted) Navigator.pop(ctx);
                   _charger();
                   if (mounted) ToastWidget.show(context, 'Service créé', type: 'succes');
+                  if (modeTable && mounted && cree['id'] is String) {
+                    _ouvrirTables({'id': cree['id'], 'nom': nomCtrl.text});
+                  }
                 } catch (e) {
                   if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
                 }
@@ -1478,6 +1534,8 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     String devise = service['devise'] as String? ?? 'CDF';
     String categorie = service['categorie'] as String? ?? CategorieService.sante;
     String uniteDuree = initialUnite;
+    bool modeTable = service['modeReservation'] == 'TABLE';
+    bool parPersonne = service['prixParPersonne'] == true;
 
     showDialog(
       context: context,
@@ -1561,6 +1619,23 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 8),
                 TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: modeTable,
+                  onChanged: (v) => setDialogState(() => modeTable = v),
+                  title: const Text('Réservation de tables', style: TextStyle(fontSize: 14)),
+                  subtitle: const Text('Restaurant : le client indique le nombre de personnes, une table lui est attribuée.',
+                    style: TextStyle(fontSize: 12)),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: parPersonne,
+                  onChanged: (v) => setDialogState(() => parPersonne = v),
+                  title: const Text('Prix par personne', style: TextStyle(fontSize: 14)),
+                  subtitle: const Text('Le prix est multiplié par le nombre de personnes (menu, buffet).',
+                    style: TextStyle(fontSize: 12)),
+                ),
               ],
             ),
           ),
@@ -1576,6 +1651,8 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                     'dureeMinutes': calculerMinutes(),
                     'categorie': categorie,
                     'description': descCtrl.text,
+                    'modeReservation': modeTable ? 'TABLE' : 'CRENEAU',
+                    'prixParPersonne': parPersonne,
                   });
                   if (ctx.mounted) Navigator.pop(ctx);
                   _charger();
@@ -1590,6 +1667,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         );
       }),
     );
+  }
+
+  Future<void> _ouvrirTables(Map<String, dynamic> service) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => TablesPrestataireScreen(
+        serviceId: service['id'] as String,
+        serviceNom: service['nom'] as String? ?? '',
+      ),
+    ));
   }
 
   void _showGestionCreneaux(Map<String, dynamic> service) async {
@@ -1629,7 +1715,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                     ),
                     IconButton(
                       icon: const Icon(Icons.add_circle, color: AppCouleurs.primaire),
-                      onPressed: () => _showAjouterCreneauDialog(serviceId, () async {
+                      onPressed: () => _showAjouterCreneauDialog(serviceId, modeTable: service['modeReservation'] == 'TABLE', () async {
                         creneaux = await ApiPrestataire.listerCreneauxService(serviceId);
                         setSheetState(() {});
                       }),
@@ -1654,7 +1740,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                           return ListTile(
                             title: Text('${debut.substring(11, 16)} - ${fin.substring(11, 16)}',
                               style: const TextStyle(fontWeight: FontWeight.w600)),
-                            subtitle: Text('${debut.substring(0, 10)} • Places: ${capTotale - capReservee}/$capTotale',
+                            subtitle: Text('${debut.substring(0, 10)} • ${service['modeReservation'] == 'TABLE' ? 'Tables libres' : 'Places'}: ${capTotale - capReservee}/$capTotale',
                               style: const TextStyle(fontSize: 12)),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1693,7 +1779,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     );
   }
 
-  void _showAjouterCreneauDialog(String serviceId, VoidCallback onRafraichir) {
+  void _showAjouterCreneauDialog(String serviceId, VoidCallback onRafraichir, {bool modeTable = false}) {
     final dateCtrl = TextEditingController();
     final debutCtrl = TextEditingController(text: '09:00');
     final finCtrl = TextEditingController(text: '10:00');
@@ -1738,7 +1824,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 const SizedBox(height: 8),
                 TextField(controller: finCtrl, decoration: const InputDecoration(labelText: 'Fin (HH:MM)')),
                 const SizedBox(height: 8),
-                TextField(controller: capCtrl, decoration: const InputDecoration(labelText: 'Capacité'), keyboardType: TextInputType.number),
+                if (modeTable)
+                  Text('Capacité = nombre de tables actives du service.',
+                    style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire))
+                else
+                  TextField(controller: capCtrl, decoration: const InputDecoration(labelText: 'Capacité'), keyboardType: TextInputType.number),
               ],
             ),
           ),
@@ -1988,6 +2078,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
           MaterialPageRoute(builder: (_) => const FileTerrainScreen()),
         );
         if (mounted) _charger();
+        break;
+      case 'hotels':
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const HotelsPrestataireScreen()),
+        );
         break;
       case 'indisponibilites':
         await Navigator.of(context).push(

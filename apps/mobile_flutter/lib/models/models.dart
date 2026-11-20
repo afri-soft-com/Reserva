@@ -114,6 +114,10 @@ class ServiceOffert {
   final double prix;
   final String devise;
   final bool actif;
+  /// CRENEAU (défaut) ou TABLE (restaurant : table attribuée selon le nombre de personnes)
+  final String modeReservation;
+  /// Prix multiplié par le nombre de personnes
+  final bool prixParPersonne;
 
   ServiceOffert({
     required this.id,
@@ -124,7 +128,16 @@ class ServiceOffert {
     required this.prix,
     required this.devise,
     required this.actif,
+    this.modeReservation = 'CRENEAU',
+    this.prixParPersonne = false,
   });
+
+  bool get estModeTable => modeReservation == 'TABLE';
+
+  /// Le client doit indiquer un nombre de personnes
+  bool get demandeNombrePersonnes => estModeTable || prixParPersonne;
+
+  double prixPour(int personnes) => prixParPersonne ? prix * (personnes < 1 ? 1 : personnes) : prix;
 
   factory ServiceOffert.fromJson(Map<String, dynamic> json) => ServiceOffert(
     id: json['id'] as String,
@@ -135,6 +148,8 @@ class ServiceOffert {
     prix: (json['prix'] as num?)?.toDouble() ?? 0.0,
     devise: json['devise'] as String? ?? 'CDF',
     actif: json['actif'] as bool? ?? true,
+    modeReservation: json['modeReservation'] as String? ?? 'CRENEAU',
+    prixParPersonne: json['prixParPersonne'] as bool? ?? false,
   );
 }
 
@@ -147,6 +162,8 @@ class Creneau {
   final int capaciteReservee;
   final bool disponible;
   final bool bloque;
+  /// Mode TABLE : plus grand groupe encore plaçable sur ce créneau (null hors mode TABLE)
+  final int? personnesMax;
 
   Creneau({
     required this.id,
@@ -157,6 +174,7 @@ class Creneau {
     required this.capaciteReservee,
     required this.disponible,
     this.bloque = false,
+    this.personnesMax,
   });
 
   factory Creneau.fromJson(Map<String, dynamic> json) => Creneau(
@@ -168,6 +186,7 @@ class Creneau {
     capaciteReservee: json['capaciteReservee'] as int? ?? 0,
     disponible: json['disponible'] as bool? ?? true,
     bloque: json['bloque'] as bool? ?? false,
+    personnesMax: (json['personnesMax'] as num?)?.toInt(),
   );
 }
 
@@ -460,6 +479,9 @@ class ReservationDetaillee {
   final Prestataire prestataire;
   final Creneau creneau;
   final int? avisNote;
+  final int nombrePersonnes;
+  /// Table attribuée (mode TABLE)
+  final String? tableNom;
 
   ReservationDetaillee({
     required this.reservation,
@@ -467,7 +489,15 @@ class ReservationDetaillee {
     required this.prestataire,
     required this.creneau,
     this.avisNote,
+    this.nombrePersonnes = 1,
+    this.tableNom,
   });
+
+  /// « Table 4 · 3 pers. » — vide hors mode TABLE
+  String get libelleTable {
+    if (tableNom == null) return nombrePersonnes > 1 ? '$nombrePersonnes pers.' : '';
+    return '$tableNom · $nombrePersonnes pers.';
+  }
 
   factory ReservationDetaillee.fromJson(Map<String, dynamic> json) {
     final avis = json['avis'] as Map<String, dynamic>?;
@@ -477,6 +507,8 @@ class ReservationDetaillee {
       prestataire: Prestataire.fromJson(json['prestataire'] as Map<String, dynamic>),
       creneau: Creneau.fromJson(json['creneau'] as Map<String, dynamic>),
       avisNote: avis?['note'] as int?,
+      nombrePersonnes: (json['nombrePersonnes'] as num?)?.toInt() ?? 1,
+      tableNom: (json['ressource'] as Map<String, dynamic>?)?['nom'] as String?,
     );
   }
 }

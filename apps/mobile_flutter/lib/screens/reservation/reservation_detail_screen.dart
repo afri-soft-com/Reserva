@@ -237,6 +237,10 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                   const Divider(height: 24),
                   _ligne('Service', r.service.nom),
                   const SizedBox(height: 8),
+                  if (r.libelleTable.isNotEmpty) ...[
+                    _ligne(r.tableNom != null ? 'Table' : 'Personnes', r.libelleTable),
+                    const SizedBox(height: 8),
+                  ],
                   _ligne('Prestataire', r.prestataire.nomEntreprise),
                   const SizedBox(height: 8),
                   _ligne('Lieu', '${r.prestataire.ville}, ${r.prestataire.quartier}'),

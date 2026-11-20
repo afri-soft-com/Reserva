@@ -33,6 +33,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   int _occurrences = 1;
   /// Acompte optionnel (30 %) — sinon paiement intégral à la réservation
   bool _avecAcompte = false;
+  /// Nombre de couverts (services en mode TABLE ou prix par personne)
+  int _personnes = 1;
+  static const _personnesMaxSaisie = 30;
   List<dynamic> _packages = [];
   bool _chargementPackages = true;
 
@@ -51,6 +54,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       final data = await ApiServices.obtenirDetailService(widget.serviceId);
       if (mounted) {
         setState(() {
+          // Premier chargement d'un restaurant : 2 couverts par défaut
+          if (_data == null && data['modeReservation'] == 'TABLE') _personnes = 2;
           _data = data;
           _erreurReseau = false;
         });
@@ -103,6 +108,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           creneauId: _selectedCreneauId!,
           nombreOccurrences: _occurrences,
           acomptePourcent: acomptePourcent,
+          nombrePersonnes: _personnes,
         );
         final creees = (resultat['nombreCreees'] as num?)?.toInt() ?? _occurrences;
         final souhaitees = (resultat['nombreSouhaitees'] as num?)?.toInt() ?? _occurrences;
@@ -123,6 +129,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           serviceId: widget.serviceId,
           creneauId: _selectedCreneauId!,
           acomptePourcent: acomptePourcent,
+          nombrePersonnes: _personnes,
         );
         if (mounted) {
           ToastWidget.show(context, AppTraductions.t('reservationEffectuee'), type: 'succes');
@@ -235,6 +242,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             const SizedBox(height: 16),
             _buildPackages(),
             const SizedBox(height: 16),
+            if (service.demandeNombrePersonnes && !auth.estPrestataire) ...[
+              _buildNombrePersonnes(service, creneaux),
+              const SizedBox(height: 12),
+            ],
             _buildCreneaux(creneaux),
             const SizedBox(height: 16),
             _buildRepartitionNotes(prestataire, repartitionNotes),
@@ -334,7 +345,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(_formaterMontant(service.prix, service.devise),
+          Text('${_formaterMontant(service.prix, service.devise)}${service.prixParPersonne ? ' / pers.' : ''}',
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppCouleurs.primaire)),
           if (service.description != null && service.description!.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -456,6 +467,53 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     );
   }
 
+  /// Mode TABLE : le créneau a-t-il encore une table pour ce groupe ?
+  bool _creneauAccueille(Creneau c) => c.personnesMax == null || c.personnesMax! >= _personnes;
+
+  void _changerPersonnes(int valeur, List<Creneau> creneaux) {
+    setState(() {
+      _personnes = valeur.clamp(1, _personnesMaxSaisie);
+      final selection = creneaux.where((c) => c.id == _selectedCreneauId);
+      if (selection.isNotEmpty && !_creneauAccueille(selection.first)) _selectedCreneauId = null;
+    });
+  }
+
+  Widget _buildNombrePersonnes(ServiceOffert service, List<Creneau> creneaux) {
+    return Carte(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.groups_outlined, size: 20, color: AppCouleurs.primaire),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text('Nombre de personnes', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              ),
+              IconButton(
+                onPressed: _personnes > 1 ? () => _changerPersonnes(_personnes - 1, creneaux) : null,
+                icon: const Icon(Icons.remove_circle_outline),
+              ),
+              Text('$_personnes', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              IconButton(
+                onPressed: _personnes < _personnesMaxSaisie ? () => _changerPersonnes(_personnes + 1, creneaux) : null,
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+            ],
+          ),
+          if (service.prixParPersonne)
+            Text(
+              '${_formaterMontant(service.prix, service.devise)} × $_personnes = ${_formaterMontant(service.prixPour(_personnes), service.devise)}',
+              style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
+            ),
+          if (service.estModeTable)
+            Text('Une table adaptée vous est attribuée automatiquement.',
+              style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCreneaux(List<Creneau> creneaux) {
     final disponibles = creneaux.where((c) => c.disponible).toList();
     final bloques = creneaux.where((c) => c.bloque).toList();
@@ -498,15 +556,17 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         else
           ...disponibles.map((c) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedCreneauId = c.id),
+            child: Opacity(
+              opacity: _creneauAccueille(c) ? 1 : 0.45,
+              child: GestureDetector(
+              onTap: _creneauAccueille(c) ? () => setState(() => _selectedCreneauId = c.id) : null,
               child: Carte(
                 child: Row(
                   children: [
                     Radio<String>(
                       value: c.id,
                       groupValue: _selectedCreneauId,
-                      onChanged: (v) => setState(() => _selectedCreneauId = v),
+                      onChanged: _creneauAccueille(c) ? (v) => setState(() => _selectedCreneauId = v) : null,
                       activeColor: AppCouleurs.primaire,
                     ),
                     const SizedBox(width: 8),
@@ -525,6 +585,13 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
+                          if (c.personnesMax != null)
+                            Text(
+                              _creneauAccueille(c) ? 'Jusqu\'à ${c.personnesMax} pers.' : 'Complet pour $_personnes pers.',
+                              style: TextStyle(fontSize: 13,
+                                color: _creneauAccueille(c) ? AppCouleurs.succes : AppCouleurs.alerte),
+                            )
+                          else
                           Text('${c.capaciteTotale - c.capaciteReservee} ${AppTraductions.t('places')}',
                             style: TextStyle(fontSize: 13,
                               color: c.capaciteTotale - c.capaciteReservee <= 2 ? AppCouleurs.alerte : AppCouleurs.succes)),
@@ -534,6 +601,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                   ],
                 ),
               ),
+            ),
             ),
           )),
         if (complets.isNotEmpty) ...[

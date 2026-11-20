@@ -27,6 +27,7 @@ import { routesVoix } from "../modules/voix/voix.routes";
 import { routesAppVersions } from "../modules/app-versions/app-versions.routes";
 import { routesReferentiel } from "../modules/referentiel/referentiel.routes";
 import { routesLegal } from "../modules/legal/legal.routes";
+import { routesRessources } from "../modules/ressources/ressources.routes";
 
 export const routesApi = Router();
 
@@ -51,6 +52,7 @@ routesApi.use("/avoirs", routesAvoirs);
 routesApi.use("/alertes", routesAlertes);
 routesApi.use("/attentes", routesAttentes);
 routesApi.use("/indisponibilites", routesIndisponibilites);
+routesApi.use("/ressources", routesRessources);
 routesApi.use("/portefeuille", routesPortefeuille);
 routesApi.use("/economie", routesEconomie);
 routesApi.use("/innovations", routesInnovations);
