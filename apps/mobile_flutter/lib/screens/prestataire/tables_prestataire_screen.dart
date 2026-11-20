@@ -1,0 +1,308 @@
+import 'package:flutter/material.dart';
+import '../../theme.dart';
+import '../../models/unite_ressource.dart';
+import '../../services/api_ressources.dart';
+import '../../widgets/carte.dart';
+import '../../widgets/squelette.dart';
+import '../../widgets/toast.dart';
+
+/// Gestion des unités d'un service en mode ressources : tables (restaurant), salles,
+/// praticiens, guichets… Le vocabulaire suit la catégorie ou le libellé du service.
+class TablesPrestataireScreen extends StatefulWidget {
+  final String serviceId;
+  final String serviceNom;
+  final UniteRessource unite;
+  /// Le client choisit lui-même l'unité (sinon attribution automatique)
+  final bool choixClient;
+
+  const TablesPrestataireScreen({
+    super.key,
+    required this.serviceId,
+    required this.serviceNom,
+    required this.unite,
+    this.choixClient = false,
+  });
+
+  @override
+  State<TablesPrestataireScreen> createState() => _TablesPrestataireScreenState();
+}
+
+class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
+  UniteRessource get _u => widget.unite;
+  List<dynamic> _tables = [];
+  bool _chargement = true;
+  String? _erreur;
+
+  @override
+  void initState() {
+    super.initState();
+    _charger();
+  }
+
+  Future<void> _charger() async {
+    try {
+      final tables = await ApiRessources.lister(widget.serviceId);
+      if (mounted) setState(() { _tables = tables; _erreur = null; });
+    } catch (e) {
+      if (mounted) setState(() => _erreur = e.toString());
+    } finally {
+      if (mounted) setState(() => _chargement = false);
+    }
+  }
+
+  List<dynamic> get _actives => _tables.where((t) => t['actif'] == true).toList();
+
+  int get _couvertsTotal => _actives.fold<int>(0, (s, t) => s + ((t['capacite'] as num?)?.toInt() ?? 0));
+
+  Future<void> _executer(Future<void> Function() action, String succes) async {
+    try {
+      await action();
+      if (mounted) ToastWidget.show(context, succes, type: 'succes');
+      await _charger();
+    } catch (e) {
+      if (mounted) ToastWidget.show(context, e.toString().replaceFirst('Exception: ', ''), type: 'erreur');
+    }
+  }
+
+  /// Saisie commune « nom + capacité » (ajout / modification d'une unité).
+  Future<({String nom, int capacite})?> _saisirTable({String? nom, int? capacite, required String titre}) {
+    final nomCtrl = TextEditingController(text: nom ?? '');
+    final capCtrl = TextEditingController(text: '${capacite ?? _u.capaciteDefaut}');
+    return showDialog<({String nom, int capacite})>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(titre),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nomCtrl,
+              decoration: InputDecoration(labelText: 'Nom', hintText: 'Ex : ${_u.exemple}'),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: capCtrl,
+              decoration: const InputDecoration(labelText: 'Personnes accueillies en même temps', suffixText: 'pers.'),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () {
+              final cap = int.tryParse(capCtrl.text.trim());
+              if (nomCtrl.text.trim().isEmpty || cap == null || cap < 1 || cap > 50) {
+                ToastWidget.show(ctx, 'Indiquez un nom et entre 1 et 50 places', type: 'erreur');
+                return;
+              }
+              Navigator.pop(ctx, (nom: nomCtrl.text.trim(), capacite: cap));
+            },
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _ajouterUne() async {
+    final saisie = await _saisirTable(titre: 'Ajouter : ${_u.minuscule}');
+    if (saisie == null) return;
+    await _executer(
+      () => ApiRessources.creer(serviceId: widget.serviceId, nom: saisie.nom, capacite: saisie.capacite),
+      '« ${saisie.nom} » ajouté',
+    );
+  }
+
+  Future<void> _ajouterPlusieurs() async {
+    final nombreCtrl = TextEditingController(text: '5');
+    final capCtrl = TextEditingController(text: '${_u.capaciteDefaut}');
+    final prefixeCtrl = TextEditingController(text: _u.singulier);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Ajouter plusieurs ${_u.plurielMinuscule}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nombreCtrl, decoration: InputDecoration(labelText: 'Nombre de ${_u.plurielMinuscule}'), keyboardType: TextInputType.number),
+            const SizedBox(height: 8),
+            TextField(controller: capCtrl, decoration: InputDecoration(labelText: 'Personnes par ${_u.minuscule}', suffixText: 'pers.'), keyboardType: TextInputType.number),
+            const SizedBox(height: 8),
+            TextField(controller: prefixeCtrl, decoration: InputDecoration(labelText: 'Nom', helperText: 'Numérotés à la suite : ${_u.singulier} 1, ${_u.singulier} 2…')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ajouter')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final nombre = int.tryParse(nombreCtrl.text.trim());
+    final cap = int.tryParse(capCtrl.text.trim());
+    if (nombre == null || nombre < 1 || nombre > 100 || cap == null || cap < 1 || cap > 50) {
+      if (mounted) ToastWidget.show(context, 'Entre 1 et 100 ${_u.plurielMinuscule}, de 1 à 50 personnes', type: 'erreur');
+      return;
+    }
+    await _executer(
+      () => ApiRessources.creerEnLot(serviceId: widget.serviceId, nombre: nombre, capacite: cap, prefixe: prefixeCtrl.text),
+      '$nombre ${nombre > 1 ? _u.plurielMinuscule : _u.minuscule} ajouté(s)',
+    );
+  }
+
+  Future<void> _modifier(Map<String, dynamic> table) async {
+    final saisie = await _saisirTable(
+      titre: 'Modifier « ${table['nom'] ?? ''} »',
+      nom: table['nom'] as String?,
+      capacite: (table['capacite'] as num?)?.toInt(),
+    );
+    if (saisie == null) return;
+    await _executer(
+      () => ApiRessources.modifier(table['id'] as String, {'nom': saisie.nom, 'capacite': saisie.capacite}),
+      'Modifications enregistrées',
+    );
+  }
+
+  Future<void> _basculer(Map<String, dynamic> table) async {
+    final active = table['actif'] == true;
+    if (active) {
+      await _executer(() => ApiRessources.retirer(table['id'] as String), '« ${table['nom']} » retiré du service');
+    } else {
+      await _executer(() => ApiRessources.modifier(table['id'] as String, {'actif': true}), '« ${table['nom']} » remis en service');
+    }
+  }
+
+  void _ouvrirAjout() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(_u.icone),
+              title: Text('Un(e) seul(e) : ${_u.minuscule}'),
+              onTap: () { Navigator.pop(ctx); _ajouterUne(); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.grid_view),
+              title: Text('Plusieurs ${_u.plurielMinuscule} identiques'),
+              onTap: () { Navigator.pop(ctx); _ajouterPlusieurs(); },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('${_u.pluriel} · ${widget.serviceNom}')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _ouvrirAjout,
+        icon: const Icon(Icons.add),
+        label: const Text('Ajouter'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _charger,
+        child: _chargement
+            ? const Padding(padding: EdgeInsets.all(16), child: Squelette())
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                children: [
+                  Text(
+                    widget.choixClient
+                        ? 'Le client choisit ${_u.minuscule == 'praticien' ? 'son praticien' : 'parmi vos ${_u.plurielMinuscule}'} au moment de réserver ; seules les disponibilités réelles lui sont proposées.'
+                        : 'Chaque réservation reçoit automatiquement la plus petite unité (${_u.minuscule}) libre adaptée au nombre de personnes.',
+                    style: TextStyle(color: AppCouleurs.texteSecondaire, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_erreur != null && _tables.isEmpty)
+                    EcranVide(
+                      icone: Icons.error_outline,
+                      message: 'Impossible de charger les ${_u.plurielMinuscule}',
+                      sousTitre: _erreur!.replaceFirst('Exception: ', ''),
+                      action: ElevatedButton(onPressed: _charger, child: const Text('Réessayer')),
+                    )
+                  else if (_tables.isEmpty)
+                    EcranVide(
+                      icone: _u.icone,
+                      message: 'Aucun(e) ${_u.minuscule}',
+                      sousTitre: 'Ajoutez vos ${_u.plurielMinuscule} avant de publier des créneaux.',
+                    )
+                  else ...[
+                    Carte(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _stat('${_actives.length}', '${_u.plurielMinuscule} actifs'),
+                          _stat('$_couvertsTotal', 'personnes en même temps'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ..._tables.map((t) => _ligneTable(t as Map<String, dynamic>)),
+                  ],
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _stat(String valeur, String libelle) => Column(
+        children: [
+          Text(valeur, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          Text(libelle, style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+        ],
+      );
+
+  Widget _ligneTable(Map<String, dynamic> t) {
+    final active = t['actif'] == true;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Opacity(
+        opacity: active ? 1 : 0.5,
+        child: Carte(
+          child: Row(
+            children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: AppCouleurs.primaire.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(_u.icone, color: AppCouleurs.primaire, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t['nom'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    Text(
+                      '${t['capacite']} pers. max${active ? '' : ' · hors service'}',
+                      style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (v) {
+                  if (v == 'modifier') _modifier(t);
+                  if (v == 'basculer') _basculer(t);
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'modifier', child: Text('Modifier')),
+                  PopupMenuItem(value: 'basculer', child: Text(active ? 'Retirer du service' : 'Remettre en service')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

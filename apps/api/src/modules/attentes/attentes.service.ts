@@ -115,7 +115,9 @@ export async function promouvoirCreneau(serviceId: string, creneauId: string) {
   if (!creneauActuel) return { promu: false };
 
   const placeLibre = creneauActuel.capaciteReservee < creneauActuel.capaciteTotale;
-  if (!placeLibre || creneauActuel.debut < new Date()) {
+  // Mode TABLE : la taille du groupe est inconnue, on prévient le client au lieu de réserver à sa place
+  const reservationAuto = suivant.service.modeReservation !== "TABLE";
+  if (!placeLibre || !reservationAuto || creneauActuel.debut < new Date()) {
     await prisma.listeAttente.update({ where: { id: suivant.id }, data: { statut: "NOTIFIE" } });
     await prisma.notification.create({
       data: {

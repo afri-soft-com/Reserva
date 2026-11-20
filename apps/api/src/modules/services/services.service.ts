@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { MODE_TABLE, compterTablesActives, disponibiliteRessourcesParCreneau, libelleRessourcePour } from "../ressources/ressources.service";
 import { ErreurNonTrouve, ErreurValidation, ErreurInterdit, ErreurConflit } from "../../utils/erreurs";
 import { RechercheServicesInput, CreerCreneauInput, calculerOffset } from "@reserva/shared";
 
@@ -241,14 +242,34 @@ export async function obtenirDetailService(serviceId: string) {
 
   // N'expose que les créneaux ayant encore de la capacité disponible et hors périodes d'indisponibilité
   const periodesBloquees = await chargerPeriodesBloquees([service.prestataireId]);
+  // Mode ressources : plus grand groupe plaçable et unités libres sur chaque créneau
+  const modeRessources = service.modeReservation === MODE_TABLE;
+  const dispoRessources = modeRessources
+    ? await disponibiliteRessourcesParCreneau(service.id, service.creneaux)
+    : null;
   const creneauxDisponibles = service.creneaux.map((c) => {
     const estBloque = creneauEstBloque(c, periodesBloquees, service.prestataireId);
+    const dispo = dispoRessources ? dispoRessources.get(c.id) ?? { personnesMax: 0, libres: [] } : null;
     return {
       ...c,
-      disponible: c.capaciteReservee < c.capaciteTotale && !estBloque,
+      disponible: c.capaciteReservee < c.capaciteTotale && !estBloque && (!dispo || dispo.personnesMax > 0),
       bloque: estBloque,
+      ...(dispo ? { personnesMax: dispo.personnesMax } : {}),
+      ...(dispo && service.choixRessource ? { ressourcesLibres: dispo.libres } : {}),
     };
   });
+  // Liste publique des unités, seulement si le client peut choisir
+  const ressources =
+    modeRessources && service.choixRessource
+      ? await prisma.ressource.findMany({
+          where: { serviceId: service.id, actif: true },
+          select: { id: true, nom: true, capacite: true },
+          orderBy: [{ nom: "asc" }],
+        })
+      : undefined;
+  const libelleRessource = modeRessources
+    ? libelleRessourcePour(service.prestataire?.categorie, service.libelleRessource)
+    : undefined;
 
   // Avis rÃ©cents pour ce prestataire
   const avis = await prisma.avis.findMany({
@@ -298,6 +319,8 @@ export async function obtenirDetailService(serviceId: string) {
   return {
     ...service,
     creneaux: creneauxDisponibles,
+    ...(libelleRessource ? { libelleRessource } : {}),
+    ...(ressources ? { ressources } : {}),
     avis: avis.map(formaterAvisPublic),
     repartitionNotes: notes,
     servicesSimilaires,
@@ -338,6 +361,19 @@ export async function listerAvisPrestataire(prestataireId: string) {
   return avis.map(formaterAvisPublic);
 }
 
+/** Mode TABLE : la capacité d'un créneau est le nombre de tables actives (saisie ignorée) */
+async function capaciteCreneauPourService(
+  service: { id: string; modeReservation: string },
+  capaciteSaisie: number
+): Promise<number> {
+  if (service.modeReservation !== MODE_TABLE) return capaciteSaisie;
+  const nombreTables = await compterTablesActives(service.id);
+  if (nombreTables === 0) {
+    throw new ErreurValidation("Ajoutez d'abord vos unités (tables, salles, praticiens…) avant de publier des créneaux pour ce service");
+  }
+  return nombreTables;
+}
+
 /** [PRESTATAIRE] CrÃ©e un crÃ©neau de disponibilitÃ© pour un de ses services */
 export async function creerCreneau(utilisateurId: string, input: CreerCreneauInput) {
   const prestataire = await prisma.prestataire.findUnique({ where: { utilisateurId } });
@@ -376,7 +412,7 @@ export async function creerCreneau(utilisateurId: string, input: CreerCreneauInp
       serviceId: input.serviceId,
       debut,
       fin,
-      capaciteTotale: input.capaciteTotale,
+      capaciteTotale: await capaciteCreneauPourService(service, input.capaciteTotale),
     },
   });
 }
@@ -403,6 +439,7 @@ export async function creerCreneauxRecurrents(
     throw new ErreurNonTrouve("Service non trouvÃ©");
   }
 
+  const capaciteParCreneau = await capaciteCreneauPourService(service, params.capaciteParCreneau);
   const joursExclus = params.joursExclus ?? [0]; // dimanche exclu par dÃ©faut
   const creneauxACreer: { serviceId: string; debut: Date; fin: Date; capaciteTotale: number }[] = [];
 
@@ -418,7 +455,7 @@ export async function creerCreneauxRecurrents(
         const fin = new Date(debut.getTime() + params.dureeMinutes * 60 * 1000);
 
         if (debut > new Date()) {
-          creneauxACreer.push({ serviceId: params.serviceId, debut, fin, capaciteTotale: params.capaciteParCreneau });
+          creneauxACreer.push({ serviceId: params.serviceId, debut, fin, capaciteTotale: capaciteParCreneau });
         }
       }
     }

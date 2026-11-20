@@ -155,9 +155,19 @@ model ServiceOffert {
   prix            Float
   devise          String   @default("CDF")
   actif           Boolean  @default(true)
+  /// CRENEAU = une place par réservation (défaut) | TABLE = mode ressources : attribution d'une unité
+  /// (table, salle, praticien, guichet…) parmi les Ressource du service, selon le nombre de personnes
+  modeReservation String   @default("CRENEAU")
+  /// Vrai : prix multiplié par le nombre de personnes (menu, buffet)
+  prixParPersonne Boolean  @default(false)
+  /// Mode ressources : le client choisit lui-même l'unité (ex. son médecin) au lieu d'une attribution automatique
+  choixRessource  Boolean  @default(false)
+  /// Mode ressources : nom affiché d'une unité (« Table », « Salle », « Praticien »…). Null = déduit de la catégorie
+  libelleRessource String?
   creeLe          DateTime @default(now())
 
   creneaux        Creneau[]
+  ressources      Ressource[]
   reservations    Reservation[]
   favoris         Favori[]
   packageItems    PackageServiceItem[]
@@ -186,6 +196,23 @@ model Creneau {
   @@map("creneaux")
 }
 
+/// Unité physique réservable d'un service en mode TABLE (ex. « Table 12 », 4 couverts)
+model Ressource {
+  id            String   @id @default(uuid())
+  serviceId     String
+  service       ServiceOffert @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  nom           String
+  capacite      Int      @default(1)
+  actif         Boolean  @default(true)
+  creeLe        DateTime @default(now())
+
+  reservations  Reservation[]
+
+  @@unique([serviceId, nom])
+  @@index([serviceId, actif])
+  @@map("ressources")
+}
+
 model Reservation {
   id                  String   @id @default(uuid())
   numero              String   @unique
@@ -197,6 +224,11 @@ model Reservation {
   service             ServiceOffert @relation(fields: [serviceId], references: [id])
   creneauId           String
   creneau             Creneau @relation(fields: [creneauId], references: [id])
+  /// Nombre de couverts / personnes (mode TABLE)
+  nombrePersonnes     Int      @default(1)
+  /// Table attribuée (mode TABLE)
+  ressourceId         String?
+  ressource           Ressource? @relation(fields: [ressourceId], references: [id], onDelete: SetNull)
   statut              String @default("EN_ATTENTE")
   statutPaiement      String @default("EN_ATTENTE")
   montantTotal        Float
@@ -247,6 +279,7 @@ model Reservation {
   @@index([statut])
   @@index([sequestreLiberableLe])
   @@index([agentId])
+  @@index([ressourceId])
   @@map("reservations")
 }
 

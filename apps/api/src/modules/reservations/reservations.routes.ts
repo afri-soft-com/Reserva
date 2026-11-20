@@ -12,6 +12,8 @@ const schemaReservationRecurrente = z.object({
   serviceId: z.string().guid("Identifiant de service invalide"),
   creneauId: z.string().guid("Identifiant de créneau invalide"),
   nombreOccurrences: z.coerce.number().int().min(2).max(12).default(4),
+  nombrePersonnes: z.coerce.number().int().min(1).max(50).default(1),
+  ressourceId: z.string().guid("Identifiant de ressource invalide").optional(),
   notes: z.string().trim().max(500).optional(),
   acomptePourcent: z.coerce.number().int().min(0).max(100).default(0),
 });

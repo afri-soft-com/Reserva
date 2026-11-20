@@ -14,6 +14,12 @@ import { creerAvoir } from "../avoirs/avoirs.service";
 import { promouvoirCreneau } from "../attentes/attentes.service";
 import { notifierAlertesService } from "../alertes/alertes.service";
 import { calculerPourReservation, enregistrerRemboursement } from "../economie/economie.service";
+import { attribuerTable } from "../ressources/ressources.service";
+
+/** Prix de base d'une réservation : multiplié par le nombre de couverts si le service est « par personne » */
+export function prixPourGroupe(service: { prix: number; prixParPersonne: boolean }, nombrePersonnes: number): number {
+  return service.prixParPersonne ? service.prix * Math.max(1, nombrePersonnes) : service.prix;
+}
 
 interface PeriodeBloqueeApi {
   serviceId: string | null;
@@ -88,15 +94,23 @@ export async function creerReservation(clientId: string, input: CreerReservation
 
   await exigerCreneauNonBloque(prisma, creneau, creneau.service.prestataireId);
 
+  const nombrePersonnes = input.nombrePersonnes ?? 1;
   const tarif = await calculerPourReservation({
     prestataireId: creneau.service.prestataireId,
-    prixService: creneau.service.prix,
+    prixService: prixPourGroupe(creneau.service, nombrePersonnes),
     devise: creneau.service.devise,
   });
 
   // Transaction atomique : vérifie la capacité ET incrémente en une seule opération,
   // afin d'empêcher deux clients de prendre la dernière place simultanément.
   const reservation = await prisma.$transaction(async (tx) => {
+    // Mode TABLE : verrouille le créneau et choisit la plus petite table adaptée au groupe
+    const table = await attribuerTable(tx, {
+      service: creneau.service,
+      creneau,
+      nombrePersonnes,
+      ressourceIdSouhaitee: input.ressourceId,
+    });
     const creneauActuel = await tx.creneau.findUnique({ where: { id: input.creneauId } });
     if (!creneauActuel || creneauActuel.capaciteReservee >= creneauActuel.capaciteTotale) {
       throw new ErreurConflit("Ce créneau vient d'être complet. Veuillez choisir un autre horaire.");
@@ -121,6 +135,8 @@ export async function creerReservation(clientId: string, input: CreerReservation
         prestataireId: creneau.service.prestataireId,
         serviceId: input.serviceId,
         creneauId: input.creneauId,
+        nombrePersonnes,
+        ressourceId: table?.id ?? null,
         statut: "EN_ATTENTE",
         statutPaiement: "EN_ATTENTE",
         montantTotal: tarif.montantTotalClient,
@@ -143,6 +159,7 @@ export async function creerReservation(clientId: string, input: CreerReservation
         service: true,
         prestataire: true,
         creneau: true,
+        ressource: true,
         client: { select: { nom: true } },
       },
     });
@@ -160,7 +177,7 @@ export async function creerReservation(clientId: string, input: CreerReservation
     utilisateurId: reservation.prestataire.utilisateurId,
     reservationId: reservation.id,
     titre: "Nouvelle réservation",
-    message: `${reservation.client.nom} a réservé ${reservation.service.nom} le ${reservation.creneau.debut.toLocaleDateString("fr-FR")} à ${reservation.creneau.debut.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} (${reservation.numero}).`,
+    message: `${reservation.client.nom} a réservé ${reservation.service.nom} le ${reservation.creneau.debut.toLocaleDateString("fr-FR")} à ${reservation.creneau.debut.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}${reservation.ressource ? ` · ${reservation.ressource.nom}, ${reservation.nombrePersonnes} pers.` : ""} (${reservation.numero}).`,
     type: "CONFIRMATION" as const,
   };
   await creerNotification(notifPresta);
@@ -223,6 +240,15 @@ export async function modifierReservation(utilisateurId: string, input: { reserv
   }
 
   const resultat = await prisma.$transaction(async (tx) => {
+    const table = await attribuerTable(tx, {
+      service: reservation.service,
+      creneau: nouveauCreneau,
+      nombrePersonnes: reservation.nombrePersonnes,
+      exclureReservationId: reservation.id,
+      // Choix par le client (ex. son médecin) : on garde la même unité sur le nouvel horaire
+      ressourceIdSouhaitee: reservation.ressourceId,
+    });
+
     await tx.creneau.update({
       where: { id: reservation.creneauId },
       data: { capaciteReservee: { decrement: 1 } },
@@ -235,7 +261,11 @@ export async function modifierReservation(utilisateurId: string, input: { reserv
 
     return tx.reservation.update({
       where: { id: input.reservationId },
-      data: { creneauId: input.nouveauCreneauId, statut: "EN_ATTENTE" },
+      data: {
+        creneauId: input.nouveauCreneauId,
+        statut: "EN_ATTENTE",
+        ...(table ? { ressourceId: table.id } : {}),
+      },
       include: { service: true, prestataire: true, creneau: true, client: true },
     });
   });
@@ -456,7 +486,13 @@ export async function annulerReservation(utilisateurId: string, input: AnnulerRe
 export async function listerMesReservations(clientId: string, statut?: string) {
   return prisma.reservation.findMany({
     where: { clientId, ...(statut ? { statut: statut as any } : {}) },
-    include: { prestataire: true, service: true, creneau: true, avis: true },
+    include: {
+      prestataire: true,
+      service: true,
+      creneau: true,
+      avis: true,
+      ressource: { select: { id: true, nom: true, capacite: true } },
+    },
     orderBy: { creneau: { debut: "desc" } },
   });
 }
@@ -471,6 +507,7 @@ export async function obtenirDetailReservation(utilisateurId: string, reservatio
       creneau: true,
       transactions: true,
       avis: true,
+      ressource: { select: { id: true, nom: true, capacite: true } },
       client: { select: { nom: true, telephone: true } },
     },
   });
@@ -498,7 +535,12 @@ export async function listerReservationsPrestataire(utilisateurId: string, statu
 
   return prisma.reservation.findMany({
     where: { prestataireId: prestataire.id, ...(statut ? { statut: statut as any } : {}) },
-    include: { client: { select: { nom: true, telephone: true } }, service: true, creneau: true },
+    include: {
+      client: { select: { nom: true, telephone: true } },
+      service: true,
+      creneau: true,
+      ressource: { select: { id: true, nom: true, capacite: true } },
+    },
     orderBy: { creneau: { debut: "asc" } },
   });
 }
@@ -627,9 +669,12 @@ export async function creerReservationsRecurrentes(
     nombreOccurrences?: number;
     notes?: string;
     acomptePourcent?: number;
+    nombrePersonnes?: number;
+    ressourceId?: string;
   }
 ) {
   const nombreOccurrences = input.nombreOccurrences ?? 4;
+  const nombrePersonnes = input.nombrePersonnes ?? 1;
   const creneauBase = await prisma.creneau.findUnique({
     where: { id: input.creneauId },
     include: { service: { include: { prestataire: true } } },
@@ -665,13 +710,19 @@ export async function creerReservationsRecurrentes(
   const recurrenceGroupeId = crypto.randomUUID();
   const tarif = await calculerPourReservation({
     prestataireId: creneauBase.service.prestataireId,
-    prixService: creneauBase.service.prix,
+    prixService: prixPourGroupe(creneauBase.service, nombrePersonnes),
     devise: creneauBase.service.devise,
   });
 
   const reservations = await prisma.$transaction(async (tx) => {
     const resultats = [];
     for (const creneau of creneauxAServir) {
+      const table = await attribuerTable(tx, {
+        service: creneauBase.service,
+        creneau,
+        nombrePersonnes,
+        ressourceIdSouhaitee: input.ressourceId,
+      });
       const actuel = await tx.creneau.findUnique({ where: { id: creneau.id } });
       if (!actuel || actuel.capaciteReservee >= actuel.capaciteTotale) {
         throw new ErreurConflit(`Un des créneaux de la série vient d'être complet. Veuillez réessayer.`);
@@ -689,6 +740,8 @@ export async function creerReservationsRecurrentes(
             prestataireId: creneauBase.service.prestataireId,
             serviceId: input.serviceId,
             creneauId: creneau.id,
+            nombrePersonnes,
+            ressourceId: table?.id ?? null,
             recurrenceGroupeId,
             statut: "EN_ATTENTE",
             statutPaiement: "EN_ATTENTE",
@@ -762,6 +815,7 @@ export async function reproduireReservation(clientId: string, reservationId: str
         serviceId: originale.serviceId,
         creneauId: reference,
         nombreOccurrences: Math.min(12, occ.length),
+        nombrePersonnes: originale.nombrePersonnes,
       });
     }
   }
@@ -807,6 +861,7 @@ export async function reproduireReservation(clientId: string, reservationId: str
   return creerReservation(clientId, {
     serviceId: originale.serviceId,
     creneauId: creneauChoisi.id,
+    nombrePersonnes: originale.nombrePersonnes,
     notes: originale.notes ? `[Reprise] ${originale.notes}`.trim() : "[Reprise]",
     reservePourTiers: originale.reservePourTiers,
     nomTiers: originale.nomTiers ?? undefined,

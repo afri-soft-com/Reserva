@@ -13,10 +13,14 @@ class ApiReservations {
     String? nomTiers,
     String? telephoneTiers,
     int acomptePourcent = 0,
+    int nombrePersonnes = 1,
+    String? ressourceId,
   }) async {
     final data = await ApiClient.post('/reservations', body: {
       'serviceId': serviceId,
       'creneauId': creneauId,
+      'nombrePersonnes': nombrePersonnes,
+      if (ressourceId != null) 'ressourceId': ressourceId,
       if (notes != null) 'notes': notes,
       'reservePourTiers': reservePourTiers,
       if (nomTiers != null) 'nomTiers': nomTiers,
@@ -32,10 +36,14 @@ class ApiReservations {
     required int nombreOccurrences,
     String? notes,
     int acomptePourcent = 0,
+    int nombrePersonnes = 1,
+    String? ressourceId,
   }) async {
     return (await ApiClient.post('/reservations/recurrentes', body: {
       'serviceId': serviceId,
       'creneauId': creneauId,
+      'nombrePersonnes': nombrePersonnes,
+      if (ressourceId != null) 'ressourceId': ressourceId,
       'nombreOccurrences': nombreOccurrences,
       if (notes != null && notes.trim().isNotEmpty) 'notes': notes,
       'acomptePourcent': acomptePourcent,

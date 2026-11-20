@@ -15,6 +15,8 @@ import '../prestataire/packages_screen.dart';
 import '../prestataire/calendrier_prestataire_screen.dart';
 import '../prestataire/statistiques_prestataire_screen.dart';
 import '../prestataire/indisponibilites_prestataire_screen.dart';
+import '../prestataire/tables_prestataire_screen.dart';
+import '../prestataire/hotels_prestataire_screen.dart';
 import '../prestataire/politique_annulation_screen.dart';
 import '../prestataire/file_terrain_screen.dart';
 import '../prestataire/kyc_screen.dart';
@@ -32,6 +34,8 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
   List<dynamic> _services = [];
   AvisRecusData? _avisData;
   String? _profilStatut;
+  /// Catégorie du prestataire : donne le vocabulaire des unités (tables, salles, praticiens…)
+  String? _categorie;
   String? _kycMotif;
   Map<String, dynamic>? _exigenceDocuments;
   Map<String, dynamic>? _abonnement;
@@ -64,6 +68,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
       if (!mounted) return;
       setState(() {
         _profilStatut = profil['statut'] as String?;
+        _categorie = profil['categorie'] as String?;
         _kycMotif = profil['kycMotifRejet'] as String?;
         _exigenceDocuments = profil['exigenceDocuments'] as Map<String, dynamic>?;
         _activationRequise = activationRequise;
@@ -337,6 +342,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 child: ListTile(
                   leading: Icon(Icons.groups),
                   title: Text('File terrain'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'hotels',
+                child: ListTile(
+                  leading: Icon(Icons.hotel),
+                  title: Text('Mes hôtels'),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
@@ -701,6 +715,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 6),
                 Text(r.service.nom, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                if (r.libelleTable.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(children: [
+                      Icon(UniteRessource.pour(_categorie).icone, size: 14, color: AppCouleurs.primaire),
+                      const SizedBox(width: 4),
+                      Text(r.libelleTable, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.primaire)),
+                    ]),
+                  ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -841,6 +864,15 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 6),
                 Text(r.service.nom, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                if (r.libelleTable.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(children: [
+                      Icon(UniteRessource.pour(_categorie).icone, size: 14, color: AppCouleurs.primaire),
+                      const SizedBox(width: 4),
+                      Text(r.libelleTable, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.primaire)),
+                    ]),
+                  ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -1142,16 +1174,19 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                         onSelected: (v) {
                           if (v == 'modifier') _showModifierServiceDialog(s);
                           if (v == 'creneaux') _showGestionCreneaux(s);
+                          if (v == 'tables') _ouvrirTables(s);
                         },
                         itemBuilder: (_) => [
                           const PopupMenuItem(value: 'modifier', child: Text('Modifier')),
                           const PopupMenuItem(value: 'creneaux', child: Text('Gérer les créneaux')),
+                          if (s['modeReservation'] == 'TABLE')
+                            PopupMenuItem(value: 'tables', child: Text('Gérer : ${_uniteService(s).plurielMinuscule}')),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('${s['prix']?.toString() ?? "0"} ${s['devise'] ?? "CDF"} • ${_formaterDuree(s['dureeMinutes'] as int? ?? 0)}',
+                  Text('${s['prix']?.toString() ?? "0"} ${s['devise'] ?? "CDF"}${s['prixParPersonne'] == true ? ' / pers.' : ''} • ${_formaterDuree(s['dureeMinutes'] as int? ?? 0)}${s['modeReservation'] == 'TABLE' ? ' • ${_uniteService(s).pluriel}' : ''}',
                     style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                   if (s['description'] != null && (s['description'] as String).isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -1339,8 +1374,12 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     final dureeCtrl = TextEditingController(text: '1');
     final descCtrl = TextEditingController();
     String devise = 'CDF';
-    String categorie = CategorieService.sante;
+    String categorie = _categorie ?? CategorieService.sante;
     String uniteDuree = 'heures';
+    bool modeTable = false;
+    bool parPersonne = false;
+    bool choixClient = categorie == CategorieService.sante;
+    final libelleCtrl = TextEditingController();
 
     showDialog(
       context: context,
@@ -1424,6 +1463,23 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 8),
                 TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+                const SizedBox(height: 8),
+                ..._champsModeRessources(
+                  categorie: categorie,
+                  modeTable: modeTable,
+                  choixClient: choixClient,
+                  libelleCtrl: libelleCtrl,
+                  onModeTable: (v) => setDialogState(() => modeTable = v),
+                  onChoixClient: (v) => setDialogState(() => choixClient = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: parPersonne,
+                  onChanged: (v) => setDialogState(() => parPersonne = v),
+                  title: const Text('Prix par personne', style: TextStyle(fontSize: 14)),
+                  subtitle: const Text('Le prix est multiplié par le nombre de personnes (menu, buffet).',
+                    style: TextStyle(fontSize: 12)),
+                ),
               ],
             ),
           ),
@@ -1433,17 +1489,30 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
               onPressed: () async {
                 if (nomCtrl.text.isEmpty || prixCtrl.text.isEmpty) return;
                 try {
-                  await ApiPrestataire.creerService({
+                  final cree = await ApiPrestataire.creerService({
                     'nom': nomCtrl.text,
                     'prix': double.parse(prixCtrl.text),
                     'devise': devise,
                     'dureeMinutes': calculerMinutes(),
                     'categorie': categorie,
                     'description': descCtrl.text,
+                    'modeReservation': modeTable ? 'TABLE' : 'CRENEAU',
+                    'prixParPersonne': parPersonne,
+                    if (modeTable) 'choixRessource': choixClient,
+                    if (modeTable && libelleCtrl.text.trim().length >= 2) 'libelleRessource': libelleCtrl.text.trim(),
                   });
                   if (ctx.mounted) Navigator.pop(ctx);
                   _charger();
                   if (mounted) ToastWidget.show(context, 'Service créé', type: 'succes');
+                  if (modeTable && mounted && cree['id'] is String) {
+                    _ouvrirTables({
+                      'id': cree['id'],
+                      'nom': nomCtrl.text,
+                      'categorie': categorie,
+                      'choixRessource': choixClient,
+                      'libelleRessource': libelleCtrl.text.trim(),
+                    });
+                  }
                 } catch (e) {
                   if (mounted) ToastWidget.show(context, e.toString(), type: 'erreur');
                 }
@@ -1478,6 +1547,10 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     String devise = service['devise'] as String? ?? 'CDF';
     String categorie = service['categorie'] as String? ?? CategorieService.sante;
     String uniteDuree = initialUnite;
+    bool modeTable = service['modeReservation'] == 'TABLE';
+    bool parPersonne = service['prixParPersonne'] == true;
+    bool choixClient = service['choixRessource'] == true;
+    final libelleCtrl = TextEditingController(text: service['libelleRessource'] as String? ?? '');
 
     showDialog(
       context: context,
@@ -1561,6 +1634,23 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 8),
                 TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+                const SizedBox(height: 8),
+                ..._champsModeRessources(
+                  categorie: categorie,
+                  modeTable: modeTable,
+                  choixClient: choixClient,
+                  libelleCtrl: libelleCtrl,
+                  onModeTable: (v) => setDialogState(() => modeTable = v),
+                  onChoixClient: (v) => setDialogState(() => choixClient = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: parPersonne,
+                  onChanged: (v) => setDialogState(() => parPersonne = v),
+                  title: const Text('Prix par personne', style: TextStyle(fontSize: 14)),
+                  subtitle: const Text('Le prix est multiplié par le nombre de personnes (menu, buffet).',
+                    style: TextStyle(fontSize: 12)),
+                ),
               ],
             ),
           ),
@@ -1576,6 +1666,10 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                     'dureeMinutes': calculerMinutes(),
                     'categorie': categorie,
                     'description': descCtrl.text,
+                    'modeReservation': modeTable ? 'TABLE' : 'CRENEAU',
+                    'prixParPersonne': parPersonne,
+                    'choixRessource': modeTable && choixClient,
+                    'libelleRessource': libelleCtrl.text.trim().length >= 2 ? libelleCtrl.text.trim() : null,
                   });
                   if (ctx.mounted) Navigator.pop(ctx);
                   _charger();
@@ -1590,6 +1684,70 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         );
       }),
     );
+  }
+
+  /// Vocabulaire des unités d'un service (catégorie du service ou du prestataire, libellé personnalisé)
+  UniteRessource _uniteService(Map<String, dynamic> service) => UniteRessource.pour(
+        service['categorie'] as String? ?? _categorie,
+        service['libelleRessource'] as String?,
+      );
+
+  /// Réglages du mode ressources, communs aux dialogues de création et de modification
+  List<Widget> _champsModeRessources({
+    required String categorie,
+    required bool modeTable,
+    required bool choixClient,
+    required TextEditingController libelleCtrl,
+    required ValueChanged<bool> onModeTable,
+    required ValueChanged<bool> onChoixClient,
+  }) {
+    final u = UniteRessource.pour(categorie, libelleCtrl.text);
+    return [
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        value: modeTable,
+        onChanged: onModeTable,
+        title: Text('Réservation par ${u.minuscule}', style: const TextStyle(fontSize: 14)),
+        subtitle: Text(
+          'Vous gérez plusieurs ${u.plurielMinuscule} (ex : ${u.exemple}). Chaque réservation en occupe une sur le créneau.',
+          style: const TextStyle(fontSize: 12),
+        ),
+      ),
+      if (modeTable) ...[
+        TextField(
+          controller: libelleCtrl,
+          decoration: InputDecoration(
+            labelText: 'Nom d\'une unité (facultatif)',
+            hintText: UniteRessource.pour(categorie).singulier,
+            helperText: 'Ex : Cabinet, Court, Box, Poste…',
+          ),
+          textCapitalization: TextCapitalization.sentences,
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: choixClient,
+          onChanged: onChoixClient,
+          title: Text('Le client choisit : ${u.minuscule}', style: const TextStyle(fontSize: 14)),
+          subtitle: Text(
+            choixClient
+                ? 'Ex : le patient choisit son médecin. Il voit les horaires libres de chacun.'
+                : 'Attribution automatique de la plus petite unité libre adaptée au groupe.',
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+      ],
+    ];
+  }
+
+  Future<void> _ouvrirTables(Map<String, dynamic> service) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => TablesPrestataireScreen(
+        serviceId: service['id'] as String,
+        serviceNom: service['nom'] as String? ?? '',
+        unite: _uniteService(service),
+        choixClient: service['choixRessource'] == true,
+      ),
+    ));
   }
 
   void _showGestionCreneaux(Map<String, dynamic> service) async {
@@ -1629,7 +1787,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                     ),
                     IconButton(
                       icon: const Icon(Icons.add_circle, color: AppCouleurs.primaire),
-                      onPressed: () => _showAjouterCreneauDialog(serviceId, () async {
+                      onPressed: () => _showAjouterCreneauDialog(serviceId, modeTable: service['modeReservation'] == 'TABLE', () async {
                         creneaux = await ApiPrestataire.listerCreneauxService(serviceId);
                         setSheetState(() {});
                       }),
@@ -1654,7 +1812,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                           return ListTile(
                             title: Text('${debut.substring(11, 16)} - ${fin.substring(11, 16)}',
                               style: const TextStyle(fontWeight: FontWeight.w600)),
-                            subtitle: Text('${debut.substring(0, 10)} • Places: ${capTotale - capReservee}/$capTotale',
+                            subtitle: Text('${debut.substring(0, 10)} • ${service['modeReservation'] == 'TABLE' ? '${_uniteService(service).pluriel} libres' : 'Places'}: ${capTotale - capReservee}/$capTotale',
                               style: const TextStyle(fontSize: 12)),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1693,7 +1851,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
     );
   }
 
-  void _showAjouterCreneauDialog(String serviceId, VoidCallback onRafraichir) {
+  void _showAjouterCreneauDialog(String serviceId, VoidCallback onRafraichir, {bool modeTable = false}) {
     final dateCtrl = TextEditingController();
     final debutCtrl = TextEditingController(text: '09:00');
     final finCtrl = TextEditingController(text: '10:00');
@@ -1738,7 +1896,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 const SizedBox(height: 8),
                 TextField(controller: finCtrl, decoration: const InputDecoration(labelText: 'Fin (HH:MM)')),
                 const SizedBox(height: 8),
-                TextField(controller: capCtrl, decoration: const InputDecoration(labelText: 'Capacité'), keyboardType: TextInputType.number),
+                if (modeTable)
+                  Text('Capacité = nombre d\'unités actives du service (tables, salles, praticiens…).',
+                    style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire))
+                else
+                  TextField(controller: capCtrl, decoration: const InputDecoration(labelText: 'Capacité'), keyboardType: TextInputType.number),
               ],
             ),
           ),
@@ -1988,6 +2150,11 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
           MaterialPageRoute(builder: (_) => const FileTerrainScreen()),
         );
         if (mounted) _charger();
+        break;
+      case 'hotels':
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const HotelsPrestataireScreen()),
+        );
         break;
       case 'indisponibilites':
         await Navigator.of(context).push(

@@ -1,4 +1,6 @@
 export 'enums.dart';
+export 'unite_ressource.dart';
+import 'unite_ressource.dart';
 
 class Utilisateur {
   final String id;
@@ -114,6 +116,14 @@ class ServiceOffert {
   final double prix;
   final String devise;
   final bool actif;
+  /// CRENEAU (défaut) ou TABLE (mode ressources : table, salle, praticien… attribué(e) à la réservation)
+  final String modeReservation;
+  /// Prix multiplié par le nombre de personnes
+  final bool prixParPersonne;
+  /// Mode ressources : le client choisit l'unité (ex. son médecin)
+  final bool choixRessource;
+  /// Mode ressources : nom d'une unité (« Salle », « Praticien »…), déjà résolu par l'API sur la fiche publique
+  final String? libelleRessource;
 
   ServiceOffert({
     required this.id,
@@ -124,7 +134,21 @@ class ServiceOffert {
     required this.prix,
     required this.devise,
     required this.actif,
+    this.modeReservation = 'CRENEAU',
+    this.prixParPersonne = false,
+    this.choixRessource = false,
+    this.libelleRessource,
   });
+
+  bool get estModeTable => modeReservation == 'TABLE';
+
+  /// Vocabulaire des unités de ce service (table, salle, praticien…)
+  UniteRessource unite(String? categorie) => UniteRessource.pour(categorie, libelleRessource);
+
+  /// Le client doit indiquer un nombre de personnes
+  bool get demandeNombrePersonnes => estModeTable || prixParPersonne;
+
+  double prixPour(int personnes) => prixParPersonne ? prix * (personnes < 1 ? 1 : personnes) : prix;
 
   factory ServiceOffert.fromJson(Map<String, dynamic> json) => ServiceOffert(
     id: json['id'] as String,
@@ -135,6 +159,10 @@ class ServiceOffert {
     prix: (json['prix'] as num?)?.toDouble() ?? 0.0,
     devise: json['devise'] as String? ?? 'CDF',
     actif: json['actif'] as bool? ?? true,
+    modeReservation: json['modeReservation'] as String? ?? 'CRENEAU',
+    prixParPersonne: json['prixParPersonne'] as bool? ?? false,
+    choixRessource: json['choixRessource'] as bool? ?? false,
+    libelleRessource: json['libelleRessource'] as String?,
   );
 }
 
@@ -147,6 +175,10 @@ class Creneau {
   final int capaciteReservee;
   final bool disponible;
   final bool bloque;
+  /// Mode TABLE : plus grand groupe encore plaçable sur ce créneau (null hors mode TABLE)
+  final int? personnesMax;
+  /// Mode ressources avec choix client : identifiants des unités encore libres (null sinon)
+  final List<String>? ressourcesLibres;
 
   Creneau({
     required this.id,
@@ -157,6 +189,8 @@ class Creneau {
     required this.capaciteReservee,
     required this.disponible,
     this.bloque = false,
+    this.personnesMax,
+    this.ressourcesLibres,
   });
 
   factory Creneau.fromJson(Map<String, dynamic> json) => Creneau(
@@ -168,6 +202,8 @@ class Creneau {
     capaciteReservee: json['capaciteReservee'] as int? ?? 0,
     disponible: json['disponible'] as bool? ?? true,
     bloque: json['bloque'] as bool? ?? false,
+    personnesMax: (json['personnesMax'] as num?)?.toInt(),
+    ressourcesLibres: (json['ressourcesLibres'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
   );
 }
 
@@ -460,6 +496,9 @@ class ReservationDetaillee {
   final Prestataire prestataire;
   final Creneau creneau;
   final int? avisNote;
+  final int nombrePersonnes;
+  /// Table attribuée (mode TABLE)
+  final String? tableNom;
 
   ReservationDetaillee({
     required this.reservation,
@@ -467,7 +506,15 @@ class ReservationDetaillee {
     required this.prestataire,
     required this.creneau,
     this.avisNote,
+    this.nombrePersonnes = 1,
+    this.tableNom,
   });
+
+  /// « Table 4 · 3 pers. », « Dr Mbuyi » — vide hors mode ressources pour une personne
+  String get libelleTable {
+    if (tableNom == null) return nombrePersonnes > 1 ? '$nombrePersonnes pers.' : '';
+    return nombrePersonnes > 1 ? '$tableNom · $nombrePersonnes pers.' : tableNom!;
+  }
 
   factory ReservationDetaillee.fromJson(Map<String, dynamic> json) {
     final avis = json['avis'] as Map<String, dynamic>?;
@@ -477,6 +524,8 @@ class ReservationDetaillee {
       prestataire: Prestataire.fromJson(json['prestataire'] as Map<String, dynamic>),
       creneau: Creneau.fromJson(json['creneau'] as Map<String, dynamic>),
       avisNote: avis?['note'] as int?,
+      nombrePersonnes: (json['nombrePersonnes'] as num?)?.toInt() ?? 1,
+      tableNom: (json['ressource'] as Map<String, dynamic>?)?['nom'] as String?,
     );
   }
 }

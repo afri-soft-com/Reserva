@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { MODE_TABLE, synchroniserCapaciteCreneaux } from "../ressources/ressources.service";
 import { ErreurValidation, ErreurNonTrouve, ErreurInterdit } from "../../utils/erreurs";
 import { CreerPrestataireInput, ModifierPrestataireInput, ValiderPrestataireInput, CreerServiceOffertInput, ModifierServiceOffertInput } from "./prestataires.schema";
 import { attribuerPlanGratuit, verifierQuotaServices } from "../economie/economie.service";
@@ -197,7 +198,11 @@ export async function modifierServiceOffert(utilisateurId: string, serviceId: st
     throw new ErreurNonTrouve("Service non trouvé");
   }
 
-  return prisma.serviceOffert.update({ where: { id: serviceId }, data: input });
+  const misAJour = await prisma.serviceOffert.update({ where: { id: serviceId }, data: input });
+  if (misAJour.modeReservation === MODE_TABLE && service.modeReservation !== MODE_TABLE) {
+    await synchroniserCapaciteCreneaux(serviceId);
+  }
+  return misAJour;
 }
 
 /** Liste les services du prestataire connecté */
