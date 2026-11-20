@@ -105,7 +105,12 @@ export async function creerReservation(clientId: string, input: CreerReservation
   // afin d'empêcher deux clients de prendre la dernière place simultanément.
   const reservation = await prisma.$transaction(async (tx) => {
     // Mode TABLE : verrouille le créneau et choisit la plus petite table adaptée au groupe
-    const table = await attribuerTable(tx, { service: creneau.service, creneau, nombrePersonnes });
+    const table = await attribuerTable(tx, {
+      service: creneau.service,
+      creneau,
+      nombrePersonnes,
+      ressourceIdSouhaitee: input.ressourceId,
+    });
     const creneauActuel = await tx.creneau.findUnique({ where: { id: input.creneauId } });
     if (!creneauActuel || creneauActuel.capaciteReservee >= creneauActuel.capaciteTotale) {
       throw new ErreurConflit("Ce créneau vient d'être complet. Veuillez choisir un autre horaire.");
@@ -240,6 +245,8 @@ export async function modifierReservation(utilisateurId: string, input: { reserv
       creneau: nouveauCreneau,
       nombrePersonnes: reservation.nombrePersonnes,
       exclureReservationId: reservation.id,
+      // Choix par le client (ex. son médecin) : on garde la même unité sur le nouvel horaire
+      ressourceIdSouhaitee: reservation.ressourceId,
     });
 
     await tx.creneau.update({
@@ -663,6 +670,7 @@ export async function creerReservationsRecurrentes(
     notes?: string;
     acomptePourcent?: number;
     nombrePersonnes?: number;
+    ressourceId?: string;
   }
 ) {
   const nombreOccurrences = input.nombreOccurrences ?? 4;
@@ -709,7 +717,12 @@ export async function creerReservationsRecurrentes(
   const reservations = await prisma.$transaction(async (tx) => {
     const resultats = [];
     for (const creneau of creneauxAServir) {
-      const table = await attribuerTable(tx, { service: creneauBase.service, creneau, nombrePersonnes });
+      const table = await attribuerTable(tx, {
+        service: creneauBase.service,
+        creneau,
+        nombrePersonnes,
+        ressourceIdSouhaitee: input.ressourceId,
+      });
       const actuel = await tx.creneau.findUnique({ where: { id: creneau.id } });
       if (!actuel || actuel.capaciteReservee >= actuel.capaciteTotale) {
         throw new ErreurConflit(`Un des créneaux de la série vient d'être complet. Veuillez réessayer.`);

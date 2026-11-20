@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
 import '../../theme.dart';
+import '../../models/unite_ressource.dart';
 import '../../services/api_ressources.dart';
 import '../../widgets/carte.dart';
 import '../../widgets/squelette.dart';
 import '../../widgets/toast.dart';
 
-/// Gestion des tables d'un service en mode TABLE (restaurant).
+/// Gestion des unités d'un service en mode ressources : tables (restaurant), salles,
+/// praticiens, guichets… Le vocabulaire suit la catégorie ou le libellé du service.
 class TablesPrestataireScreen extends StatefulWidget {
   final String serviceId;
   final String serviceNom;
+  final UniteRessource unite;
+  /// Le client choisit lui-même l'unité (sinon attribution automatique)
+  final bool choixClient;
 
-  const TablesPrestataireScreen({super.key, required this.serviceId, required this.serviceNom});
+  const TablesPrestataireScreen({
+    super.key,
+    required this.serviceId,
+    required this.serviceNom,
+    required this.unite,
+    this.choixClient = false,
+  });
 
   @override
   State<TablesPrestataireScreen> createState() => _TablesPrestataireScreenState();
 }
 
 class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
+  UniteRessource get _u => widget.unite;
   List<dynamic> _tables = [];
   bool _chargement = true;
   String? _erreur;
@@ -52,10 +64,10 @@ class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
     }
   }
 
-  /// Saisie commune « nom + capacité » (ajout / modification d'une table).
+  /// Saisie commune « nom + capacité » (ajout / modification d'une unité).
   Future<({String nom, int capacite})?> _saisirTable({String? nom, int? capacite, required String titre}) {
     final nomCtrl = TextEditingController(text: nom ?? '');
-    final capCtrl = TextEditingController(text: '${capacite ?? 4}');
+    final capCtrl = TextEditingController(text: '${capacite ?? _u.capaciteDefaut}');
     return showDialog<({String nom, int capacite})>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -65,13 +77,13 @@ class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
           children: [
             TextField(
               controller: nomCtrl,
-              decoration: const InputDecoration(labelText: 'Nom', hintText: 'Ex : Table 12, Terrasse 3'),
+              decoration: InputDecoration(labelText: 'Nom', hintText: 'Ex : ${_u.exemple}'),
               textCapitalization: TextCapitalization.sentences,
             ),
             const SizedBox(height: 8),
             TextField(
               controller: capCtrl,
-              decoration: const InputDecoration(labelText: 'Nombre de places', suffixText: 'pers.'),
+              decoration: const InputDecoration(labelText: 'Personnes accueillies en même temps', suffixText: 'pers.'),
               keyboardType: TextInputType.number,
             ),
           ],
@@ -95,30 +107,30 @@ class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
   }
 
   Future<void> _ajouterUne() async {
-    final saisie = await _saisirTable(titre: 'Nouvelle table');
+    final saisie = await _saisirTable(titre: 'Ajouter : ${_u.minuscule}');
     if (saisie == null) return;
     await _executer(
       () => ApiRessources.creer(serviceId: widget.serviceId, nom: saisie.nom, capacite: saisie.capacite),
-      'Table ajoutée',
+      '« ${saisie.nom} » ajouté',
     );
   }
 
   Future<void> _ajouterPlusieurs() async {
     final nombreCtrl = TextEditingController(text: '5');
-    final capCtrl = TextEditingController(text: '4');
-    final prefixeCtrl = TextEditingController(text: 'Table');
+    final capCtrl = TextEditingController(text: '${_u.capaciteDefaut}');
+    final prefixeCtrl = TextEditingController(text: _u.singulier);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Ajouter plusieurs tables'),
+        title: Text('Ajouter plusieurs ${_u.plurielMinuscule}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nombreCtrl, decoration: const InputDecoration(labelText: 'Nombre de tables'), keyboardType: TextInputType.number),
+            TextField(controller: nombreCtrl, decoration: InputDecoration(labelText: 'Nombre de ${_u.plurielMinuscule}'), keyboardType: TextInputType.number),
             const SizedBox(height: 8),
-            TextField(controller: capCtrl, decoration: const InputDecoration(labelText: 'Places par table', suffixText: 'pers.'), keyboardType: TextInputType.number),
+            TextField(controller: capCtrl, decoration: InputDecoration(labelText: 'Personnes par ${_u.minuscule}', suffixText: 'pers.'), keyboardType: TextInputType.number),
             const SizedBox(height: 8),
-            TextField(controller: prefixeCtrl, decoration: const InputDecoration(labelText: 'Nom', helperText: 'Numérotées à la suite : Table 1, Table 2…')),
+            TextField(controller: prefixeCtrl, decoration: InputDecoration(labelText: 'Nom', helperText: 'Numérotés à la suite : ${_u.singulier} 1, ${_u.singulier} 2…')),
           ],
         ),
         actions: [
@@ -131,34 +143,34 @@ class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
     final nombre = int.tryParse(nombreCtrl.text.trim());
     final cap = int.tryParse(capCtrl.text.trim());
     if (nombre == null || nombre < 1 || nombre > 100 || cap == null || cap < 1 || cap > 50) {
-      if (mounted) ToastWidget.show(context, 'Entre 1 et 100 tables, de 1 à 50 places', type: 'erreur');
+      if (mounted) ToastWidget.show(context, 'Entre 1 et 100 ${_u.plurielMinuscule}, de 1 à 50 personnes', type: 'erreur');
       return;
     }
     await _executer(
       () => ApiRessources.creerEnLot(serviceId: widget.serviceId, nombre: nombre, capacite: cap, prefixe: prefixeCtrl.text),
-      '$nombre table(s) ajoutée(s)',
+      '$nombre ${nombre > 1 ? _u.plurielMinuscule : _u.minuscule} ajouté(s)',
     );
   }
 
   Future<void> _modifier(Map<String, dynamic> table) async {
     final saisie = await _saisirTable(
-      titre: 'Modifier la table',
+      titre: 'Modifier « ${table['nom'] ?? ''} »',
       nom: table['nom'] as String?,
       capacite: (table['capacite'] as num?)?.toInt(),
     );
     if (saisie == null) return;
     await _executer(
       () => ApiRessources.modifier(table['id'] as String, {'nom': saisie.nom, 'capacite': saisie.capacite}),
-      'Table modifiée',
+      'Modifications enregistrées',
     );
   }
 
   Future<void> _basculer(Map<String, dynamic> table) async {
     final active = table['actif'] == true;
     if (active) {
-      await _executer(() => ApiRessources.retirer(table['id'] as String), 'Table retirée du service');
+      await _executer(() => ApiRessources.retirer(table['id'] as String), '« ${table['nom']} » retiré du service');
     } else {
-      await _executer(() => ApiRessources.modifier(table['id'] as String, {'actif': true}), 'Table remise en service');
+      await _executer(() => ApiRessources.modifier(table['id'] as String, {'actif': true}), '« ${table['nom']} » remis en service');
     }
   }
 
@@ -170,13 +182,13 @@ class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.table_restaurant),
-              title: const Text('Une table'),
+              leading: Icon(_u.icone),
+              title: Text('Un(e) seul(e) : ${_u.minuscule}'),
               onTap: () { Navigator.pop(ctx); _ajouterUne(); },
             ),
             ListTile(
               leading: const Icon(Icons.grid_view),
-              title: const Text('Plusieurs tables identiques'),
+              title: Text('Plusieurs ${_u.plurielMinuscule} identiques'),
               onTap: () { Navigator.pop(ctx); _ajouterPlusieurs(); },
             ),
           ],
@@ -188,7 +200,7 @@ class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Tables · ${widget.serviceNom}')),
+      appBar: AppBar(title: Text('${_u.pluriel} · ${widget.serviceNom}')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _ouvrirAjout,
         icon: const Icon(Icons.add),
@@ -202,30 +214,32 @@ class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                 children: [
                   Text(
-                    'Chaque réservation reçoit automatiquement la plus petite table libre adaptée au nombre de personnes.',
+                    widget.choixClient
+                        ? 'Le client choisit ${_u.minuscule == 'praticien' ? 'son praticien' : 'parmi vos ${_u.plurielMinuscule}'} au moment de réserver ; seules les disponibilités réelles lui sont proposées.'
+                        : 'Chaque réservation reçoit automatiquement la plus petite unité (${_u.minuscule}) libre adaptée au nombre de personnes.',
                     style: TextStyle(color: AppCouleurs.texteSecondaire, fontSize: 13),
                   ),
                   const SizedBox(height: 12),
                   if (_erreur != null && _tables.isEmpty)
                     EcranVide(
                       icone: Icons.error_outline,
-                      message: 'Impossible de charger les tables',
+                      message: 'Impossible de charger les ${_u.plurielMinuscule}',
                       sousTitre: _erreur!.replaceFirst('Exception: ', ''),
                       action: ElevatedButton(onPressed: _charger, child: const Text('Réessayer')),
                     )
                   else if (_tables.isEmpty)
-                    const EcranVide(
-                      icone: Icons.table_restaurant,
-                      message: 'Aucune table',
-                      sousTitre: 'Ajoutez vos tables avant de publier des créneaux.',
+                    EcranVide(
+                      icone: _u.icone,
+                      message: 'Aucun(e) ${_u.minuscule}',
+                      sousTitre: 'Ajoutez vos ${_u.plurielMinuscule} avant de publier des créneaux.',
                     )
                   else ...[
                     Carte(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _stat('${_actives.length}', 'tables actives'),
-                          _stat('$_couvertsTotal', 'couverts'),
+                          _stat('${_actives.length}', '${_u.plurielMinuscule} actifs'),
+                          _stat('$_couvertsTotal', 'personnes en même temps'),
                         ],
                       ),
                     ),
@@ -260,7 +274,7 @@ class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
                   color: AppCouleurs.primaire.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.table_restaurant, color: AppCouleurs.primaire, size: 22),
+                child: Icon(_u.icone, color: AppCouleurs.primaire, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -269,7 +283,7 @@ class _TablesPrestataireScreenState extends State<TablesPrestataireScreen> {
                   children: [
                     Text(t['nom'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                     Text(
-                      '${t['capacite']} place(s)${active ? '' : ' · hors service'}',
+                      '${t['capacite']} pers. max${active ? '' : ' · hors service'}',
                       style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
                     ),
                   ],

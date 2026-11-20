@@ -35,6 +35,8 @@ export const schemaCreerReservation = z
     creneauId: z.string().guid("Identifiant de créneau invalide"),
     /** Nombre de couverts (services en mode TABLE ou prix par personne) */
     nombrePersonnes: z.coerce.number().int().min(1).max(50).default(1),
+    /** Mode ressources avec choix : unité demandée (table, salle, praticien…) */
+    ressourceId: z.string().guid("Identifiant de ressource invalide").optional(),
     notes: z.string().trim().max(500).optional(),
     reservePourTiers: z.boolean().default(false),
     nomTiers: z.string().trim().min(2).max(100).optional(),

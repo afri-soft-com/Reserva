@@ -155,10 +155,15 @@ model ServiceOffert {
   prix            Float
   devise          String   @default("CDF")
   actif           Boolean  @default(true)
-  /// CRENEAU = une place par réservation (défaut) | TABLE = attribution d'une table selon le nombre de couverts
+  /// CRENEAU = une place par réservation (défaut) | TABLE = mode ressources : attribution d'une unité
+  /// (table, salle, praticien, guichet…) parmi les Ressource du service, selon le nombre de personnes
   modeReservation String   @default("CRENEAU")
   /// Vrai : prix multiplié par le nombre de personnes (menu, buffet)
   prixParPersonne Boolean  @default(false)
+  /// Mode ressources : le client choisit lui-même l'unité (ex. son médecin) au lieu d'une attribution automatique
+  choixRessource  Boolean  @default(false)
+  /// Mode ressources : nom affiché d'une unité (« Table », « Salle », « Praticien »…). Null = déduit de la catégorie
+  libelleRessource String?
   creeLe          DateTime @default(now())
 
   creneaux        Creneau[]

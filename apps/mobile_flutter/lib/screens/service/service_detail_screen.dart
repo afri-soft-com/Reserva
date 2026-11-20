@@ -36,6 +36,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   /// Nombre de couverts (services en mode TABLE ou prix par personne)
   int _personnes = 1;
   static const _personnesMaxSaisie = 30;
+  /// Mode ressources avec choix : unité choisie par le client (null = peu importe)
+  String? _ressourceId;
   List<dynamic> _packages = [];
   bool _chargementPackages = true;
 
@@ -55,7 +57,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       if (mounted) {
         setState(() {
           // Premier chargement d'un restaurant : 2 couverts par défaut
-          if (_data == null && data['modeReservation'] == 'TABLE') _personnes = 2;
+          final categorie = (data['prestataire'] as Map<String, dynamic>?)?['categorie'];
+          if (_data == null && data['modeReservation'] == 'TABLE' && categorie == CategorieService.restauration) {
+            _personnes = 2;
+          }
           _data = data;
           _erreurReseau = false;
         });
@@ -109,6 +114,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           nombreOccurrences: _occurrences,
           acomptePourcent: acomptePourcent,
           nombrePersonnes: _personnes,
+          ressourceId: _ressourceId,
         );
         final creees = (resultat['nombreCreees'] as num?)?.toInt() ?? _occurrences;
         final souhaitees = (resultat['nombreSouhaitees'] as num?)?.toInt() ?? _occurrences;
@@ -130,6 +136,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           creneauId: _selectedCreneauId!,
           acomptePourcent: acomptePourcent,
           nombrePersonnes: _personnes,
+          ressourceId: _ressourceId,
         );
         if (mounted) {
           ToastWidget.show(context, AppTraductions.t('reservationEffectuee'), type: 'succes');
@@ -242,8 +249,12 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             const SizedBox(height: 16),
             _buildPackages(),
             const SizedBox(height: 16),
-            if (service.demandeNombrePersonnes && !auth.estPrestataire) ...[
+            if (_demandePersonnes(service, creneaux) && !auth.estPrestataire) ...[
               _buildNombrePersonnes(service, creneaux),
+              const SizedBox(height: 12),
+            ],
+            if (service.estModeTable && service.choixRessource && _ressources.isNotEmpty && !auth.estPrestataire) ...[
+              _buildChoixRessource(service, prestataire, creneaux),
               const SizedBox(height: 12),
             ],
             _buildCreneaux(creneaux),
@@ -467,12 +478,87 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     );
   }
 
-  /// Mode TABLE : le créneau a-t-il encore une table pour ce groupe ?
-  bool _creneauAccueille(Creneau c) => c.personnesMax == null || c.personnesMax! >= _personnes;
+  /// Unités proposées au choix du client (renvoyées par l'API seulement si le choix est permis)
+  List<Map<String, dynamic>> get _ressources =>
+      ((_data?['ressources'] as List<dynamic>?) ?? []).whereType<Map<String, dynamic>>().toList();
+
+  Map<String, dynamic>? get _ressourceChoisie {
+    for (final r in _ressources) {
+      if (r['id'] == _ressourceId) return r;
+    }
+    return null;
+  }
+
+  /// Nombre de personnes demandé : prix par personne, ou unités pouvant accueillir un groupe
+  bool _demandePersonnes(ServiceOffert service, List<Creneau> creneaux) {
+    if (service.prixParPersonne) return true;
+    if (!service.estModeTable) return false;
+    if (_ressources.isNotEmpty) return _ressources.any((r) => ((r['capacite'] as num?) ?? 1) > 1);
+    return creneaux.any((c) => (c.personnesMax ?? 0) > 1);
+  }
+
+  /// Mode ressources : le créneau a-t-il une unité libre pour ce groupe (et, si choisie, celle-ci) ?
+  bool _creneauAccueille(Creneau c) {
+    final groupeOk = c.personnesMax == null || c.personnesMax! >= _personnes;
+    if (_ressourceId == null || c.ressourcesLibres == null) return groupeOk;
+    return c.ressourcesLibres!.contains(_ressourceId);
+  }
+
+  void _choisirRessource(String? id, List<Creneau> creneaux) {
+    setState(() {
+      _ressourceId = id;
+      final selection = creneaux.where((c) => c.id == _selectedCreneauId);
+      if (selection.isNotEmpty && !_creneauAccueille(selection.first)) _selectedCreneauId = null;
+    });
+  }
+
+  Widget _buildChoixRessource(ServiceOffert service, Prestataire prestataire, List<Creneau> creneaux) {
+    final u = service.unite(prestataire.categorie);
+    final adaptees = _ressources.where((r) => (((r['capacite'] as num?) ?? 1).toInt()) >= _personnes).toList();
+    return Carte(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(u.icone, size: 20, color: AppCouleurs.primaire),
+              const SizedBox(width: 10),
+              Text('Choisir : ${u.minuscule}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              ChoiceChip(
+                label: const Text('Peu importe'),
+                selected: _ressourceId == null,
+                onSelected: (_) => _choisirRessource(null, creneaux),
+              ),
+              ...adaptees.map((r) => ChoiceChip(
+                    label: Text(r['nom'] as String? ?? ''),
+                    selected: _ressourceId == r['id'],
+                    onSelected: (_) => _choisirRessource(r['id'] as String?, creneaux),
+                  )),
+            ],
+          ),
+          if (_ressourceId != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text('Seuls les horaires où « ${_ressourceChoisie?['nom'] ?? ''} » est libre sont sélectionnables.',
+                style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
+            ),
+        ],
+      ),
+    );
+  }
 
   void _changerPersonnes(int valeur, List<Creneau> creneaux) {
     setState(() {
       _personnes = valeur.clamp(1, _personnesMaxSaisie);
+      final choisie = _ressourceChoisie;
+      if (choisie != null && (((choisie['capacite'] as num?) ?? 1).toInt()) < _personnes) _ressourceId = null;
       final selection = creneaux.where((c) => c.id == _selectedCreneauId);
       if (selection.isNotEmpty && !_creneauAccueille(selection.first)) _selectedCreneauId = null;
     });
@@ -506,12 +592,24 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
               '${_formaterMontant(service.prix, service.devise)} × $_personnes = ${_formaterMontant(service.prixPour(_personnes), service.devise)}',
               style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire),
             ),
-          if (service.estModeTable)
-            Text('Une table adaptée vous est attribuée automatiquement.',
+          if (service.estModeTable && !service.choixRessource)
+            Text('Une ${(service.libelleRessource ?? 'table').toLowerCase()} adaptée vous est attribuée automatiquement.',
               style: TextStyle(fontSize: 12, color: AppCouleurs.texteSecondaire)),
         ],
       ),
     );
+  }
+
+  String _libelleDispo(Creneau c) {
+    if (_ressourceId != null && c.ressourcesLibres != null) {
+      final nom = _ressourceChoisie?['nom'] ?? '';
+      return _creneauAccueille(c) ? '$nom disponible' : '$nom indisponible';
+    }
+    if (!_creneauAccueille(c)) return 'Complet pour $_personnes pers.';
+    if (c.ressourcesLibres != null && (c.personnesMax ?? 0) <= 1) {
+      return '${c.ressourcesLibres!.length} disponible(s)';
+    }
+    return 'Jusqu\'à ${c.personnesMax} pers.';
   }
 
   Widget _buildCreneaux(List<Creneau> creneaux) {
@@ -587,7 +685,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                           const SizedBox(width: 8),
                           if (c.personnesMax != null)
                             Text(
-                              _creneauAccueille(c) ? 'Jusqu\'à ${c.personnesMax} pers.' : 'Complet pour $_personnes pers.',
+                              _libelleDispo(c),
                               style: TextStyle(fontSize: 13,
                                 color: _creneauAccueille(c) ? AppCouleurs.succes : AppCouleurs.alerte),
                             )
