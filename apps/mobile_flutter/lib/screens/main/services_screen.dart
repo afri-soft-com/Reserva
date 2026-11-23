@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../providers/auth_provider.dart';
+import '../../utils/connexion_requise.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
@@ -100,6 +102,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   }
 
   Future<void> _charger() async {
+    final connecte = context.read<AuthProvider>().estConnecte;
     setState(() { _chargement = true; _erreur = null; _aPlus = true; });
     try {
       final cacheKey = _cacheCle();
@@ -134,7 +137,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
           page: 1,
           parPage: 20,
         ),
-        ApiFavoris.obtenirIdsFavoris(),
+        connecte ? ApiFavoris.obtenirIdsFavoris() : Future.value(<String>{}),
       ]);
       if (mounted) {
         final services = results[0] as List<ServiceAvecPrestataire>;
@@ -300,6 +303,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   }
 
   Future<void> _basculerFavori(String serviceId) async {
+    if (!await exigerConnexion(context, raison: 'enregistrer vos favoris')) return;
     try {
       if (_favorisIds.contains(serviceId)) {
         await ApiFavoris.supprimerFavori(serviceId);

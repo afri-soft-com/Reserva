@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Bouton } from "../../../components/Bouton";
 import { Champ } from "../../../components/Champ";
@@ -12,8 +11,16 @@ import { extraireMessageErreur } from "../../../lib/api-client";
 import { connecter, connecterGoogleAdmin, verifier2FA } from "../../../lib/api-auth";
 import { useAuthStore } from "../../../lib/store-auth";
 
+/**
+ * Navigation complète vers la console (pas router.push) : on repart d'un document neuf,
+ * sans les nœuds que le script Google Sign-In a insérés dans la page de connexion
+ * (sinon React 19 plante en les retirant : « insertBefore / removeChild NotFoundError »).
+ */
+function allerAuPilotage() {
+  window.location.assign("/admin/pilotage");
+}
+
 export default function PageConnexion() {
-  const router = useRouter();
   const connecterStore = useAuthStore((etat) => etat.connecter);
   const deconnecterStore = useAuthStore((etat) => etat.deconnecter);
 
@@ -35,7 +42,7 @@ export default function PageConnexion() {
       }
       connecterStore(resultat.token, resultat.utilisateur);
       toastSucces(`Bon retour, ${resultat.utilisateur.nom} !`);
-      router.push("/admin/pilotage");
+      allerAuPilotage();
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
     } finally {
@@ -60,7 +67,7 @@ export default function PageConnexion() {
         }
         connecterStore(resultat.token, resultat.utilisateur);
         toastSucces(`Bon retour, ${resultat.utilisateur.nom} !`);
-        router.push("/admin/pilotage");
+        allerAuPilotage();
       }
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
@@ -81,7 +88,7 @@ export default function PageConnexion() {
       }
       connecterStore(resultat.token, resultat.utilisateur);
       toastSucces(`Bon retour, ${resultat.utilisateur.nom} !`);
-      router.push("/admin/pilotage");
+      allerAuPilotage();
     } catch (erreur) {
       toastErreur(extraireMessageErreur(erreur));
     } finally {

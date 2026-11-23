@@ -37,9 +37,15 @@ export function BoutonGoogleAdmin({ onCredential, disabled }: Props) {
     if (disabled) return;
     let annule = false;
 
+    // Le bouton Google est rendu dans un nœud créé à la main, que React ne réconcilie jamais :
+    // GSI y insère et retire ses iframes sans gêner React 19 au démontage de la page.
+    let hote: HTMLDivElement | null = null;
+
     function monterBouton() {
       if (annule || !ref.current || !window.google?.accounts?.id) return;
-      ref.current.innerHTML = "";
+      hote?.remove();
+      hote = document.createElement("div");
+      ref.current.appendChild(hote);
       window.google.accounts.id.initialize({
         client_id: CLIENT_ID,
         callback: (reponse: { credential?: string }) => {
@@ -48,7 +54,7 @@ export function BoutonGoogleAdmin({ onCredential, disabled }: Props) {
         auto_select: false,
         cancel_on_tap_outside: true,
       });
-      window.google.accounts.id.renderButton(ref.current, {
+      window.google.accounts.id.renderButton(hote, {
         type: "standard",
         theme: "outline",
         size: "large",
@@ -61,17 +67,28 @@ export function BoutonGoogleAdmin({ onCredential, disabled }: Props) {
       setPret(true);
     }
 
+    const nettoyer = () => {
+      annule = true;
+      try {
+        window.google?.accounts?.id?.cancel();
+      } catch {
+        /* GSI absent ou déjà arrêté */
+      }
+      hote?.remove();
+      hote = null;
+    };
+
     if (window.google?.accounts?.id) {
       monterBouton();
-      return;
+      return nettoyer;
     }
 
     const existant = document.querySelector<HTMLScriptElement>('script[data-reserva-gsi="1"]');
     if (existant) {
       existant.addEventListener("load", monterBouton);
       return () => {
-        annule = true;
         existant.removeEventListener("load", monterBouton);
+        nettoyer();
       };
     }
 
@@ -84,9 +101,7 @@ export function BoutonGoogleAdmin({ onCredential, disabled }: Props) {
     script.onerror = () => setErreur("Impossible de charger Google Sign-In.");
     document.head.appendChild(script);
 
-    return () => {
-      annule = true;
-    };
+    return nettoyer;
   }, [disabled]);
 
   return (

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../theme.dart';
 import '../../services/api_hotels.dart';
 import '../../widgets/toast.dart';
+import '../../utils/connexion_requise.dart';
 import '../../widgets/image_reseau.dart';
 
 class HotelDetailScreen extends StatefulWidget {
@@ -60,6 +61,8 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
   }
 
   Future<void> _reserver(Map<String, dynamic> chambre, Map<String, dynamic> tarif) async {
+    if (!await exigerConnexion(context, raison: 'réserver cette chambre')) return;
+    if (!mounted) return;
     setState(() => _hold = true);
     try {
       final sejour = await ApiHotels.creerHold({

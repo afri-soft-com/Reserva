@@ -18,7 +18,7 @@ test.describe("Administration", () => {
     await connexion.connecter(ADMIN_TEL, PIN_VALIDE);
     await page.waitForURL("**/admin/pilotage", { timeout: 20000 });
     await expect(page.getByRole("heading", { name: /Vue d'ensemble/i })).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText(/Prestataires/i).first()).toBeVisible();
+    await expect(page.getByText(/Prestataires/i).filter({ visible: true }).first()).toBeVisible();
     await expect(page.getByText(/Alertes actives/i)).toBeVisible();
   });
 

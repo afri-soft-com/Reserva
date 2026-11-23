@@ -20,6 +20,9 @@ class AuthProvider extends ChangeNotifier {
   bool _biometrieActivee = false;
   bool _demandeBiometrieEnCours = false;
 
+  /// Mode invité : page à rouvrir après la connexion (ex. la fiche du service à réserver)
+  String? routeApresConnexion;
+
   Utilisateur? get utilisateur => _utilisateur;
   Prestataire? get prestataire => _prestataire;
   bool get chargementInitial => _chargementInitial;

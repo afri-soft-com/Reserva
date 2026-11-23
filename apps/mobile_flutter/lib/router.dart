@@ -47,6 +47,18 @@ import 'screens/innovations/corridors_screen.dart';
 import 'screens/prestataire/kyc_screen.dart';
 import 'screens/parametres/son_alerte_screen.dart';
 
+/// Pages consultables sans compte dans l'app client : accueil, recherche, fiches.
+/// Les paiements, séjours, billets et pages de compte restent réservés aux comptes.
+bool estRouteNavigationInvite(String path) {
+  final chemin = path.split('?').first;
+  const exactes = ['/accueil', '/services', '/voyages', '/hotels', '/transport'];
+  if (exactes.contains(chemin)) return true;
+  const prefixes = ['/service/', '/package/', '/hotels/', '/transport/'];
+  const exclus = ['/hotels/checkout/', '/hotels/sejour/', '/transport/checkout/', '/transport/billet/'];
+  if (exclus.any(chemin.startsWith)) return false;
+  return prefixes.any(chemin.startsWith);
+}
+
 GoRouter createRouter(AuthProvider auth) {
   return GoRouter(
     initialLocation: '/splash',
@@ -69,9 +81,12 @@ GoRouter createRouter(AuthProvider auth) {
         '/manuel',
       ];
       final estRoutePublique = routesPubliques.any((r) => path == r || path.startsWith('$r?'));
+      // App client : parcourir et rechercher sans compte (App Store 5.1.1(v)).
+      // Les actions liées au compte demandent la connexion à l'endroit où elles ont lieu.
+      final estRouteInvite = AppFlavorConfig.estClient && estRouteNavigationInvite(path);
 
       // Après déconnexion (ou session expirée) → écran PIN, pas la page d'accueil marketing.
-      if (!estConnecte && !estRoutePublique) return '/connexion';
+      if (!estConnecte && !estRoutePublique && !estRouteInvite) return '/connexion';
       if (estConnecte && (path == '/bienvenue' || path == '/connexion' || path == '/inscription')) {
         return '/accueil';
       }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/connexion_requise.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../app_flavor.dart';
@@ -42,10 +43,12 @@ class _AccueilScreenState extends State<AccueilScreen> {
       _erreur = false;
     });
     try {
+      // Mode invité : seulement le catalogue public (réservations et recommandations exigent un compte)
+      final connecte = context.read<AuthProvider>().estConnecte;
       final results = await Future.wait([
-        ApiReservations.listerMesReservations(),
+        connecte ? ApiReservations.listerMesReservations() : Future.value(<ReservationDetaillee>[]),
         ApiServices.rechercherServices(parPage: 6),
-        ApiServices.obtenirRecommandations(limite: 6),
+        connecte ? ApiServices.obtenirRecommandations(limite: 6) : Future.value(<ServiceAvecPrestataire>[]),
       ]);
       final reservations = results[0] as List<ReservationDetaillee>;
       final services = results[1] as List<ServiceAvecPrestataire>;
@@ -128,7 +131,11 @@ class _AccueilScreenState extends State<AccueilScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.push('/notifications'),
+            onPressed: () async {
+              if (await exigerConnexion(context, raison: 'recevoir vos notifications') && context.mounted) {
+                context.push('/notifications');
+              }
+            },
           ),
         ],
       ),

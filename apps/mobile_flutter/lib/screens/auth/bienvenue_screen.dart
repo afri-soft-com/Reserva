@@ -349,6 +349,14 @@ class _BienvenueScreenState extends State<BienvenueScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w700, color: AppCouleurs.primaire),
                       ),
                     ),
+                    // App client : parcourir sans compte (App Store 5.1.1(v))
+                    if (!pro)
+                      TextButton.icon(
+                        onPressed: () => context.go('/accueil'),
+                        icon: const Icon(Icons.explore_outlined, size: 18),
+                        label: const Text('Découvrir sans compte',
+                          style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
                   ],
                 ),
               ),
