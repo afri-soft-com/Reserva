@@ -23,13 +23,13 @@ test.describe("Admin métier (finances / prestataires / réservations)", () => {
   test("navigue vers prestataires", async ({ page }) => {
     await connecterAdmin(page);
     await page.goto("/admin/prestataires");
-    await expect(page.getByText(/Prestataire/i).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText(/Prestataire/i).filter({ visible: true }).first()).toBeVisible({ timeout: 20000 });
   });
 
   test("navigue vers réservations", async ({ page }) => {
     await connecterAdmin(page);
     await page.goto("/admin/reservations");
     // Titre de la page (la barre mobile, masquée sur ordinateur, répète aussi « Réservations »)
-    await expect(page.getByRole("heading", { name: /Réservation/i }).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole("heading", { name: /Réservation/i }).filter({ visible: true }).first()).toBeVisible({ timeout: 20000 });
   });
 });
