@@ -219,6 +219,14 @@ jobs:
           GATEWAY_URL: http://127.0.0.1:4000/api
           DATABASE_URL: ${{ env.DATABASE_URL_CORE }}
 
+      - name: Captures Playwright (échec)
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-e2e-admin
+          path: apps/web/test-results
+          retention-days: 7
+
   mobile-quality:
     name: Mobile (analyze + test)
     needs: [quality, security]
