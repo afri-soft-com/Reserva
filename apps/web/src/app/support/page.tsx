@@ -45,8 +45,7 @@ export default function PageSupport() {
         <a href={`mailto:${EMAIL_SUPPORT}?subject=Support%20RESERVA`} className="text-primaire">
           {EMAIL_SUPPORT}
         </a>
-        . Nous répondons en français ou en anglais, du lundi au samedi, généralement sous 24 heures
-        ouvrées.
+        . Nous répondons en français ou en anglais, dans les meilleurs délais.
       </p>
       <p>Pour un traitement plus rapide, indiquez :</p>
       <ul className="list-disc space-y-1 pl-5">
