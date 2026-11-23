@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/connexion_requise.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme.dart';
 import '../../services/api_transport.dart';
@@ -36,6 +37,8 @@ class _TransportDetailScreenState extends State<TransportDetailScreen> {
   }
 
   Future<void> _reserver() async {
+    if (!await exigerConnexion(context, raison: 'réserver ce trajet')) return;
+    if (!mounted) return;
     setState(() => _hold = true);
     try {
       final billet = await ApiTransport.creerHold(trajetId: widget.trajetId, places: widget.places);

@@ -407,7 +407,8 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
             _buildStatsRow(stats),
             const SizedBox(height: 8),
             _buildStatsRow2(stats),
-            if (_abonnement != null) ...[
+            // iOS : pas de carte « forfait » (App Store 2.1(b) / 3.1) — les forfaits ne s'achètent pas dans l'app
+            if (_abonnement != null && !Platform.isIOS) ...[
               const SizedBox(height: 8),
               _buildAbonnementCard(),
             ],

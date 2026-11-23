@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/connexion_requise.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme.dart';
@@ -89,6 +90,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       ToastWidget.show(context, AppTraductions.t('selectionnerCreneau'), type: 'erreur');
       return;
     }
+    if (!await exigerConnexion(context, raison: 'réserver ce créneau')) return;
+    if (!mounted) return;
     final auth = context.read<AuthProvider>();
     if (auth.estPrestataire) {
       ToastWidget.show(context, AppTraductions.t('clientsSeulsReservation'), type: 'erreur');
@@ -140,6 +143,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   bool _attenteEnCours = false;
 
   Future<void> _creerAlerte() async {
+    if (!await exigerConnexion(context, raison: 'être prévenu d\'un créneau libre')) return;
+    if (!mounted) return;
     final auth = context.read<AuthProvider>();
     if (auth.estPrestataire) {
       ToastWidget.show(context, AppTraductions.t('clientsSeulsAlerte'), type: 'erreur');
@@ -159,6 +164,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   }
 
   Future<void> _inscrireAttente(Creneau creneau) async {
+    if (!await exigerConnexion(context, raison: 'rejoindre la liste d\'attente')) return;
+    if (!mounted) return;
     final auth = context.read<AuthProvider>();
     if (auth.estPrestataire) {
       ToastWidget.show(context, AppTraductions.t('clientsSeulsAttente'), type: 'erreur');

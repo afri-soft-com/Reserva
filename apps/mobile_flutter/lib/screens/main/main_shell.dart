@@ -14,6 +14,7 @@ import 'reservations_screen.dart';
 import 'prestataire_screen.dart';
 import 'profil_screen.dart';
 import '../chat/conversations_screen.dart';
+import '../../utils/connexion_requise.dart';
 
 /// Indices d'onglets stables selon le rôle (évite Profil quand on veut Réservations).
 class MainShellTabs {
@@ -106,18 +107,31 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
+  /// Après une connexion demandée depuis une fiche (mode invité), on rouvre cette fiche.
+  void _rouvrirPageApresConnexion(AuthProvider auth) {
+    final route = auth.routeApresConnexion;
+    if (!auth.estConnecte || route == null) return;
+    auth.routeApresConnexion = null;
+    if (!estRouteNavigationInviteOuCompte(route)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.push(route);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     context.watch<LangueProvider>();
     final auth = context.watch<AuthProvider>();
+    _rouvrirPageApresConnexion(auth);
+    final invite = !auth.estConnecte;
     final items = <({Widget icon, Widget iconSel, String label})>[
       (icon: const Icon(Icons.home_outlined), iconSel: const Icon(Icons.home), label: AppTraductions.t('accueil')),
       (icon: const Icon(Icons.search_outlined), iconSel: const Icon(Icons.search), label: AppTraductions.t('recherche')),
       if (MainShellTabs.montreReservations(auth))
         (icon: const Icon(Icons.calendar_month_outlined), iconSel: const Icon(Icons.calendar_month), label: AppTraductions.t('reservations')),
       (
-        icon: BadgeNotification(child: const Icon(Icons.person_outline)),
-        iconSel: BadgeNotification(child: const Icon(Icons.person)),
+        icon: invite ? const Icon(Icons.person_outline) : BadgeNotification(child: const Icon(Icons.person_outline)),
+        iconSel: invite ? const Icon(Icons.person) : BadgeNotification(child: const Icon(Icons.person)),
         label: AppTraductions.t('profil'),
       ),
       if (MainShellTabs.montreMessages(auth))
@@ -131,8 +145,21 @@ class _MainShellState extends State<MainShell> {
     final pages = <Widget>[
       const AccueilScreen(),
       const ServicesScreen(),
-      if (MainShellTabs.montreReservations(auth)) const ReservationsScreen(),
-      const ProfilScreen(),
+      if (MainShellTabs.montreReservations(auth))
+        invite
+            ? InvitationConnexion(
+                icone: Icons.calendar_month_outlined,
+                titre: AppTraductions.t('reservations'),
+                message: 'Connectez-vous pour réserver et retrouver vos réservations, séjours et billets.',
+              )
+            : const ReservationsScreen(),
+      invite
+          ? InvitationConnexion(
+              icone: Icons.person_outline,
+              titre: AppTraductions.t('profil'),
+              message: 'Vous parcourez RESERVA sans compte. Créez un compte gratuit pour réserver, payer et discuter avec les prestataires.',
+            )
+          : const ProfilScreen(),
       if (MainShellTabs.montreMessages(auth)) const ConversationsScreen(),
       if (MainShellTabs.montrePrestataire(auth)) const PrestataireScreen(),
       if (MainShellTabs.montreAdmin(auth)) const AdminButtonTab(),
@@ -237,3 +264,7 @@ class AdminButtonTab extends StatelessWidget {
     );
   }
 }
+
+/// Route sûre à rouvrir après connexion (pas d'écran d'authentification)
+bool estRouteNavigationInviteOuCompte(String route) =>
+    route.startsWith('/') && !['/connexion', '/inscription', '/bienvenue', '/splash'].any(route.startsWith);

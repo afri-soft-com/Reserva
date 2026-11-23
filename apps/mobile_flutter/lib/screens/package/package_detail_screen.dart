@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/connexion_requise.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme.dart';
@@ -116,6 +117,8 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   int get _nbSelectionnes => _services.where((s) => _inclusion[s['id']] == true).length;
 
   Future<void> _reserver() async {
+    if (!await exigerConnexion(context, raison: 'réserver ce forfait')) return;
+    if (!mounted) return;
     final auth = context.read<AuthProvider>();
     if (auth.estPrestataire) {
       ToastWidget.show(context, 'Seuls les clients peuvent effectuer une réservation.', type: 'erreur');
