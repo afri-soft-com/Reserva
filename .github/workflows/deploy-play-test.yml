@@ -1,0 +1,127 @@
+name: Deploy Play (test fermé)
+
+# Build Client + Pro et envoi sur la piste de test fermé Google Play (alpha).
+# Ne publie jamais en production. Déclenché par un push sur release/** ou à la main.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["release/**"]
+
+concurrency:
+  group: deploy-play
+  cancel-in-progress: false
+
+env:
+  # versionCode Play : doit dépasser le dernier envoyé (production 166)
+  VERSION_CODE: "173"
+  PLAY_TRACK: alpha
+
+jobs:
+  play-test:
+    name: Play test fermé (Client + Pro)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile_flutter
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.32.6"
+          cache: true
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Inject versionCode
+        run: |
+          ruby -e "
+            path='pubspec.yaml'
+            t=File.read(path)
+            t=t.sub(/version:\s*([^\+\n]+)\+\d+/, 'version: \\1+${{ env.VERSION_CODE }}')
+            File.write(path, t)
+            puts File.read(path).lines.grep(/version:/).first
+          "
+      - name: Decode keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+      - name: Ensure Android SDK platform 36
+        run: |
+          set -euo pipefail
+          SDKROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "SDKROOT=$SDKROOT"
+          if [ -d "$SDKROOT/platforms/android-36" ]; then
+            echo "platforms/android-36 déjà présent"
+            ls "$SDKROOT/platforms"
+            exit 0
+          fi
+          SM=$(find "$SDKROOT" -type f -name sdkmanager 2>/dev/null | head -n1 || true)
+          if [ -z "$SM" ]; then
+            flutter precache --android
+            SM=$(find "$SDKROOT" "$HOME/Android" /usr/lib/android-sdk /usr/local/lib/android/sdk -type f -name sdkmanager 2>/dev/null | head -n1 || true)
+          fi
+          test -n "$SM"
+          echo "sdkmanager=$SM — installation platforms;android-36"
+          # yes écrit dans un pipe fermé → exit 141 ; on ignore tant que le dossier existe
+          set +o pipefail
+          yes | "$SM" --sdk_root="$SDKROOT" --licenses >/dev/null 2>&1 || true
+          yes | "$SM" --sdk_root="$SDKROOT" "platforms;android-36"
+          set -o pipefail
+          test -d "$SDKROOT/platforms/android-36"
+          ls "$SDKROOT/platforms"
+      - name: Build App Bundles (Client + Pro)
+        working-directory: .
+        env:
+          API_URL: ${{ secrets.API_URL_PROD }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+          # Suivi des plantages (optionnel) : secret vide = désactivé.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN_MOBILE }}
+        run: |
+          # Refuse un API_URL qui pointe vers le front (sinon OTP → FormatException HTML)
+          node scripts/check-api-url-prod.mjs
+          cd apps/mobile_flutter
+          # Secret vide ("") n'active pas ${VAR:-default} — forcer le Client ID Web RESERVA
+          FALLBACK_WEB_GID="473749172261-74ardi53uajb5f3m992kcsvg4u0jes7i.apps.googleusercontent.com"
+          WEB_GID="${GOOGLE_SERVER_CLIENT_ID:-}"
+          case "$WEB_GID" in
+            *".apps.googleusercontent.com") ;;
+            *) WEB_GID="$FALLBACK_WEB_GID" ;;
+          esac
+          echo "GOOGLE_SERVER_CLIENT_ID pour AAB: ${WEB_GID:0:20}…"
+          flutter build appbundle --flavor client -t lib/main.dart --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
+            --dart-define=SENTRY_DSN="${SENTRY_DSN:-}"
+          flutter build appbundle --flavor pro -t lib/main_pro.dart --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$WEB_GID" \
+            --dart-define=SENTRY_DSN="${SENTRY_DSN:-}"
+      - name: Setup Ruby / Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: apps/mobile_flutter/android
+      - name: Upload Play (piste de test)
+        working-directory: apps/mobile_flutter/android
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
+          gem install fastlane --no-document
+          fastlane test
