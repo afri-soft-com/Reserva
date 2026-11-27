@@ -21,18 +21,30 @@ platform :ios do
     # Mode TestFlight seul (ASC_TESTFLIGHT_ONLY=true) : envoi du binaire dans TestFlight,
     # sans toucher aux versions App Store (ex. une version déjà en cours d'examen).
     if ENV.fetch("ASC_TESTFLIGHT_ONLY", "false") == "true"
+      echecs = []
       ipas.sort.each do |ipa|
         identifiant = File.basename(ipa).include?("Pro") ? "com.reserva.pro" : "com.reserva.client"
         UI.message("→ TestFlight #{File.basename(ipa)} (#{identifiant})")
-        upload_to_testflight(
-          api_key: api_key,
-          app_identifier: identifiant,
-          ipa: File.expand_path(ipa),
-          skip_waiting_for_build_processing: true,
-          skip_submission: true,
-          distribute_external: false
-        )
+        begin
+          upload_to_testflight(
+            api_key: api_key,
+            app_identifier: identifiant,
+            ipa: File.expand_path(ipa),
+            skip_waiting_for_build_processing: true,
+            skip_submission: true,
+            distribute_external: false
+          )
+        rescue StandardError => e
+          # Relance après un échec partiel : un build déjà reçu par Apple n'est pas une erreur
+          if e.message.match?(/already been uploaded|bundle version must be higher|redundant binary|ENTITY_ERROR\.ATTRIBUTE\.INVALID\.DUPLICATE/i)
+            UI.important("#{identifiant} : ce build est déjà sur App Store Connect, ignoré")
+          else
+            UI.error("#{identifiant} : #{e.message}")
+            echecs << identifiant
+          end
+        end
       end
+      UI.user_error!("Échec TestFlight : #{echecs.join(', ')}") unless echecs.empty?
       next
     end
 
