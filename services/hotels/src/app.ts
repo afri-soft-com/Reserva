@@ -6,6 +6,7 @@ import { gestionnaireErreurs } from "@reserva/service-kit";
 import { env } from "./config/env";
 import { prisma } from "./config/prisma";
 import { routesHotels } from "./modules/hotels.routes";
+import { routesHotelsPro } from "./modules/hotels.pro.routes";
 
 export const app = express();
 
@@ -23,5 +24,7 @@ app.get("/api/sante", async (_req, res) => {
   }
 });
 
+// Monté avant routesHotels pour que /pro ne soit pas lu comme un :hotelId
+app.use("/api/hotels/pro", routesHotelsPro);
 app.use("/api/hotels", routesHotels);
 app.use(gestionnaireErreurs);

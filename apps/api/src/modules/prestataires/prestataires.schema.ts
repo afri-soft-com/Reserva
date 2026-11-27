@@ -31,16 +31,35 @@ export const schemaValiderPrestataire = z.object({
 });
 export type ValiderPrestataireInput = z.infer<typeof schemaValiderPrestataire>;
 
-export const schemaCreerServiceOffert = z.object({
+const champsServiceOffert = {
   nom: z.string().trim().min(2).max(150),
   description: z.string().trim().max(1000).optional(),
-  dureeMinutes: z.coerce.number().int().min(5).max(1440).default(30),
+  dureeMinutes: z.coerce.number().int().min(5).max(1440),
   prix: z.coerce.number().positive(),
-  devise: z.enum(["CDF", "USD"]).default("CDF"),
+  devise: z.enum(["CDF", "USD"]),
+  /** CRENEAU : une place par réservation · TABLE : mode ressources (table, salle, praticien…) */
+  modeReservation: z.enum(["CRENEAU", "TABLE"]),
+  /** Prix multiplié par le nombre de personnes (menu, buffet) */
+  prixParPersonne: z.boolean(),
+  /** Mode ressources : le client choisit l'unité (ex. son médecin) */
+  choixRessource: z.boolean(),
+  /** Mode ressources : nom d'une unité (« Salle », « Praticien »…) ; null = selon la catégorie */
+  libelleRessource: z.string().trim().min(2).max(30).nullable(),
+};
+
+export const schemaCreerServiceOffert = z.object({
+  ...champsServiceOffert,
+  dureeMinutes: champsServiceOffert.dureeMinutes.default(30),
+  devise: champsServiceOffert.devise.default("CDF"),
+  modeReservation: champsServiceOffert.modeReservation.default("CRENEAU"),
+  prixParPersonne: champsServiceOffert.prixParPersonne.default(false),
+  choixRessource: champsServiceOffert.choixRessource.default(false),
+  libelleRessource: champsServiceOffert.libelleRessource.optional(),
 });
 export type CreerServiceOffertInput = z.infer<typeof schemaCreerServiceOffert>;
 
-export const schemaModifierServiceOffert = schemaCreerServiceOffert.partial().extend({
+/** Sans valeurs par défaut : zod 4 les appliquerait aux champs absents et écraserait l'existant */
+export const schemaModifierServiceOffert = z.object(champsServiceOffert).partial().extend({
   actif: z.boolean().optional(),
 });
 export type ModifierServiceOffertInput = z.infer<typeof schemaModifierServiceOffert>;

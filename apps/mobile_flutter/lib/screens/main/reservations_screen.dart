@@ -247,6 +247,8 @@ class _ReservationsScreenState extends State<ReservationsScreen> with AutomaticK
                                       ),
                                       const SizedBox(height: 8),
                                       Text(r.service.nom, style: TextStyle(fontSize: 15, color: AppCouleurs.texte)),
+                                      if (r.libelleTable.isNotEmpty)
+                                        Text(r.libelleTable, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.primaire)),
                                       const SizedBox(height: 4),
                                       Text(r.prestataire.nomEntreprise, style: TextStyle(fontSize: 13, color: AppCouleurs.texteSecondaire)),
                                       const SizedBox(height: 4),
