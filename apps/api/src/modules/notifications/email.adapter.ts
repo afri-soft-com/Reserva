@@ -3,22 +3,27 @@ import { env } from "../../config/env";
 
 /**
  * E-mails transactionnels — même dispositif que Mova / SENGA (services/auth-service,
- * email-otp.mailer.ts) :
+ * email-otp.mailer.ts), avec basculement automatique :
  *
- * 1. Resend (API HTTP) si RESEND_API_KEY est posé : seul chemin qui arrive de façon fiable
- *    dans Gmail tant que DKIM n'est pas publié pour afri-soft.com.
- * 2. Sinon SMTP AfriSoft (noreply@afri-soft.com via mail.afri-soft.com:587 STARTTLS)
+ * 1. SMTP AfriSoft d'abord (noreply@afri-soft.com via mail.afri-soft.com:587 STARTTLS, SmarterMail),
  *    dès que SMTP_PASS est posé. mail.afri-soft.com est un CNAME vers mail5013.site4now.net,
  *    dont le certificat ne couvre que *.site4now.net : on se connecte donc au serveur réel.
+ * 2. Si le SMTP échoue (connexion, authentification, refus anti-spam 550…) ou n'est pas
+ *    configuré, bascule automatique sur Resend (API HTTP) quand RESEND_API_KEY est posé.
  *
  * Sans aucun des deux : simulation (log) hors production, échec explicite en production.
- * Le SMTP qui accepte (250) ne prouve pas l'arrivée en boîte de réception (filtres anti-spam).
+ * Limite : un SMTP qui accepte (250) puis dont le message est filtré plus tard par Gmail
+ * ne peut pas être détecté ici, donc pas de bascule dans ce cas.
  */
 
 export type ResultatEnvoiEmail = {
   succes: boolean;
   mode: "resend" | "smtp" | "simulation" | "non-configure" | "invalide" | "erreur";
+  /** Canaux essayés sans succès avant le résultat (ex. ["smtp"] si Resend a pris le relais). */
+  echecs?: string[];
 };
+
+export type Canal = "smtp" | "resend";
 
 const FORMAT_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NOM_EXPEDITEUR = "RESERVA AfriSoft";
@@ -39,8 +44,9 @@ export function cibleSmtp(hote: string, servernameExplicite = ""): { host: strin
   return { host: servername.endsWith(".site4now.net") ? servername : h, servername };
 }
 
-export function adresseExpediteur(): string {
-  return (env.RESEND_API_KEY ? env.RESEND_FROM : "") || env.SMTP_FROM || env.SMTP_USER;
+export function adresseExpediteur(canal: Canal = "smtp"): string {
+  const smtp = env.SMTP_FROM || env.SMTP_USER;
+  return canal === "resend" ? env.RESEND_FROM || smtp : smtp;
 }
 
 /** Nom EHLO pleinement qualifié (un nom court passe pour un robot auprès des filtres). */
@@ -49,10 +55,41 @@ function nomEhlo(expediteur: string): string {
   return domaine.includes(".") ? `reserva.${domaine}` : "reserva.afri-soft.com";
 }
 
-export function modeEnvoiEmail(): "resend" | "smtp" | null {
-  if (env.RESEND_API_KEY) return "resend";
-  if (env.SMTP_PASS && env.SMTP_HOST && env.SMTP_USER) return "smtp";
-  return null;
+/** Canaux configurés, dans l'ordre d'essai : SMTP AfriSoft puis Resend en secours. */
+export function canauxEmail(cfg: { smtpPret: boolean; resendPret: boolean }): Canal[] {
+  const canaux: Canal[] = [];
+  if (cfg.smtpPret) canaux.push("smtp");
+  if (cfg.resendPret) canaux.push("resend");
+  return canaux;
+}
+
+function canauxConfigures(): Canal[] {
+  return canauxEmail({
+    smtpPret: Boolean(env.SMTP_PASS && env.SMTP_HOST && env.SMTP_USER),
+    resendPret: Boolean(env.RESEND_API_KEY),
+  });
+}
+
+/**
+ * Essaie chaque canal dans l'ordre et s'arrête au premier qui réussit.
+ * Isolé pour les tests (les envois réels sont injectés).
+ */
+export async function envoyerAvecSecours(
+  canaux: Canal[],
+  envoyer: (canal: Canal) => Promise<void>,
+  journal: (canal: Canal, erreur: Error) => void = () => undefined,
+): Promise<{ canal: Canal | null; echecs: Canal[] }> {
+  const echecs: Canal[] = [];
+  for (const canal of canaux) {
+    try {
+      await envoyer(canal);
+      return { canal, echecs };
+    } catch (e) {
+      echecs.push(canal);
+      journal(canal, e as Error);
+    }
+  }
+  return { canal: null, echecs };
 }
 
 let transporteur: Transporter | null = null;
@@ -65,7 +102,7 @@ function obtenirTransporteur(): Transporter {
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
       requireTLS: env.SMTP_PORT !== 465,
-      name: nomEhlo(adresseExpediteur()),
+      name: nomEhlo(adresseExpediteur("smtp")),
       auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
       tls: { servername },
       connectionTimeout: 45_000,
@@ -81,7 +118,7 @@ async function envoyerViaResend(to: string, sujet: string, texte: string, html: 
     method: "POST",
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: `${NOM_EXPEDITEUR} <${adresseExpediteur()}>`,
+      from: `${NOM_EXPEDITEUR} <${adresseExpediteur("resend")}>`,
       to: [to],
       subject: sujet,
       text: texte,
@@ -105,22 +142,25 @@ export async function envoyerEmail(params: {
     return { succes: false, mode: "invalide" };
   }
   const html = params.html ?? `<p>${echapperHtml(params.texte).replace(/\n/g, "<br/>")}</p>`;
-  const mode = modeEnvoiEmail();
+  const canaux = canauxConfigures();
 
-  if (!mode) {
+  if (canaux.length === 0) {
     if (env.NODE_ENV === "production") {
-      console.error(`[EMAIL] RESEND_API_KEY ou SMTP_PASS manquant : « ${params.sujet} » non envoyé`);
+      console.error(`[EMAIL] SMTP_PASS ou RESEND_API_KEY manquant : « ${params.sujet} » non envoyé`);
       return { succes: false, mode: "non-configure" };
     }
     console.log(`[EMAIL simulation] → ${to} | ${params.sujet}\n${params.texte}`);
     return { succes: true, mode: "simulation" };
   }
 
-  try {
-    if (mode === "resend") {
-      await envoyerViaResend(to, params.sujet, params.texte, html);
-    } else {
-      const expediteur = adresseExpediteur();
+  const { canal, echecs } = await envoyerAvecSecours(
+    canaux,
+    async (c) => {
+      if (c === "resend") {
+        await envoyerViaResend(to, params.sujet, params.texte, html);
+        return;
+      }
+      const expediteur = adresseExpediteur("smtp");
       await obtenirTransporteur().sendMail({
         from: { name: NOM_EXPEDITEUR, address: expediteur },
         // Enveloppe = compte authentifié (le relais refuse un autre MAIL FROM)
@@ -132,14 +172,17 @@ export async function envoyerEmail(params: {
         html,
         headers: { "Auto-Submitted": "auto-generated" },
       });
-    }
-    console.log(`[EMAIL] accepté (${mode}) → ${masquerEmail(to)} | ${params.sujet}`);
-    return { succes: true, mode };
-  } catch (e) {
+    },
     // Jamais le corps du message dans les logs (il contient le code)
-    console.error(`[EMAIL] échec (${mode}) → ${masquerEmail(to)}: ${(e as Error).message}`);
-    return { succes: false, mode: "erreur" };
+    (c, e) => console.error(`[EMAIL] échec (${c}) → ${masquerEmail(to)}: ${e.message}`),
+  );
+
+  if (!canal) {
+    return { succes: false, mode: "erreur", echecs };
   }
+  const relais = echecs.length ? ` après échec ${echecs.join(", ")}` : "";
+  console.log(`[EMAIL] accepté (${canal}${relais}) → ${masquerEmail(to)} | ${params.sujet}`);
+  return { succes: true, mode: canal, echecs };
 }
 
 /**
