@@ -42,7 +42,8 @@ export const env = {
   MODE_APPLE: lireVariable("MODE_APPLE", "simulation") as "simulation" | "production",
   /**
    * E-mail transactionnel (même dispositif que Mova / SENGA, voir email.adapter.ts).
-   * Resend prioritaire si RESEND_API_KEY ; sinon SMTP AfriSoft dès que SMTP_PASS est posé.
+   * SMTP AfriSoft d'abord (dès que SMTP_PASS est posé), bascule automatique sur Resend
+   * (RESEND_API_KEY) si le SMTP échoue.
    * Seuls RESEND_API_KEY ou SMTP_PASS sont à définir sur Render ; le reste a des valeurs AfriSoft.
    */
   RESEND_API_KEY: lireVariable("RESEND_API_KEY", ""),
