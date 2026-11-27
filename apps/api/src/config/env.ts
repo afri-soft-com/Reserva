@@ -40,6 +40,20 @@ export const env = {
   ),
   /** simulation = accepte `SIM-APPLE:email:Nom` (dev uniquement) */
   MODE_APPLE: lireVariable("MODE_APPLE", "simulation") as "simulation" | "production",
+  /**
+   * E-mail transactionnel (même dispositif que Mova / SENGA, voir email.adapter.ts).
+   * Resend prioritaire si RESEND_API_KEY ; sinon SMTP AfriSoft dès que SMTP_PASS est posé.
+   * Seuls RESEND_API_KEY ou SMTP_PASS sont à définir sur Render ; le reste a des valeurs AfriSoft.
+   */
+  RESEND_API_KEY: lireVariable("RESEND_API_KEY", ""),
+  RESEND_FROM: lireVariable("RESEND_FROM", ""),
+  SMTP_HOST: lireVariable("SMTP_HOST", "mail.afri-soft.com"),
+  SMTP_PORT: parseInt(lireVariable("SMTP_PORT", "587"), 10),
+  SMTP_USER: lireVariable("SMTP_USER", "noreply@afri-soft.com"),
+  SMTP_PASS: lireVariable("SMTP_PASS", ""),
+  SMTP_FROM: lireVariable("SMTP_FROM", ""),
+  /** Nom TLS du serveur réel : mail.afri-soft.com présente le certificat *.site4now.net */
+  SMTP_TLS_SERVERNAME: lireVariable("SMTP_TLS_SERVERNAME", ""),
   /** LiveKit Cloud — appels vocaux (optionnel en local) */
   LIVEKIT_URL: lireVariable("LIVEKIT_URL", ""),
   LIVEKIT_API_KEY: lireVariable("LIVEKIT_API_KEY", ""),

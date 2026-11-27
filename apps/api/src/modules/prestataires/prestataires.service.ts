@@ -46,10 +46,23 @@ export async function obtenirMonProfilPrestataire(utilisateurId: string) {
   const exigenceDocuments = await statutExigencePourPrestataire(prestataire.id).catch(() => null);
   const activationRequise =
     prestataire.statut === "APPROUVE" && !prestataire.activationConfirmeeLe;
+  // Canaux disponibles pour recevoir le code d'activation (écran Activation de l'app Pro)
+  let activationCanaux: { sms: boolean; email: string | null } | undefined;
+  if (activationRequise) {
+    const user = await prisma.utilisateur.findUnique({
+      where: { id: utilisateurId },
+      select: { telephone: true, googleId: true, email: true },
+    });
+    if (user) {
+      const { telephoneActivationReel } = await import("./activation.service");
+      activationCanaux = { sms: telephoneActivationReel(user), email: user.email ?? null };
+    }
+  }
   return {
     ...prestataire,
     exigenceDocuments,
     activationRequise,
+    activationCanaux,
     espaceActif: prestataire.statut === "APPROUVE" && !!prestataire.activationConfirmeeLe,
   };
 }

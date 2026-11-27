@@ -131,6 +131,7 @@ export default function PageAdminPrestataires() {
   const [activation, setActivation] = useState<{
     codeActivation: string;
     canal: string;
+    canaux?: string[];
     destinataire: string;
     message: string;
   } | null>(null);
@@ -575,7 +576,7 @@ export default function PageAdminPrestataires() {
                 {activation.codeActivation}
               </p>
               <p className="mt-2 text-xs text-emerald-800">
-                Canal : {activation.canal} → {activation.destinataire}
+                Canal : {(activation.canaux ?? [activation.canal]).map((c) => (c === "email" ? "e-mail" : "SMS")).join(" + ")} → {activation.destinataire}
               </p>
             </div>
             <Bouton
