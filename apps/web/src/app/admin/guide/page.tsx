@@ -92,7 +92,7 @@ const SECTIONS: Section[] = [
       {
         href: "/admin/hotels",
         titre: "Hôtels",
-        texte: "Catalogue des hôtels : modifier une fiche ou la retirer du catalogue.",
+        texte: "Catalogue des hôtels : créer, modifier ou retirer une fiche. Un hôtel créé avec un prix reçoit une « Chambre standard » réservable (10 chambres par nuit sur 12 mois, complétées chaque jour).",
       },
       {
         href: "/admin/transport",
