@@ -51,6 +51,10 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
 
   bool _activationRequise = false;
   bool _envoiActivationLance = false;
+  bool _envoiCodeEnCours = false;
+  /// Canaux pour recevoir le code (API `activationCanaux`).
+  bool _activationSmsDisponible = true;
+  String? _activationEmail;
   final _codeActivationCtrl = TextEditingController();
 
   Future<void> _charger() async {
@@ -67,6 +71,9 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
         _kycMotif = profil['kycMotifRejet'] as String?;
         _exigenceDocuments = profil['exigenceDocuments'] as Map<String, dynamic>?;
         _activationRequise = activationRequise;
+        final canaux = profil['activationCanaux'] as Map<String, dynamic>?;
+        _activationSmsDisponible = canaux?['sms'] != false;
+        _activationEmail = (canaux?['email'] as String?)?.trim();
         _erreurReseau = false;
       });
       if (activationRequise ||
@@ -105,31 +112,84 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
   void _demanderCodeActivation() {
     if (_envoiActivationLance) return;
     _envoiActivationLance = true;
-    Future.microtask(() => _renvoyerCode());
+    // Envoi automatique à l'ouverture : silencieux si un code vient déjà d'être envoyé.
+    Future.microtask(() => _renvoyerCode(automatique: true));
   }
 
-  Future<void> _renvoyerCode() async {
+  Future<void> _renvoyerCode({String? canal, String? email, bool automatique = false}) async {
+    if (_envoiCodeEnCours) return;
+    setState(() => _envoiCodeEnCours = true);
     try {
-      final res = await ApiPrestataire.renvoyerCodeActivation();
+      final res = await ApiPrestataire.renvoyerCodeActivation(canal: canal, email: email);
       final msg = (res['message'] as String?)?.trim();
       if (mounted) {
         ToastWidget.show(
           context,
-          msg != null && msg.isNotEmpty ? msg : 'Code envoyé par SMS',
+          msg != null && msg.isNotEmpty ? msg : 'Code envoyé',
           type: 'succes',
         );
       }
     } catch (e) {
-      if (mounted) {
-        ToastWidget.show(context, e.toString().replaceFirst('Exception: ', ''), type: 'erreur');
+      final message = e.toString().replaceFirst('Exception: ', '');
+      if (mounted && !(automatique && message.contains('vient d\'être envoyé'))) {
+        ToastWidget.show(context, message, type: 'erreur');
       }
+    } finally {
+      if (mounted) setState(() => _envoiCodeEnCours = false);
     }
+  }
+
+  /// Demande l'adresse (pré-remplie avec l'e-mail du compte) puis envoie le code par e-mail.
+  Future<void> _recevoirCodeParEmail() async {
+    final ctrl = TextEditingController(text: _activationEmail ?? '');
+    final formKey = GlobalKey<FormState>();
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Recevoir le code par e-mail'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: ctrl,
+            autofocus: true,
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email],
+            decoration: const InputDecoration(
+              labelText: 'Adresse e-mail',
+              hintText: 'nom@exemple.com',
+              border: OutlineInputBorder(),
+            ),
+            validator: (v) {
+              final t = v?.trim() ?? '';
+              if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(t)) {
+                return 'Adresse e-mail invalide';
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(ctx, ctrl.text.trim());
+              }
+            },
+            child: const Text('Envoyer'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (email == null || !mounted) return;
+    await _renvoyerCode(canal: 'email', email: email);
   }
 
   Future<void> _activerEspace() async {
     final code = _codeActivationCtrl.text.replaceAll(RegExp(r'\D'), '');
     if (code.length != 6) {
-      ToastWidget.show(context, 'Entrez le code à 6 chiffres reçu par SMS', type: 'erreur');
+      ToastWidget.show(context, 'Entrez le code à 6 chiffres reçu par SMS ou par e-mail', type: 'erreur');
       return;
     }
     setState(() => _chargement = true);
@@ -206,7 +266,7 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Votre dossier est approuvé. Saisissez le code à 6 chiffres reçu par SMS pour ouvrir votre espace de travail.',
+                  'Votre dossier est approuvé. Saisissez le code à 6 chiffres reçu par SMS ou par e-mail pour ouvrir votre espace de travail.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppCouleurs.texteSecondaire),
                 ),
@@ -232,9 +292,28 @@ class _PrestataireScreenState extends State<PrestataireScreen> with AutomaticKee
                     child: const Text('Activer mon espace'),
                   ),
                 ),
-                TextButton(
-                  onPressed: _renvoyerCode,
-                  child: const Text('Renvoyer le code'),
+                const SizedBox(height: 8),
+                Text(
+                  'Pas reçu le code ?',
+                  style: TextStyle(color: AppCouleurs.texteSecondaire),
+                ),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    if (_activationSmsDisponible)
+                      TextButton.icon(
+                        key: const Key('activation_renvoyer_sms'),
+                        onPressed: _envoiCodeEnCours ? null : () => _renvoyerCode(canal: 'sms'),
+                        icon: const Icon(Icons.sms_outlined),
+                        label: const Text('Renvoyer par SMS'),
+                      ),
+                    TextButton.icon(
+                      key: const Key('activation_recevoir_email'),
+                      onPressed: _envoiCodeEnCours ? null : _recevoirCodeParEmail,
+                      icon: const Icon(Icons.email_outlined),
+                      label: const Text('Recevoir par e-mail'),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -217,8 +217,14 @@ class ApiPrestataire {
     return (await ApiClient.post('/prestataires/moi/activation', body: {'code': code})) as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> renvoyerCodeActivation() async {
-    return (await ApiClient.post('/prestataires/moi/activation/renvoyer')) as Map<String, dynamic>;
+  /// [canal] : 'sms' ou 'email' (null = tous les canaux disponibles).
+  /// [email] : adresse saisie pour le canal e-mail (sinon e-mail du compte).
+  static Future<Map<String, dynamic>> renvoyerCodeActivation({String? canal, String? email}) async {
+    final body = <String, dynamic>{
+      if (canal != null) 'canal': canal,
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+    };
+    return (await ApiClient.post('/prestataires/moi/activation/renvoyer', body: body)) as Map<String, dynamic>;
   }
 
   static Future<Map<String, dynamic>> obtenirFinances() async {

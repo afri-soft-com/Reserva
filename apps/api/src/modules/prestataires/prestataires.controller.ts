@@ -138,6 +138,9 @@ export const activerEspace = asyncHandler(async (req: Request, res: Response) =>
 export const renvoyerActivation = asyncHandler(async (req: Request, res: Response) => {
   if (!req.utilisateur) throw new ErreurNonAutorise();
   const { renvoyerCodeActivation } = await import("./activation.service");
-  const resultat = await renvoyerCodeActivation(req.utilisateur.utilisateurId);
+  const resultat = await renvoyerCodeActivation(req.utilisateur.utilisateurId, {
+    canal: req.body?.canal,
+    email: req.body?.email,
+  });
   envoyerSucces(res, resultat);
 });

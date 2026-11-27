@@ -33,6 +33,12 @@ envVarGroups:
       # SMS réel via hub AfriSoft — clés AFRISOFT_HUB_* à poser sur le service core (Dashboard ou workflow enable-sms-prod)
       - key: MODE_SMS
         value: production
+      # E-mail (code d'accès Pro), comme Mova : RESEND_API_KEY (Gmail fiable) ou SMTP_PASS
+      # (noreply@afri-soft.com). Hôte, port et expéditeur ont des valeurs par défaut dans le code.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SMTP_PASS
+        sync: false
       - key: HOLD_MINUTES
         value: "15"
       - key: MIGRATE_FALLBACK_PUSH

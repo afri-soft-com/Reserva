@@ -16,6 +16,13 @@ const schemaActiverEspace = z.object({
   code: z.string().trim().regex(/^\d{6}$/, "Code à 6 chiffres"),
 });
 
+const schemaRenvoyerActivation = z
+  .object({
+    canal: z.enum(["sms", "email"]).optional(),
+    email: z.string().trim().email("Adresse e-mail invalide").max(254).optional(),
+  })
+  .default({});
+
 export const routesPrestataires = Router();
 
 // Route publique — recherche de prestataires à proximité
@@ -52,6 +59,7 @@ routesPrestataires.post(
 routesPrestataires.post(
   "/moi/activation/renvoyer",
   authentifier,
+  valider(schemaRenvoyerActivation),
   prestatairesController.renvoyerActivation
 );
 

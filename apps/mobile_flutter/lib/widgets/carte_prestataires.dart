@@ -177,6 +177,9 @@ class _CartePrestatairesState extends State<CartePrestataires> {
                 maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
             Text('${p['categorie'] ?? ''} • ${p['ville'] ?? ''}',
+                // Une seule ligne : sur 2 lignes la carte (hauteur fixe) débordait d'1 px
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 11, color: AppCouleurs.texteSecondaire)),
             const SizedBox(height: 2),
             Row(children: [

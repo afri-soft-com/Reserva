@@ -54,13 +54,13 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
     'Kinshasa', 'Lubumbashi', 'Goma', 'Bukavu', 'Kisangani', 'Mbuji-Mayi', 'Kananga',
   ];
   static const _optionsTri = {
-    'RecommandÃ©s': null,
+    'Recommandés': null,
     'Prix â': 'prix_asc',
     'Prix â': 'prix_desc',
     'Note': 'note_desc',
     'Nom': 'nom_asc',
-    'ProximitÃ©': 'distance_asc',
-    'Disponible le plus tÃ´t': 'disponible_asc',
+    'Proximité': 'distance_asc',
+    'Disponible le plus tôt': 'disponible_asc',
   };
   static const _optionsDisponibilite = {
     'Toutes': null,
@@ -195,7 +195,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
     try {
       final permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        if (mounted) ToastWidget.show(context, 'Autorisation de localisation refusÃ©e.', type: 'erreur');
+        if (mounted) ToastWidget.show(context, 'Autorisation de localisation refusée.', type: 'erreur');
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
@@ -309,12 +309,12 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
         await ApiFavoris.supprimerFavori(serviceId);
         if (!mounted) return;
         setState(() => _favorisIds.remove(serviceId));
-        ToastWidget.show(context, 'RetirÃ© des favoris');
+        ToastWidget.show(context, 'Retiré des favoris');
       } else {
         await ApiFavoris.ajouterFavori(serviceId);
         if (!mounted) return;
         setState(() => _favorisIds.add(serviceId));
-        ToastWidget.show(context, 'AjoutÃ© aux favoris', type: 'succes');
+        ToastWidget.show(context, 'Ajouté aux favoris', type: 'succes');
       }
     } catch (e) {
       if (!mounted) return;
@@ -355,7 +355,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              'Prochain crÃ©neau : $date Ã  $horaire',
+              'Prochain créneau : $date à $horaire',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppCouleurs.primaire),
             ),
           ),
@@ -376,7 +376,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
   Widget build(BuildContext context) {
     super.build(context);
     context.watch<LangueProvider>();
-    final triActif = _optionsTri.entries.firstWhere((e) => e.value == _tri, orElse: () => const MapEntry('RecommandÃ©s', null));
+    final triActif = _optionsTri.entries.firstWhere((e) => e.value == _tri, orElse: () => const MapEntry('Recommandés', null));
 
     return Scaffold(
       backgroundColor: AppCouleurs.fond,
@@ -419,7 +419,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                               controller: ctrl,
                               autofocus: true,
                               decoration: const InputDecoration(
-                                hintText: 'Ex. clinique Gombe demain, hÃ´tel Lubumbashiâ¦',
+                                hintText: 'Ex. clinique Gombe demain, hôtel Lubumbashi…',
                                 helperText: 'Dictez via le clavier vocal, puis OK',
                               ),
                             ),
@@ -539,7 +539,7 @@ class _ServicesScreenState extends State<ServicesScreen> with AutomaticKeepAlive
                       ],
                     ),
                     const Divider(height: 20),
-                    const Text('DisponibilitÃ©', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text('Disponibilité', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
