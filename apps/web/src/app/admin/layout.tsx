@@ -25,6 +25,7 @@ import {
   ScrollText,
   FileCheck2,
   FolderTree,
+  LifeBuoy,
   Menu as MenuIcon,
   X,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const NAV_GROUPES = [
       { href: "/admin/pilotage", label: "Vue d'ensemble", icon: LayoutDashboard },
       { href: "/admin/statistiques", label: "Statistiques", icon: BarChart3 },
       { href: "/admin/reservations", label: "Réservations", icon: CalendarCheck },
+      { href: "/admin/guide", label: "Guide de la console", icon: LifeBuoy },
     ],
   },
   {
