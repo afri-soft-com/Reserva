@@ -1,5 +1,5 @@
 import { prisma } from "../config/prisma";
-import { ErreurConflit, ErreurNonTrouve, ErreurValidation, nuitsEntre } from "@reserva/service-kit";
+import { ErreurConflit, ErreurNonTrouve, ErreurValidation, formaterJour, nuitsEntre } from "@reserva/service-kit";
 import { calculerPolitiqueAnnulation } from "@reserva/shared";
 
 function parserListe(brut: string | null | undefined): string[] {
@@ -481,7 +481,7 @@ async function appliquerPrixHotel(hotelId: string, prix: number, deviseSaisie?: 
     include: { tarifs: { where: { actif: true }, orderBy: { prixParNuit: "asc" } } },
   });
   if (!chambre) {
-    await prisma.typeChambre.create({
+    const creee = await prisma.typeChambre.create({
       data: {
         hotelId,
         nom: "Chambre standard",
@@ -489,6 +489,7 @@ async function appliquerPrixHotel(hotelId: string, prix: number, deviseSaisie?: 
         tarifs: { create: { nom: "Standard", prixParNuit: prix, devise } },
       },
     });
+    await ouvrirDisponibilites(creee.id);
     return;
   }
   const tarif = chambre.tarifs[0];
@@ -496,12 +497,62 @@ async function appliquerPrixHotel(hotelId: string, prix: number, deviseSaisie?: 
     await prisma.planTarif.create({
       data: { typeChambreId: chambre.id, nom: "Standard", prixParNuit: prix, devise },
     });
+    await ouvrirDisponibilites(chambre.id);
     return;
   }
   await prisma.planTarif.update({
     where: { id: tarif.id },
     data: { prixParNuit: prix, devise: deviseSaisie ?? tarif.devise },
   });
+}
+
+/**
+ * Stock de chambres par nuit. La recherche et la fiche écartent une chambre sans ligne
+ * DisponibiliteJour pour chaque nuit demandée : un hôtel créé depuis la console doit donc
+ * recevoir ces lignes, sinon il n'apparaît jamais avec des dates.
+ */
+export const CHAMBRES_PAR_DEFAUT = 10;
+export const HORIZON_DISPONIBILITES_JOURS = 365;
+
+/** Jours (AAAA-MM-JJ) de la veille de `maintenant` jusqu'à `nombre` jours après. */
+export function joursHorizon(maintenant: Date, nombre = HORIZON_DISPONIBILITES_JOURS): string[] {
+  const debut = new Date(maintenant);
+  debut.setHours(0, 0, 0, 0);
+  debut.setDate(debut.getDate() - 1); // marge de fuseau (Kinshasa / Lubumbashi)
+  const fin = new Date(debut);
+  fin.setDate(fin.getDate() + nombre + 1);
+  return nuitsEntre(formaterJour(debut), formaterJour(fin));
+}
+
+/**
+ * Ajoute les nuits manquantes d'un type de chambre sans toucher aux nuits existantes
+ * (ventes, réservations et prix saisonniers conservés). Retourne le nombre de nuits ajoutées.
+ */
+export async function ouvrirDisponibilites(typeChambreId: string, maintenant = new Date()): Promise<number> {
+  const derniere = await prisma.disponibiliteJour.findFirst({
+    where: { typeChambreId },
+    orderBy: { jour: "desc" },
+    select: { total: true },
+  });
+  const total = derniere?.total && derniere.total > 0 ? derniere.total : CHAMBRES_PAR_DEFAUT;
+  const resultat = await prisma.disponibiliteJour.createMany({
+    data: joursHorizon(maintenant).map((jour) => ({ typeChambreId, jour, total })),
+    skipDuplicates: true,
+  });
+  return resultat.count;
+}
+
+/** Complète l'horizon de toutes les chambres actives (au démarrage puis chaque jour). */
+export async function completerDisponibilitesCatalogue(maintenant = new Date()) {
+  const chambres = await prisma.typeChambre.findMany({
+    where: { actif: true, hotel: { actif: true } },
+    select: { id: true },
+  });
+  let nuitsAjoutees = 0;
+  for (const chambre of chambres) {
+    nuitsAjoutees += await ouvrirDisponibilites(chambre.id, maintenant);
+  }
+  return { chambres: chambres.length, nuitsAjoutees };
 }
 
 export async function listerCatalogueAdmin(ville?: string) {
