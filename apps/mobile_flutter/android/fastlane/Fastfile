@@ -12,6 +12,20 @@ platform :android do
       publier_production(package_name, aab)
     end
   end
+
+  desc "Upload AAB Client + Pro sur une piste de test (PLAY_TRACK, défaut alpha = test fermé)"
+  lane :test do
+    track = ENV.fetch("PLAY_TRACK", "alpha")
+    UI.user_error!("Ce lane ne publie jamais en production") if track == "production"
+    {
+      "com.reserva.client" => File.expand_path("../../build/app/outputs/bundle/clientRelease/app-client-release.aab", __dir__),
+      "com.reserva.pro" => File.expand_path("../../build/app/outputs/bundle/proRelease/app-pro-release.aab", __dir__),
+    }.each do |package_name, aab|
+      UI.user_error!("AAB introuvable: #{aab}") unless File.exist?(aab)
+      UI.message("→ Play #{track} #{package_name}")
+      envoyer_play(package_name, aab, track, "completed", false, true)
+    end
+  end
 end
 
 def publier_production(package_name, aab)

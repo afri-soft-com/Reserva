@@ -18,6 +18,24 @@ platform :ios do
     ipas = Dir.glob(File.join(ipa_dir, "*.ipa"))
     UI.user_error!("Aucun IPA sous #{ipa_dir} (#{Dir.glob(File.join(ipa_dir, '*')).inspect})") if ipas.empty?
 
+    # Mode TestFlight seul (ASC_TESTFLIGHT_ONLY=true) : envoi du binaire dans TestFlight,
+    # sans toucher aux versions App Store (ex. une version déjà en cours d'examen).
+    if ENV.fetch("ASC_TESTFLIGHT_ONLY", "false") == "true"
+      ipas.sort.each do |ipa|
+        identifiant = File.basename(ipa).include?("Pro") ? "com.reserva.pro" : "com.reserva.client"
+        UI.message("→ TestFlight #{File.basename(ipa)} (#{identifiant})")
+        upload_to_testflight(
+          api_key: api_key,
+          app_identifier: identifiant,
+          ipa: File.expand_path(ipa),
+          skip_waiting_for_build_processing: true,
+          skip_submission: true,
+          distribute_external: false
+        )
+      end
+      next
+    end
+
     # Soumission review + release auto dès approbation Apple (ASC_SUBMIT_FOR_REVIEW=false pour désactiver)
     submit = ENV.fetch("ASC_SUBMIT_FOR_REVIEW", "true") == "true"
     auto_release = ENV.fetch("ASC_AUTOMATIC_RELEASE", "true") == "true"

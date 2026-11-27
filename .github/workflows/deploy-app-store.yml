@@ -18,6 +18,10 @@ on:
         description: "Promouvoir les bannières de mise à jour (production) après l'envoi"
         type: boolean
         default: true
+      testflight_only:
+        description: "TestFlight seulement : envoi des builds sans toucher aux versions App Store ni soumettre"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-ios
@@ -251,13 +255,14 @@ jobs:
           APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           ASC_SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review && 'true' || 'false' }}
+          ASC_TESTFLIGHT_ONLY: ${{ inputs.testflight_only && 'true' || 'false' }}
         run: |
           mkdir -p fastlane
           printf '%s' "$APP_STORE_CONNECT_API_KEY_P8" > fastlane/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
           gem install fastlane --no-document
           fastlane deploy
       - name: Promouvoir bannières MAJ (minSoft = version publiée)
-        if: ${{ inputs.promote_banners }}
+        if: ${{ inputs.promote_banners && !inputs.testflight_only }}
         working-directory: .
         run: |
           npm ci --ignore-scripts
